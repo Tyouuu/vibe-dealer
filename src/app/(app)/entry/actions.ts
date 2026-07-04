@@ -58,26 +58,46 @@ export async function createTransaction(formData: FormData) {
 
   const simType = type === 'package' ? simTypeRaw || null : null
 
-  const { error: txError } = await supabase.from('transactions').insert({
-    dealer_id: dealerId,
-    type,
-    package: pkg,
-    points,
-    money_rm: moneyRm,
-    rate,
-    sim_type: simType,
-    delivery_status: simType === 'physical' ? 'pending' : 'na',
-    receipt_url: receiptUrl,
-    note,
-    recorded_by: user.id,
-  })
+  const { data: insertedTx, error: txError } = await supabase
+    .from('transactions')
+    .insert({
+      dealer_id: dealerId,
+      type,
+      package: pkg,
+      points,
+      money_rm: moneyRm,
+      rate,
+      sim_type: simType,
+      delivery_status: simType === 'physical' ? 'pending' : 'na',
+      receipt_url: receiptUrl,
+      note,
+      recorded_by: user.id,
+    })
+    .select('tx_date')
+    .single()
 
   if (txError) fail(txError.message)
 
   if (type === 'package' && pkg) {
+    // Packages bought the same day count as one batch (e.g. dealer buys A + B + C
+    // together) — the dealer's rate should follow the BEST package in that batch,
+    // not just whichever one happened to be keyed in last. A package bought on a
+    // later day still overrides normally (per PROJECT_SPEC.md 3.3, upgrades and
+    // downgrades both apply over time — this only resolves same-day ties).
+    const { data: sameDayPkgs } = await supabase
+      .from('transactions')
+      .select('package')
+      .eq('dealer_id', dealerId)
+      .eq('type', 'package')
+      .eq('tx_date', insertedTx!.tx_date)
+
+    const bestPkg = (sameDayPkgs ?? [])
+      .map((t) => t.package as PackageCode)
+      .reduce((best, code) => (PACKAGES[code].rate > PACKAGES[best].rate ? code : best), pkg)
+
     const { error: updateError } = await supabase
       .from('dealers')
-      .update({ package: pkg, rate: PACKAGES[pkg].rate })
+      .update({ package: bestPkg, rate: PACKAGES[bestPkg].rate })
       .eq('id', dealerId)
 
     if (updateError) fail('交易已录入，但更新 dealer 套餐失败：' + updateError.message)

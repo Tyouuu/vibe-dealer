@@ -1,5 +1,6 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { LogoutButton } from './logout-button'
+import { RealtimeRefresher } from './realtime-refresher'
 
 const ROLE_LABEL = {
   master: 'Master',
@@ -13,6 +14,9 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
   { href: '/onboard', label: '开户 / 新增', roles: ['cs'] },
   { href: '/entry', label: '录入交易', roles: ['accountant'] },
   { href: '/records', label: '交易记录', roles: ['master', 'accountant'] },
+  { href: '/delivery', label: 'SIM 配送', roles: ['cs', 'master'] },
+  { href: '/reports', label: '月度报表', roles: ['master', 'accountant'] },
+  { href: '/reconcile', label: '月度对账', roles: ['master', 'accountant'] },
 ]
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
         <div className="flex-1" />
+        <RealtimeRefresher />
         <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
           {ROLE_LABEL[user.role]}
         </span>

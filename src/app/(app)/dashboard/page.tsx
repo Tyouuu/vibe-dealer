@@ -28,18 +28,25 @@ export default async function DashboardPage() {
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
   const today = now.toISOString().slice(0, 10)
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const [{ count: dealerCount }, { count: pendingCount }, { data: monthTx }, { data: pkgRows }] = await Promise.all([
-    supabase.from('dealers').select('id', { count: 'exact', head: true }),
-    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    supabase
-      .from('transactions')
-      .select('dealer_id, points, commission_rm, dealers(company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', monthStart)
-      .lte('tx_date', today),
-    supabase.from('dealers').select('package'),
-  ])
+  const [{ count: dealerCount }, { count: pendingCount }, { data: monthTx }, { data: pkgRows }, { data: yesterdayTx }] =
+    await Promise.all([
+      supabase.from('dealers').select('id', { count: 'exact', head: true }),
+      supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase
+        .from('transactions')
+        .select('dealer_id, points, commission_rm, dealers(company_name)')
+        .eq('status', 'verified')
+        .gte('tx_date', monthStart)
+        .lte('tx_date', today),
+      supabase.from('dealers').select('package'),
+      supabase
+        .from('transactions')
+        .select('dealer_id, points, commission_rm, dealers(company_name)')
+        .eq('status', 'verified')
+        .eq('tx_date', yesterday),
+    ])
 
   const totalPoints = (monthTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
   const totalCommission = (monthTx ?? []).reduce((sum, t) => sum + Number(t.commission_rm), 0)
@@ -61,6 +68,18 @@ export default async function DashboardPage() {
     else pkgCounts.none++
   }
 
+  const yesterdayPoints = (yesterdayTx ?? []).reduce((s, t) => s + Number(t.points), 0)
+  const yesterdayCommission = (yesterdayTx ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
+  const yesterdayByDealer = new Map<string, { name: string; points: number }>()
+  for (const t of yesterdayTx ?? []) {
+    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
+    const name = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
+    const prev = yesterdayByDealer.get(t.dealer_id) ?? { name, points: 0 }
+    prev.points += Number(t.points)
+    yesterdayByDealer.set(t.dealer_id, prev)
+  }
+  const mostActiveYesterday = [...yesterdayByDealer.values()].sort((a, b) => b.points - a.points)[0] ?? null
+
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
@@ -68,6 +87,30 @@ export default async function DashboardPage() {
         <Kpi label="⭐ 你的 Commission (2%)" value={`RM${totalCommission.toLocaleString()}`} gold />
         <Kpi label="👥 Dealer 总数" value={String(dealerCount ?? 0)} />
         <Kpi label="📋 待核对" value={String(pendingCount ?? 0)} amber />
+      </div>
+
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 昨日摘要（{yesterday}）</h3>
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <div className="text-xs text-zinc-500">昨日总额</div>
+            <div className="mt-1 text-lg font-bold text-zinc-100">{yesterdayPoints.toLocaleString()} pts</div>
+          </div>
+          <div>
+            <div className="text-xs text-zinc-500">你的 2%</div>
+            <div className="mt-1 text-lg font-bold text-amber-300">RM{yesterdayCommission.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-xs text-zinc-500">最活跃 dealer</div>
+            <div className="mt-1 text-lg font-bold text-zinc-100">
+              {mostActiveYesterday ? mostActiveYesterday.name : '—'}
+            </div>
+          </div>
+        </div>
+        <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
+          这是每日报告的数据部分（页面上看）。要每天早上自动发邮件/通知给你，还需要接一个邮件服务（例如
+          Resend）+ 定时任务，这块还没做——需要的话告诉我。
+        </p>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">

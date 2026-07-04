@@ -1,4 +1,4 @@
-import { requireUser } from '@/lib/auth/dal'
+import { requireUser, type Role } from '@/lib/auth/dal'
 import { LogoutButton } from './logout-button'
 
 const ROLE_LABEL = {
@@ -7,8 +7,17 @@ const ROLE_LABEL = {
   cs: 'CS',
 } as const
 
+const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
+  { href: '/dashboard', label: 'Dashboard', roles: ['master'] },
+  { href: '/dealers', label: 'Dealer 名单', roles: ['master', 'accountant', 'cs'] },
+  { href: '/onboard', label: '开户 / 新增', roles: ['cs'] },
+  { href: '/entry', label: '录入交易', roles: ['accountant'] },
+  { href: '/records', label: '交易记录', roles: ['master', 'accountant'] },
+]
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
+  const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -20,12 +29,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span className="text-sm font-bold text-zinc-50">DealerHub</span>
         </div>
         <nav className="flex items-center gap-1 text-sm">
-          <a
-            href="/dealers"
-            className="rounded-lg px-3 py-1.5 font-medium text-zinc-300 hover:bg-zinc-900 hover:text-zinc-50"
-          >
-            Dealer 名单
-          </a>
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-lg px-3 py-1.5 font-medium text-zinc-300 hover:bg-zinc-900 hover:text-zinc-50"
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
         <div className="flex-1" />
         <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">

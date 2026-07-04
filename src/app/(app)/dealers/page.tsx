@@ -24,11 +24,11 @@ const PACKAGE_STYLE: Record<string, string> = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ q?: string; region?: string }>
+  searchParams: Promise<{ q?: string; region?: string; onboarded?: string }>
 }
 
 export default async function DealersPage({ searchParams }: PageProps) {
-  const { q = '', region = 'all' } = await searchParams
+  const { q = '', region = 'all', onboarded } = await searchParams
   const supabase = await createClient()
 
   let query = supabase
@@ -55,6 +55,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      {onboarded && (
+        <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
+          已开户！新 dealer 已经进入系统。
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-bold text-zinc-50">Dealer 名单</h1>
         <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">

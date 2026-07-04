@@ -10,13 +10,13 @@ const ROLE_LABEL = {
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master'] },
-  { href: '/dealers', label: 'Dealer 名单', roles: ['master', 'accountant', 'cs'] },
-  { href: '/onboard', label: '开户 / 新增', roles: ['cs'] },
-  { href: '/entry', label: '录入交易', roles: ['accountant'] },
-  { href: '/records', label: '交易记录', roles: ['master', 'accountant'] },
-  { href: '/delivery', label: 'SIM 配送', roles: ['cs', 'master'] },
-  { href: '/reports', label: '月度报表', roles: ['master', 'accountant'] },
-  { href: '/reconcile', label: '月度对账', roles: ['master', 'accountant'] },
+  { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'] },
+  { href: '/onboard', label: 'Onboard Dealer', roles: ['cs'] },
+  { href: '/entry', label: 'New Transaction', roles: ['accountant'] },
+  { href: '/records', label: 'Transactions', roles: ['master', 'accountant'] },
+  { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'] },
+  { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'] },
+  { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'] },
 ]
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

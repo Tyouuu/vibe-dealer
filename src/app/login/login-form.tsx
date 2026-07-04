@@ -20,12 +20,12 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('登入失败，请检查 email / 密码。')
+      setError('Sign in failed. Please check your email / password.')
       setPending(false)
       return
     }
 
-    router.push('/dealers')
+    router.push('/')
     router.refresh()
   }
 
@@ -67,7 +67,7 @@ export function LoginForm() {
         disabled={pending}
         className="mt-1 w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-60"
       >
-        {pending ? '登入中…' : '登入 Sign In'}
+        {pending ? 'Signing in…' : 'Sign In'}
       </button>
     </form>
   )

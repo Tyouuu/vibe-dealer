@@ -11,7 +11,7 @@ function csvCell(value: string | number) {
 export async function GET(request: NextRequest) {
   const user = await requireUser()
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return NextResponse.json({ error: '没有权限' }, { status: 403 })
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 
   const month = request.nextUrl.searchParams.get('month') || currentMonth()

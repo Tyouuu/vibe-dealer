@@ -13,7 +13,7 @@ function fail(message: string): never {
 export async function createTransaction(formData: FormData) {
   const user = await requireUser()
   if (user.role !== 'accountant' && user.role !== 'master') {
-    fail('没有权限录入交易。')
+    fail('You do not have permission to enter transactions.')
   }
 
   const dealerId = String(formData.get('dealer_id') ?? '')
@@ -22,8 +22,8 @@ export async function createTransaction(formData: FormData) {
   const note = String(formData.get('note') ?? '').trim() || null
   const receiptUrl = String(formData.get('receipt_url') ?? '').trim() || null
 
-  if (!dealerId) fail('请选择 dealer。')
-  if (type !== 'package' && type !== 'topup') fail('请选择交易类型。')
+  if (!dealerId) fail('Please select a dealer.')
+  if (type !== 'package' && type !== 'topup') fail('Please select a transaction type.')
 
   const supabase = await createClient()
 
@@ -33,7 +33,7 @@ export async function createTransaction(formData: FormData) {
     .eq('id', dealerId)
     .single()
 
-  if (dealerError || !dealer) fail('找不到这个 dealer。')
+  if (dealerError || !dealer) fail('Dealer not found.')
 
   let points: number
   let moneyRm: number
@@ -42,15 +42,15 @@ export async function createTransaction(formData: FormData) {
 
   if (type === 'package') {
     pkg = formData.get('package') as PackageCode
-    if (!pkg || !(pkg in PACKAGES)) fail('请选择套餐。')
+    if (!pkg || !(pkg in PACKAGES)) fail('Please select a package.')
     const def = PACKAGES[pkg]
     points = def.reload
     moneyRm = def.price
     rate = def.rate
   } else {
-    if (dealer.rate == null) fail('这个 dealer 还没有套餐 / rate，请先帮他买套餐。')
+    if (dealer.rate == null) fail('This dealer has no package/rate yet — buy them a package first.')
     points = Number(formData.get('points'))
-    if (!points || points <= 0) fail('请填写正确的 top-up 面值。')
+    if (!points || points <= 0) fail('Please enter a valid top-up amount.')
     rate = dealer.rate
     const money = formData.get('money_rm')
     moneyRm = money ? Number(money) : Math.round(points * (1 - rate / 100) * 100) / 100
@@ -100,7 +100,7 @@ export async function createTransaction(formData: FormData) {
       .update({ package: bestPkg, rate: PACKAGES[bestPkg].rate })
       .eq('id', dealerId)
 
-    if (updateError) fail('交易已录入，但更新 dealer 套餐失败：' + updateError.message)
+    if (updateError) fail('Transaction recorded, but updating the dealer package failed: ' + updateError.message)
   }
 
   revalidatePath('/records')

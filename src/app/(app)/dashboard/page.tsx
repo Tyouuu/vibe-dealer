@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   if (user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有查看 Dashboard 的权限。
+        Your role ({user.role}) does not have permission to view the dashboard.
       </div>
     )
   }
@@ -83,46 +83,47 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-        <Kpi label="🎟️ 本月 Total Top-up" value={`${totalPoints.toLocaleString()} pts`} />
-        <Kpi label="⭐ 你的 Commission (2%)" value={`RM${totalCommission.toLocaleString()}`} gold />
-        <Kpi label="👥 Dealer 总数" value={String(dealerCount ?? 0)} />
-        <Kpi label="📋 待核对" value={String(pendingCount ?? 0)} amber />
+        <Kpi label="🎟️ This Month's Total Top-up" value={`${totalPoints.toLocaleString()} pts`} />
+        <Kpi label="⭐ Your Commission (2%)" value={`RM${totalCommission.toLocaleString()}`} gold />
+        <Kpi label="👥 Total Dealers" value={String(dealerCount ?? 0)} />
+        <Kpi label="📋 Pending Review" value={String(pendingCount ?? 0)} amber />
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 昨日摘要（{yesterday}）</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 Yesterday&apos;s Summary ({yesterday})</h3>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <div className="text-xs text-zinc-500">昨日总额</div>
+            <div className="text-xs text-zinc-500">Yesterday&apos;s Total</div>
             <div className="mt-1 text-lg font-bold text-zinc-100">{yesterdayPoints.toLocaleString()} pts</div>
           </div>
           <div>
-            <div className="text-xs text-zinc-500">你的 2%</div>
+            <div className="text-xs text-zinc-500">Your 2%</div>
             <div className="mt-1 text-lg font-bold text-amber-300">RM{yesterdayCommission.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-xs text-zinc-500">最活跃 dealer</div>
+            <div className="text-xs text-zinc-500">Most Active Dealer</div>
             <div className="mt-1 text-lg font-bold text-zinc-100">
               {mostActiveYesterday ? mostActiveYesterday.name : '—'}
             </div>
           </div>
         </div>
         <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          这是每日报告的数据部分（页面上看）。要每天早上自动发邮件/通知给你，还需要接一个邮件服务（例如
-          Resend）+ 定时任务，这块还没做——需要的话告诉我。
+          This is the data half of the daily report (viewed on this page). Automatically emailing/notifying you
+          every morning still needs an email service (e.g. Resend) + a scheduled job — not wired up yet, let me
+          know if you want that.
         </p>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🏆 Dealer 排行（本月 top-up）</h3>
+          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🏆 Dealer Ranking (This Month&apos;s Top-up)</h3>
           {ranking.length ? (
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                   <th className="px-3 py-2">#</th>
                   <th className="px-3 py-2">Dealer</th>
-                  <th className="px-3 py-2">本月 top-up</th>
+                  <th className="px-3 py-2">This Month&apos;s Top-up</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,17 +145,17 @@ export default async function DashboardPage() {
               </tbody>
             </table>
           ) : (
-            <p className="text-sm text-zinc-500">本月还没有已核对的交易。</p>
+            <p className="text-sm text-zinc-500">No verified transactions this month yet.</p>
           )}
         </div>
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">📦 套餐分布</h3>
+          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">📦 Package Distribution</h3>
           <div className="flex flex-col gap-2.5 text-sm">
             <PkgRow label="Package A" count={pkgCounts.A} style={PACKAGE_STYLE.A} />
             <PkgRow label="Package B" count={pkgCounts.B} style={PACKAGE_STYLE.B} />
             <PkgRow label="Package C" count={pkgCounts.C} style={PACKAGE_STYLE.C} />
-            <PkgRow label="未设定" count={pkgCounts.none} style="text-zinc-600" />
+            <PkgRow label="Not Set" count={pkgCounts.none} style="text-zinc-600" />
           </div>
         </div>
       </div>
@@ -181,7 +182,7 @@ function PkgRow({ label, count, style }: { label: string; count: number; style: 
   return (
     <div className="flex items-center justify-between border-b border-dashed border-zinc-800 pb-2.5 last:border-none">
       <span className={style}>{label}</span>
-      <b className="text-zinc-100">{count} 家</b>
+      <b className="text-zinc-100">{count} dealers</b>
     </div>
   )
 }

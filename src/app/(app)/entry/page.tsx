@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { EntryForm } from './entry-form'
 
 export const metadata: Metadata = {
-  title: '录入交易 — DealerHub',
+  title: 'New Transaction — DealerHub',
 }
 
 type PageProps = {
@@ -18,7 +18,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
   if (user.role !== 'accountant' && user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有录入交易权限。
+        Your role ({user.role}) does not have permission to enter transactions.
       </div>
     )
   }

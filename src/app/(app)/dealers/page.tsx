@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'Dealer 名单 — DealerHub',
+  title: 'Dealers — DealerHub',
 }
 
 type Dealer = {
@@ -57,13 +57,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
       {onboarded && (
         <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
-          已开户！新 dealer 已经进入系统。
+          Dealer onboarded successfully.
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-zinc-50">Dealer 名单</h1>
+        <h1 className="text-base font-bold text-zinc-50">Dealers</h1>
         <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">
-          共 {count ?? 0} 家
+          {count ?? 0} dealers
         </span>
       </div>
 
@@ -72,7 +72,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="🔍 搜索公司名 / 地区 / 联系人"
+          placeholder="🔍 Search company / region / contact"
           className="w-72 max-w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
         />
         <select
@@ -80,7 +80,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           defaultValue={region}
           className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
         >
-          <option value="all">全部地区</option>
+          <option value="all">All Regions</option>
           {regions.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -91,7 +91,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           type="submit"
           className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
         >
-          筛选
+          Filter
         </button>
       </form>
 
@@ -99,13 +99,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              <th className="px-3 py-2.5">公司名字</th>
-              <th className="px-3 py-2.5">地区</th>
-              <th className="px-3 py-2.5">电话</th>
-              <th className="px-3 py-2.5">联系人</th>
-              <th className="px-3 py-2.5">套餐</th>
+              <th className="px-3 py-2.5">Company</th>
+              <th className="px-3 py-2.5">Region</th>
+              <th className="px-3 py-2.5">Phone</th>
+              <th className="px-3 py-2.5">Contact</th>
+              <th className="px-3 py-2.5">Package</th>
               <th className="px-3 py-2.5">Rate</th>
-              <th className="px-3 py-2.5">状态</th>
+              <th className="px-3 py-2.5">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -138,7 +138,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
                         : 'rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-bold text-zinc-400'
                     }
                   >
-                    {d.status === 'active' ? '启用' : '停用'}
+                    {d.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
                 </td>
               </tr>
@@ -146,7 +146,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             {!dealers?.length && (
               <tr>
                 <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
-                  没有符合条件的 dealer。
+                  No matching dealers.
                 </td>
               </tr>
             )}

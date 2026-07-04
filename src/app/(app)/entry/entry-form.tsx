@@ -43,11 +43,11 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
     setError(null)
 
     if (!dealerId) {
-      setError('请选择 dealer。')
+      setError('Please select a dealer.')
       return
     }
     if (type === 'topup' && dealer?.rate == null) {
-      setError('这个 dealer 还没有套餐 / rate，请先帮他买套餐。')
+      setError('This dealer has no package/rate yet — buy them a package first.')
       return
     }
 
@@ -60,7 +60,7 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
       const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receiptFile)
       setUploading(false)
       if (uploadError) {
-        setError('收据上传失败：' + uploadError.message)
+        setError('Receipt upload failed: ' + uploadError.message)
         return
       }
       formData.set('receipt_url', path)
@@ -72,7 +72,7 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
   return (
     <div className="grid gap-5 md:grid-cols-2">
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h1 className="mb-4 text-base font-bold text-zinc-50">录入一笔交易</h1>
+        <h1 className="mb-4 text-base font-bold text-zinc-50">Record a Transaction</h1>
 
         {error && (
           <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3.5 py-2.5 text-sm text-red-300">
@@ -90,33 +90,33 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
               required
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
             >
-              <option value="">选择 dealer…</option>
+              <option value="">Select a dealer…</option>
               {dealers.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.company_name}
-                  {d.package ? `（当前 ${d.package}·${d.rate}%）` : '（未设定套餐）'}
+                  {d.package ? ` (current ${d.package}·${d.rate}%)` : ' (no package set)'}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">类型</label>
+            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Type</label>
             <select
               name="type"
               value={type}
               onChange={(e) => setType(e.target.value as 'topup' | 'package')}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
             >
-              <option value="topup">日常 Top-up</option>
-              <option value="package">买套餐（会更新 rate）</option>
+              <option value="topup">Regular Top-up</option>
+              <option value="package">Buy Package (updates rate)</option>
             </select>
           </div>
 
           {type === 'package' ? (
             <>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">套餐</label>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Package</label>
                 <select
                   name="package"
                   value={pkg}
@@ -131,41 +131,41 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">SIM 类型</label>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">SIM Type</label>
                 <select
                   name="sim_type"
                   defaultValue="esim"
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
                 >
-                  <option value="esim">eSIM（即时）</option>
-                  <option value="physical">实体 SIM（需配送）</option>
+                  <option value="esim">eSIM (instant)</option>
+                  <option value="physical">Physical SIM (needs delivery)</option>
                 </select>
               </div>
             </>
           ) : (
             <>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Top-up 面值 (points)</label>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Top-up Value (points)</label>
                 <input
                   name="points"
                   type="number"
                   min="1"
                   value={points}
                   onChange={(e) => setPoints(e.target.value)}
-                  placeholder="例如 850"
+                  placeholder="e.g. 850"
                   required
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">收 dealer 的钱 (RM)</label>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Amount Collected (RM)</label>
                 <input
                   name="money_rm"
                   type="number"
                   step="0.01"
                   value={moneyOverride}
                   onChange={(e) => setMoneyOverride(e.target.value)}
-                  placeholder={preview ? String(preview.money) : '按 rate 自动算，可改'}
+                  placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
                 />
               </div>
@@ -173,7 +173,7 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
           )}
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">收据（可选）</label>
+            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Receipt (optional)</label>
             <input
               type="file"
               accept="image/*"
@@ -183,7 +183,7 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">备注（可选）</label>
+            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Note (optional)</label>
             <input
               name="note"
               type="text"
@@ -196,30 +196,34 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
             disabled={uploading}
             className="mt-2 w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
           >
-            {uploading ? '上传收据中…' : '提交（待核对）'}
+            {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
           </button>
           <p className="rounded-lg border-l-2 border-violet-500 bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-            买套餐会自动更新该 dealer 的 rate（跟最新套餐）；日常 top-up 用他当前 rate 算你的 2%。
+            Buying a package automatically updates the dealer&apos;s rate (follows the latest package); a regular
+            top-up uses their current rate to calculate your 2%.
           </p>
         </form>
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3 text-sm font-bold text-zinc-50">💡 系统自动算给你看</h3>
+        <h3 className="mb-3 text-sm font-bold text-zinc-50">💡 Auto-calculated for you</h3>
         {preview ? (
           <div className="flex flex-col text-sm">
-            <Row label={type === 'package' ? '套餐面值' : 'Top-up 面值'} value={`${preview.points.toLocaleString()} pts`} />
+            <Row
+              label={type === 'package' ? 'Package Value' : 'Top-up Value'}
+              value={`${preview.points.toLocaleString()} pts`}
+            />
             <Row label="Rate" value={`${preview.rate}%`} />
-            <Row label="收 dealer 的钱" value={`RM${preview.money.toLocaleString()}`} />
-            <Row label="你的 2%" value={`RM${preview.commission.toLocaleString()}`} gold last />
+            <Row label="Amount Collected" value={`RM${preview.money.toLocaleString()}`} />
+            <Row label="Your 2%" value={`RM${preview.commission.toLocaleString()}`} gold last />
           </div>
         ) : (
           <p className="text-sm text-zinc-500">
-            {dealer ? '这个 dealer 还没有套餐 / rate，请先帮他买一个套餐。' : '先选一个 dealer。'}
+            {dealer ? 'This dealer has no package/rate yet — buy them a package first.' : 'Select a dealer first.'}
           </p>
         )}
         <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          钱和 points 分开：In 记钱、Out 记 points，永不混。
+          Money and points are kept separate: In tracks money, Out tracks points — never mixed.
         </p>
       </div>
     </div>

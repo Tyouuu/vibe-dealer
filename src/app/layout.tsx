@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DealerHub — Vibe Mobile Dealer 系统",
-  description: "Vibe Mobile master dealer 记账 + 报表 + dashboard",
+  title: "DealerHub — Vibe Mobile Dealer System",
+  description: "Vibe Mobile master dealer bookkeeping + reports + dashboard",
 };
 
 export default function RootLayout({

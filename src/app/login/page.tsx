@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = {
-  title: '登入 — DealerHub',
+  title: 'Sign In — DealerHub',
 }
 
 export default function LoginPage() {
@@ -15,7 +15,7 @@ export default function LoginPage() {
           </div>
           <div>
             <p className="text-base font-bold text-zinc-50">DealerHub</p>
-            <p className="text-xs text-zinc-500">Vibe Mobile Dealer 系统</p>
+            <p className="text-xs text-zinc-500">Vibe Mobile Dealer System</p>
           </div>
         </div>
         <LoginForm />

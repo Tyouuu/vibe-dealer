@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 
 export const metadata: Metadata = {
-  title: '月度报表 — DealerHub',
+  title: 'Monthly Report — DealerHub',
 }
 
 type PageProps = {
@@ -18,7 +18,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (user.role !== 'accountant' && user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有查看月度报表的权限。
+        Your role ({user.role}) does not have permission to view monthly reports.
       </div>
     )
   }
@@ -63,36 +63,36 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               type="submit"
               className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
             >
-              查看
+              View
             </button>
           </form>
           <a
             href={`/api/reports/export?month=${month}`}
             className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
           >
-            ⤓ 导出 Excel (CSV)
+            ⤓ Export Excel (CSV)
           </a>
         </div>
 
         <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-          <Kpi label="本月 Total Top-up" value={`${totalPoints.toLocaleString()} pts`} />
-          <Kpi label="你的 2%" value={`RM${totalCommission.toLocaleString()}`} gold />
-          <Kpi label="交易笔数" value={String(rows?.length ?? 0)} />
-          <Kpi label="活跃 dealer" value={String(breakdown.length)} />
+          <Kpi label="This Month's Total Top-up" value={`${totalPoints.toLocaleString()} pts`} />
+          <Kpi label="Your 2%" value={`RM${totalCommission.toLocaleString()}`} gold />
+          <Kpi label="Transactions" value={String(rows?.length ?? 0)} />
+          <Kpi label="Active Dealers" value={String(breakdown.length)} />
         </div>
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">按 Dealer 汇总</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">By Dealer</h3>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Dealer</th>
-                <th className="px-3 py-2">本月 top-up</th>
-                <th className="px-3 py-2">收到的钱 (RM)</th>
-                <th className="px-3 py-2">你的 2%</th>
+                <th className="px-3 py-2">This Month&apos;s Top-up</th>
+                <th className="px-3 py-2">Money Collected (RM)</th>
+                <th className="px-3 py-2">Your 2%</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +108,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               {!breakdown.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-zinc-500">
-                    这个月还没有已核对的交易。
+                    No verified transactions this month yet.
                   </td>
                 </tr>
               )}

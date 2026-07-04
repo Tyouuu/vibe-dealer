@@ -9,12 +9,12 @@ import { PACKAGES, type PackageCode } from '@/lib/packages'
 export async function createDealer(formData: FormData) {
   const user = await requireUser()
   if (user.role !== 'cs' && user.role !== 'master') {
-    redirect('/onboard?error=' + encodeURIComponent('没有权限开户。'))
+    redirect('/onboard?error=' + encodeURIComponent('You do not have permission to onboard dealers.'))
   }
 
   const companyName = String(formData.get('company_name') ?? '').trim()
   if (!companyName) {
-    redirect('/onboard?error=' + encodeURIComponent('公司名字不能空。'))
+    redirect('/onboard?error=' + encodeURIComponent('Company name is required.'))
   }
 
   const pkg = (formData.get('package') as PackageCode) || null

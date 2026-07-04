@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { markDelivered } from './actions'
 
 export const metadata: Metadata = {
-  title: 'SIM 配送 — DealerHub',
+  title: 'SIM Delivery — DealerHub',
 }
 
 type DeliveryRow = {
@@ -23,7 +23,7 @@ export default async function DeliveryPage() {
   if (user.role !== 'cs' && user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有查看 SIM 配送的权限。
+        Your role ({user.role}) does not have permission to view SIM delivery.
       </div>
     )
   }
@@ -39,25 +39,26 @@ export default async function DeliveryPage() {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-zinc-50">🚚 SIM 配送</h1>
+        <h1 className="text-base font-bold text-zinc-50">🚚 SIM Delivery</h1>
         <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">
-          共 {typed.length} 笔
+          {typed.length} items
         </span>
       </div>
       <p className="mb-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-        实体 SIM 要寄到公司再寄给 dealer，有运费；eSIM 即时开通，不用配送。
+        Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
+        delivery needed.
       </p>
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              <th className="px-3 py-2.5">日期</th>
+              <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5">Dealer</th>
-              <th className="px-3 py-2.5">套餐</th>
-              <th className="px-3 py-2.5">SIM 类型</th>
-              <th className="px-3 py-2.5">状态</th>
-              <th className="px-3 py-2.5">操作</th>
+              <th className="px-3 py-2.5">Package</th>
+              <th className="px-3 py-2.5">SIM Type</th>
+              <th className="px-3 py-2.5">Status</th>
+              <th className="px-3 py-2.5">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -65,28 +66,28 @@ export default async function DeliveryPage() {
               <tr key={row.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
                 <td className="px-3 py-2.5 text-zinc-400">{row.tx_date}</td>
                 <td className="px-3 py-2.5 font-semibold text-zinc-100">{row.company_name}</td>
-                <td className="px-3 py-2.5 text-zinc-300">{row.package ? `套餐 ${row.package}` : '—'}</td>
+                <td className="px-3 py-2.5 text-zinc-300">{row.package ? `Package ${row.package}` : '—'}</td>
                 <td className="px-3 py-2.5">
                   {row.sim_type === 'esim' ? (
                     <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
                       eSIM
                     </span>
                   ) : (
-                    <span className="text-zinc-400">实体 SIM</span>
+                    <span className="text-zinc-400">Physical SIM</span>
                   )}
                 </td>
                 <td className="px-3 py-2.5">
                   {row.delivery_status === 'sent' ? (
                     <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
-                      已送
+                      Sent
                     </span>
                   ) : row.delivery_status === 'pending' ? (
                     <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                      待送
+                      Pending
                     </span>
                   ) : (
                     <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                      即时开通
+                      Instant
                     </span>
                   )}
                 </td>
@@ -98,7 +99,7 @@ export default async function DeliveryPage() {
                         type="submit"
                         className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
                       >
-                        标记已送
+                        Mark as Sent
                       </button>
                     </form>
                   ) : (
@@ -110,7 +111,7 @@ export default async function DeliveryPage() {
             {!typed.length && (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
-                  暂时没有需要配送的记录。
+                  No delivery items right now.
                 </td>
               </tr>
             )}

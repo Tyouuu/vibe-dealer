@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { verifyTransaction } from './actions'
 
 export const metadata: Metadata = {
-  title: '交易记录 — DealerHub',
+  title: 'Transactions — DealerHub',
 }
 
 type TxRow = {
@@ -24,8 +24,8 @@ type TxRow = {
 
 const DELIVERY_LABEL: Record<string, string> = {
   na: '—',
-  pending: '待送',
-  sent: '已送',
+  pending: 'Pending',
+  sent: 'Sent',
 }
 
 type PageProps = {
@@ -39,7 +39,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   if (user.role !== 'accountant' && user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有查看交易记录的权限。
+        Your role ({user.role}) does not have permission to view transactions.
       </div>
     )
   }
@@ -65,14 +65,14 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
       {submitted && (
         <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
-          已录入！状态 = 待核对，核对后计入对账与报表。
+          Recorded! Status = pending — counts toward reconciliation/reports once verified.
         </div>
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-zinc-50">交易记录</h1>
+        <h1 className="text-base font-bold text-zinc-50">Transactions</h1>
         <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">
-          共 {count ?? 0} 笔
+          {count ?? 0} transactions
         </span>
       </div>
 
@@ -82,16 +82,16 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           defaultValue={status}
           className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
         >
-          <option value="all">全部状态</option>
-          <option value="pending">待核对</option>
-          <option value="verified">已核对</option>
-          <option value="flagged">已标记</option>
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="verified">Verified</option>
+          <option value="flagged">Flagged</option>
         </select>
         <button
           type="submit"
           className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
         >
-          筛选
+          Filter
         </button>
       </form>
 
@@ -99,16 +99,16 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              <th className="px-3 py-2.5">日期</th>
+              <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5">Dealer</th>
-              <th className="px-3 py-2.5">类型</th>
-              <th className="px-3 py-2.5">In 钱 (RM)</th>
+              <th className="px-3 py-2.5">Type</th>
+              <th className="px-3 py-2.5">In (RM)</th>
               <th className="px-3 py-2.5">Out (pts)</th>
               <th className="px-3 py-2.5">Rate</th>
-              <th className="px-3 py-2.5">你的 2%</th>
-              <th className="px-3 py-2.5">配送</th>
-              <th className="px-3 py-2.5">状态</th>
-              <th className="px-3 py-2.5">操作</th>
+              <th className="px-3 py-2.5">Your 2%</th>
+              <th className="px-3 py-2.5">Delivery</th>
+              <th className="px-3 py-2.5">Status</th>
+              <th className="px-3 py-2.5">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -119,7 +119,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2.5 text-zinc-400">{tx.tx_date}</td>
                   <td className="px-3 py-2.5 font-semibold text-zinc-100">{dealerName ?? '—'}</td>
                   <td className="px-3 py-2.5 text-zinc-300">
-                    {tx.type === 'package' ? `套餐 ${tx.package}` : 'Top-up'}
+                    {tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}
                   </td>
                   <td className="px-3 py-2.5 text-zinc-300">RM{tx.money_rm.toLocaleString()}</td>
                   <td className="px-3 py-2.5 text-zinc-300">{tx.points.toLocaleString()}</td>
@@ -136,7 +136,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                             : 'rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300'
                       }
                     >
-                      {tx.status === 'verified' ? '已核对' : tx.status === 'flagged' ? '已标记' : '待核对'}
+                      {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
@@ -147,7 +147,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                           type="submit"
                           className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
                         >
-                          核对 ✓
+                          Verify ✓
                         </button>
                       </form>
                     ) : (
@@ -160,7 +160,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             {!rows?.length && (
               <tr>
                 <td colSpan={10} className="px-3 py-8 text-center text-zinc-500">
-                  没有符合条件的交易记录。
+                  No matching transactions.
                 </td>
               </tr>
             )}

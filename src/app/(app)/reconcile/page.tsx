@@ -5,7 +5,7 @@ import { monthRange, currentMonth } from '@/lib/month'
 import { saveStatement, markReconciled } from './actions'
 
 export const metadata: Metadata = {
-  title: '月度对账 — DealerHub',
+  title: 'Reconciliation — DealerHub',
 }
 
 type PageProps = {
@@ -19,7 +19,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   if (user.role !== 'accountant' && user.role !== 'master') {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        你的角色（{user.role}）没有查看月度对账的权限。
+        Your role ({user.role}) does not have permission to view reconciliation.
       </div>
     )
   }
@@ -41,7 +41,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     <div className="grid gap-5 lg:grid-cols-2">
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-zinc-50">⇄ 月度对账 · {month}</h3>
+          <h3 className="text-sm font-bold text-zinc-50">⇄ Reconciliation · {month}</h3>
           <form action="/reconcile" method="GET" className="flex items-center gap-2">
             <input
               type="month"
@@ -53,7 +53,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               type="submit"
               className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
             >
-              查看
+              View
             </button>
           </form>
         </div>
@@ -65,21 +65,21 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         )}
         {saved && (
           <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
-            已保存。
+            Saved.
           </div>
         )}
 
-        <Row label="系统 total top-up（verified）" value={`${systemPoints.toLocaleString()} pts`} />
+        <Row label="System Total Top-up (verified)" value={`${systemPoints.toLocaleString()} pts`} />
         <Row
-          label="Vibe 公司 statement"
-          value={companyPoints != null ? `${Number(companyPoints).toLocaleString()} pts` : '还没录入'}
+          label="Vibe Company Statement"
+          value={companyPoints != null ? `${Number(companyPoints).toLocaleString()} pts` : 'Not entered yet'}
         />
         <Row
-          label="差异"
-          value={diff == null ? '—' : diff === 0 ? '✓ 完全一致' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts`}
+          label="Difference"
+          value={diff == null ? '—' : diff === 0 ? '✓ Matches exactly' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts`}
           highlight={diff === 0 ? 'good' : diff != null && diff !== 0 ? 'bad' : undefined}
         />
-        <Row label="你的 2% 应得" value={`RM${systemProfit.toLocaleString()}`} highlight="gold" last />
+        <Row label="Your 2% Due" value={`RM${systemProfit.toLocaleString()}`} highlight="gold" last />
 
         <div className="mt-4 flex items-center gap-3">
           <form action={markReconciled}>
@@ -89,19 +89,19 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               disabled={!statement}
               className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
             >
-              标记已对账 ✓
+              Mark Reconciled ✓
             </button>
           </form>
           {statement?.reconciled && (
             <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400">
-              本月已对账
+              Reconciled this month
             </span>
           )}
         </div>
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">录入 Vibe statement</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">Enter Vibe Statement</h3>
         <form action={saveStatement} className="flex flex-col gap-3.5">
           <input type="hidden" name="month" value={month} />
           <div>
@@ -116,7 +116,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Vibe 给的盈利数字 (RM)</label>
+            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Vibe&apos;s Profit Figure (RM)</label>
             <input
               name="company_profit_rm"
               type="number"
@@ -126,7 +126,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">备注</label>
+            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Note</label>
             <input
               name="note"
               type="text"
@@ -138,11 +138,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             type="submit"
             className="w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
           >
-            保存并比对
+            Save &amp; Compare
           </button>
         </form>
         <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          Vibe 每月给一个总数，系统自动跟 verified 记录比对，对不上马上看得出。
+          Vibe provides a monthly total; the system compares it against verified records automatically so any
+          mismatch is obvious right away.
         </p>
       </div>
     </div>

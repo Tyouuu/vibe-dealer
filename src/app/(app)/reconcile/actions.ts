@@ -12,8 +12,8 @@ function fail(month: string, message: string): never {
 export async function saveStatement(formData: FormData) {
   const user = await requireUser()
   const month = String(formData.get('month') ?? '')
-  if (user.role !== 'accountant' && user.role !== 'master') fail(month, '没有权限。')
-  if (!month) fail(month, '请选择月份。')
+  if (user.role !== 'accountant' && user.role !== 'master') fail(month, 'Not authorized.')
+  if (!month) fail(month, 'Please select a month.')
 
   const totalPoints = Number(formData.get('company_total_points') ?? 0)
   const profitRm = Number(formData.get('company_profit_rm') ?? 0)
@@ -43,7 +43,7 @@ export async function saveStatement(formData: FormData) {
 export async function markReconciled(formData: FormData) {
   const user = await requireUser()
   const month = String(formData.get('month') ?? '')
-  if (user.role !== 'accountant' && user.role !== 'master') fail(month, '没有权限。')
+  if (user.role !== 'accountant' && user.role !== 'master') fail(month, 'Not authorized.')
 
   const monthDate = `${month}-01`
   const supabase = await createClient()

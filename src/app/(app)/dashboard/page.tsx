@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { getYesterdaySummary } from '@/lib/reports/daily-summary'
 
 export const metadata: Metadata = {
   title: 'Master Dashboard — DealerHub',
@@ -28,9 +29,8 @@ export default async function DashboardPage() {
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
   const today = now.toISOString().slice(0, 10)
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const [{ count: dealerCount }, { count: pendingCount }, { data: monthTx }, { data: pkgRows }, { data: yesterdayTx }] =
+  const [{ count: dealerCount }, { count: pendingCount }, { data: monthTx }, { data: pkgRows }, yesterdaySummary] =
     await Promise.all([
       supabase.from('dealers').select('id', { count: 'exact', head: true }),
       supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -41,11 +41,7 @@ export default async function DashboardPage() {
         .gte('tx_date', monthStart)
         .lte('tx_date', today),
       supabase.from('dealers').select('package'),
-      supabase
-        .from('transactions')
-        .select('dealer_id, points, commission_rm, dealers(company_name)')
-        .eq('status', 'verified')
-        .eq('tx_date', yesterday),
+      getYesterdaySummary(supabase),
     ])
 
   const totalPoints = (monthTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
@@ -68,18 +64,6 @@ export default async function DashboardPage() {
     else pkgCounts.none++
   }
 
-  const yesterdayPoints = (yesterdayTx ?? []).reduce((s, t) => s + Number(t.points), 0)
-  const yesterdayCommission = (yesterdayTx ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
-  const yesterdayByDealer = new Map<string, { name: string; points: number }>()
-  for (const t of yesterdayTx ?? []) {
-    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
-    const name = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
-    const prev = yesterdayByDealer.get(t.dealer_id) ?? { name, points: 0 }
-    prev.points += Number(t.points)
-    yesterdayByDealer.set(t.dealer_id, prev)
-  }
-  const mostActiveYesterday = [...yesterdayByDealer.values()].sort((a, b) => b.points - a.points)[0] ?? null
-
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
@@ -90,27 +74,25 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 Yesterday&apos;s Summary ({yesterday})</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 Yesterday&apos;s Summary ({yesterdaySummary.date})</h3>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
             <div className="text-xs text-zinc-500">Yesterday&apos;s Total</div>
-            <div className="mt-1 text-lg font-bold text-zinc-100">{yesterdayPoints.toLocaleString()} pts</div>
+            <div className="mt-1 text-lg font-bold text-zinc-100">{yesterdaySummary.points.toLocaleString()} pts</div>
           </div>
           <div>
             <div className="text-xs text-zinc-500">Your 2%</div>
-            <div className="mt-1 text-lg font-bold text-amber-300">RM{yesterdayCommission.toLocaleString()}</div>
+            <div className="mt-1 text-lg font-bold text-amber-300">RM{yesterdaySummary.commission.toLocaleString()}</div>
           </div>
           <div>
             <div className="text-xs text-zinc-500">Most Active Dealer</div>
             <div className="mt-1 text-lg font-bold text-zinc-100">
-              {mostActiveYesterday ? mostActiveYesterday.name : '—'}
+              {yesterdaySummary.mostActiveDealer ? yesterdaySummary.mostActiveDealer.name : '—'}
             </div>
           </div>
         </div>
         <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          This is the data half of the daily report (viewed on this page). Automatically emailing/notifying you
-          every morning still needs an email service (e.g. Resend) + a scheduled job — not wired up yet, let me
-          know if you want that.
+          This same summary is emailed to all masters every morning at 8am (Malaysia time).
         </p>
       </div>
 

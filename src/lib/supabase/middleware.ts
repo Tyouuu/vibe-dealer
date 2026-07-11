@@ -32,8 +32,10 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
+  // Cron jobs call this with no browser session; it authenticates itself via CRON_SECRET.
+  const isCronRoute = pathname.startsWith('/api/cron/')
 
-  if (!user && !isPublicRoute && pathname !== '/') {
+  if (!user && !isPublicRoute && !isCronRoute && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

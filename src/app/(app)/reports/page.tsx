@@ -16,11 +16,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const { month = currentMonth() } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to view monthly reports.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view monthly reports.</div>
   }
 
   const { start, end } = monthRange(month)
@@ -50,64 +46,53 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="app-card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <form className="flex items-center gap-3" action="/reports" method="GET">
-            <input
-              type="month"
-              name="month"
-              defaultValue={month}
-              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-            >
+            <input type="month" name="month" defaultValue={month} className="field-input w-auto" />
+            <button type="submit" className="btn-primary">
               View
             </button>
           </form>
-          <a
-            href={`/api/reports/export?month=${month}`}
-            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
-          >
+          <a href={`/api/reports/export?month=${month}`} className="btn-ghost">
             ⤓ Export Excel (CSV)
           </a>
         </div>
 
         <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-          <Kpi label="This Month's Total Top-up" value={`${totalPoints.toLocaleString()} pts`} />
-          <Kpi label="Your 2%" value={`RM${totalCommission.toLocaleString()}`} gold />
+          <Kpi label="This Month's Total Top-up" value={`${totalPoints.toLocaleString()} pts`} unit="points" />
+          <Kpi label="Your 2%" value={`RM ${totalCommission.toLocaleString()}`} unit="money" />
           <Kpi label="Transactions" value={String(rows?.length ?? 0)} />
           <Kpi label="Active Dealers" value={String(breakdown.length)} />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">By Dealer</h3>
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">By Dealer</h3>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                <th className="px-3 py-2">#</th>
-                <th className="px-3 py-2">Dealer</th>
-                <th className="px-3 py-2">This Month&apos;s Top-up</th>
-                <th className="px-3 py-2">Money Collected (RM)</th>
-                <th className="px-3 py-2">Your 2%</th>
+              <tr>
+                <th className="th">#</th>
+                <th className="th">Dealer</th>
+                <th className="th text-right">This Month&apos;s Top-up</th>
+                <th className="th text-right">Money Collected (RM)</th>
+                <th className="th text-right">Your 2%</th>
               </tr>
             </thead>
             <tbody>
               {breakdown.map((d, i) => (
-                <tr key={d.name + i} className="border-b border-zinc-800 last:border-none">
-                  <td className="px-3 py-2 text-zinc-500">{i + 1}</td>
-                  <td className="px-3 py-2 font-semibold text-zinc-100">{d.name}</td>
-                  <td className="px-3 py-2 text-zinc-300">{d.points.toLocaleString()} pts</td>
-                  <td className="px-3 py-2 text-zinc-300">RM{d.money.toLocaleString()}</td>
-                  <td className="px-3 py-2 font-semibold text-amber-300">RM{d.commission.toLocaleString()}</td>
+                <tr key={d.name + i} className="tr-row">
+                  <td className="td text-paper-dim">{i + 1}</td>
+                  <td className="td font-semibold text-paper">{d.name}</td>
+                  <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
+                  <td className="td figure text-right text-paper-dim">RM {d.money.toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {d.commission.toLocaleString()}</td>
                 </tr>
               ))}
               {!breakdown.length && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
                     No verified transactions this month yet.
                   </td>
                 </tr>
@@ -120,13 +105,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   )
 }
 
-function Kpi({ label, value, gold }: { label: string; value: string; gold?: boolean }) {
+function Kpi({ label, value, unit }: { label: string; value: string; unit?: 'money' | 'points' }) {
+  const valueStyle = unit === 'money' ? 'figure-money' : unit === 'points' ? 'figure-points' : 'text-paper'
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-4">
-      <div className="text-xs font-semibold text-zinc-400">{label}</div>
-      <div className={`mt-1.5 text-2xl font-extrabold tracking-tight ${gold ? 'text-amber-300' : 'text-zinc-50'}`}>
-        {value}
-      </div>
+    <div className="app-tile ticket-tile">
+      <div className="text-xs font-semibold text-paper-dim">{label}</div>
+      <div className={`mt-1.5 text-2xl font-extrabold tracking-tight ${valueStyle}`}>{value}</div>
     </div>
   )
 }

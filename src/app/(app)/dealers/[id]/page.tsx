@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { markDelivered } from '../../delivery/actions'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -44,16 +45,54 @@ type DeliveryRow = {
   delivery_status: 'na' | 'pending' | 'sent'
 }
 
+type RateHistoryRow = {
+  id: string
+  old_package: string | null
+  old_rate: number | null
+  new_package: string | null
+  new_rate: number | null
+  changed_by: string | null
+  created_at: string
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const PACKAGE_STYLE: Record<string, string> = {
-  A: 'bg-zinc-500/15 text-zinc-300',
-  B: 'bg-emerald-500/15 text-emerald-400',
-  C: 'bg-amber-400/15 text-amber-300',
+  A: 'pill-neutral',
+  B: 'pill-jade',
+  C: 'pill-brass',
 }
 
 const DELIVERY_LABEL: Record<string, string> = {
   na: '—',
   pending: 'Pending',
   sent: 'Sent',
+}
+
+function StatusPill({ status }: { status: 'pending' | 'verified' | 'flagged' }) {
+  if (status === 'verified') return <span className="pill pill-jade">Verified</span>
+  if (status === 'flagged') return <span className="pill pill-clay">Flagged</span>
+  return <span className="pill pill-brass">Pending</span>
+}
+
+function SimPill({ simType }: { simType: 'physical' | 'esim' | null }) {
+  if (simType === 'esim') return <span className="pill pill-slate">eSIM</span>
+  return <span className="text-paper-dim">Physical SIM</span>
+}
+
+function DeliveryPill({ status }: { status: 'na' | 'pending' | 'sent' }) {
+  if (status === 'sent') return <span className="pill pill-jade">Sent</span>
+  if (status === 'pending') return <span className="pill pill-brass">Pending</span>
+  return <span className="pill pill-slate">Instant</span>
 }
 
 type PageProps = {
@@ -81,6 +120,8 @@ export default async function DealerDetailPage({ params }: PageProps) {
 
   let txRows: TxRow[] = []
   let deliveryRows: DeliveryRow[] = []
+  let rateHistoryRows: RateHistoryRow[] = []
+  const rateHistoryNameById = new Map<string, string>()
 
   if (isFinance) {
     const { data } = await supabase
@@ -90,6 +131,28 @@ export default async function DealerDetailPage({ params }: PageProps) {
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
     txRows = (data as TxRow[] | null) ?? []
+
+    const { data: rateHistoryData } = await supabase
+      .from('dealer_rate_history')
+      .select('id, old_package, old_rate, new_package, new_rate, changed_by, created_at')
+      .eq('dealer_id', id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    rateHistoryRows = (rateHistoryData as RateHistoryRow[] | null) ?? []
+
+    // changed_by is a bare uuid column with no FK to profiles (same reason as
+    // recorded_by / verified_by on transactions — see 0001_profiles_and_rls.sql),
+    // so PostgREST nested-select can't join it. Resolve names ourselves.
+    const changedByIds = new Set<string>()
+    for (const row of rateHistoryRows) {
+      if (row.changed_by) changedByIds.add(row.changed_by)
+    }
+    const { data: rateProfiles } = changedByIds.size
+      ? await supabase.from('profiles').select('id, name, email').in('id', [...changedByIds])
+      : { data: [] }
+    for (const p of rateProfiles ?? []) {
+      rateHistoryNameById.set(p.id, p.name ?? p.email ?? '—')
+    }
   } else {
     const { data } = await supabase
       .from('delivery_queue')
@@ -99,33 +162,34 @@ export default async function DealerDetailPage({ params }: PageProps) {
     deliveryRows = (data as DeliveryRow[] | null) ?? []
   }
 
+  const rateHistoryDisplayName = (changedBy: string | null) => (changedBy ? (rateHistoryNameById.get(changedBy) ?? '—') : '—')
+
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/dealers" className="text-xs font-semibold text-zinc-500 hover:text-zinc-300">
+      <Link href="/dealers" className="text-xs font-semibold text-paper-dim hover:text-paper">
         ← Back to Dealers
       </Link>
 
       {activity?.isInactive && (
-        <div className="rounded-lg border border-amber-800 bg-amber-950/50 px-3.5 py-2.5 text-sm text-amber-300">
-          ⚠️ {activity.daysSinceLastActivity} days since the last verified top-up.
-        </div>
+        <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
       )}
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="app-card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-base font-bold text-zinc-50">{typedDealer.company_name}</h1>
-            {typedDealer.company_no && <div className="text-[11px] text-zinc-500">{typedDealer.company_no}</div>}
+            <h1 className="text-base font-bold text-paper">{typedDealer.company_name}</h1>
+            {typedDealer.company_no && <div className="text-[11px] text-paper-dim">{typedDealer.company_no}</div>}
           </div>
-          <span
-            className={
-              typedDealer.status === 'active'
-                ? 'rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400'
-                : 'rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-bold text-zinc-400'
-            }
-          >
-            {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
-          </span>
+          <div className="flex items-center gap-3.5">
+            {isFinance && (
+              <a href={`/entry?dealer=${id}`} className="text-xs font-semibold text-jade-bright hover:text-jade">
+                + Record Transaction
+              </a>
+            )}
+            <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
+              {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm md:grid-cols-3">
@@ -135,74 +199,56 @@ export default async function DealerDetailPage({ params }: PageProps) {
           <Field label="Region" value={typedDealer.region} />
           <Field label="Address" value={typedDealer.address} />
           <div>
-            <div className="text-xs text-zinc-500">Package / Rate</div>
+            <div className="text-xs text-paper-dim">Package / Rate</div>
             <div className="mt-1">
               {typedDealer.package ? (
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${PACKAGE_STYLE[typedDealer.package]}`}
-                >
+                <span className={`pill ${PACKAGE_STYLE[typedDealer.package]}`}>
                   {typedDealer.package} · {typedDealer.rate}%
                 </span>
               ) : (
-                <span className="text-zinc-600">—</span>
+                <span className="text-paper-dim/50">—</span>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">
-          {isFinance ? '🧾 Transaction History' : '🚚 Delivery History'}
-        </h3>
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'Transaction History' : 'Delivery History'}</h3>
 
         {isFinance ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                  <th className="px-3 py-2.5">Date</th>
-                  <th className="px-3 py-2.5">Type</th>
-                  <th className="px-3 py-2.5">In (RM)</th>
-                  <th className="px-3 py-2.5">Out (pts)</th>
-                  <th className="px-3 py-2.5">Rate</th>
-                  <th className="px-3 py-2.5">Your 2%</th>
-                  <th className="px-3 py-2.5">Delivery</th>
-                  <th className="px-3 py-2.5">Status</th>
+                <tr>
+                  <th className="th">Date</th>
+                  <th className="th">Type</th>
+                  <th className="th text-right">In (RM)</th>
+                  <th className="th text-right">Out (pts)</th>
+                  <th className="th text-right">Rate</th>
+                  <th className="th text-right">Your 2%</th>
+                  <th className="th">Delivery</th>
+                  <th className="th">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {txRows.map((tx) => (
-                  <tr key={tx.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                    <td className="px-3 py-2.5 text-zinc-400">{tx.tx_date}</td>
-                    <td className="px-3 py-2.5 text-zinc-300">
-                      {tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-300">RM{tx.money_rm.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-zinc-300">{tx.points.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-zinc-300">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                    <td className="px-3 py-2.5 font-semibold text-amber-300">
-                      RM{tx.commission_rm.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-400">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={
-                          tx.status === 'verified'
-                            ? 'rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400'
-                            : tx.status === 'flagged'
-                              ? 'rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-bold text-red-400'
-                              : 'rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300'
-                        }
-                      >
-                        {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
-                      </span>
+                  <tr key={tx.id} className="tr-row">
+                    <td className="td text-paper-dim">{tx.tx_date}</td>
+                    <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                    <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                    <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
+                    <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
+                    <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
+                    <td className="td">
+                      <StatusPill status={tx.status} />
                     </td>
                   </tr>
                 ))}
                 {!txRows.length && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-zinc-500">
+                    <td colSpan={8} className="px-3 py-8 text-center text-paper-dim">
                       No transactions yet.
                     </td>
                   </tr>
@@ -214,47 +260,42 @@ export default async function DealerDetailPage({ params }: PageProps) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                  <th className="px-3 py-2.5">Date</th>
-                  <th className="px-3 py-2.5">Package</th>
-                  <th className="px-3 py-2.5">SIM Type</th>
-                  <th className="px-3 py-2.5">Status</th>
+                <tr>
+                  <th className="th">Date</th>
+                  <th className="th">Package</th>
+                  <th className="th">SIM Type</th>
+                  <th className="th">Status</th>
+                  <th className="th">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {deliveryRows.map((row) => (
-                  <tr key={row.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                    <td className="px-3 py-2.5 text-zinc-400">{row.tx_date}</td>
-                    <td className="px-3 py-2.5 text-zinc-300">{row.package ? `Package ${row.package}` : '—'}</td>
-                    <td className="px-3 py-2.5">
-                      {row.sim_type === 'esim' ? (
-                        <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                          eSIM
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400">Physical SIM</span>
-                      )}
+                  <tr key={row.id} className="tr-row">
+                    <td className="td text-paper-dim">{row.tx_date}</td>
+                    <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
+                    <td className="td">
+                      <SimPill simType={row.sim_type} />
                     </td>
-                    <td className="px-3 py-2.5">
-                      {row.delivery_status === 'sent' ? (
-                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
-                          Sent
-                        </span>
-                      ) : row.delivery_status === 'pending' ? (
-                        <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                          Pending
-                        </span>
+                    <td className="td">
+                      <DeliveryPill status={row.delivery_status} />
+                    </td>
+                    <td className="td">
+                      {row.delivery_status === 'pending' ? (
+                        <form action={markDelivered}>
+                          <input type="hidden" name="id" value={row.id} />
+                          <button type="submit" className="btn-jade">
+                            Mark as Sent
+                          </button>
+                        </form>
                       ) : (
-                        <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                          Instant
-                        </span>
+                        <span className="text-paper-dim/50">—</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {!deliveryRows.length && (
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-zinc-500">
+                    <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
                       No delivery items yet.
                     </td>
                   </tr>
@@ -264,6 +305,45 @@ export default async function DealerDetailPage({ params }: PageProps) {
           </div>
         )}
       </div>
+
+      {isFinance && (
+        <div className="app-card">
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Rate History</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="th">Time</th>
+                  <th className="th">Before</th>
+                  <th className="th">After</th>
+                  <th className="th">Changed By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rateHistoryRows.map((row) => {
+                  const before = row.old_package ? `${row.old_package} · ${row.old_rate}%` : '—'
+                  const after = row.new_package ? `${row.new_package} · ${row.new_rate}%` : '—'
+                  return (
+                    <tr key={row.id} className="tr-row">
+                      <td className="td text-paper-dim">{formatDateTime(row.created_at)}</td>
+                      <td className="td text-paper-dim">{before}</td>
+                      <td className="td text-paper">{after}</td>
+                      <td className="td text-paper-dim">{rateHistoryDisplayName(row.changed_by)}</td>
+                    </tr>
+                  )
+                })}
+                {!rateHistoryRows.length && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-paper-dim">
+                      No rate changes yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -271,8 +351,8 @@ export default async function DealerDetailPage({ params }: PageProps) {
 function Field({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-1 text-zinc-200">{value ?? '—'}</div>
+      <div className="text-xs text-paper-dim">{label}</div>
+      <div className="mt-1 text-paper">{value ?? '—'}</div>
     </div>
   )
 }

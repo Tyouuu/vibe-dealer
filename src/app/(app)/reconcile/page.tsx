@@ -17,11 +17,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const { month = currentMonth(), error, saved } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to view reconciliation.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view reconciliation.</div>
   }
 
   const { start, end } = monthRange(month)
@@ -39,109 +35,78 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="app-card">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-zinc-50">⇄ Reconciliation · {month}</h3>
+          <h3 className="text-sm font-bold text-paper">Reconciliation · {month}</h3>
           <form action="/reconcile" method="GET" className="flex items-center gap-2">
-            <input
-              type="month"
-              name="month"
-              defaultValue={month}
-              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            />
-            <button
-              type="submit"
-              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
-            >
+            <input type="month" name="month" defaultValue={month} className="field-input w-auto py-1.5" />
+            <button type="submit" className="btn-ghost py-1.5 text-xs">
               View
             </button>
           </form>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3.5 py-2.5 text-sm text-red-300">
-            {error}
-          </div>
-        )}
-        {saved && (
-          <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
-            Saved.
-          </div>
-        )}
+        {error && <div className="alert alert-bad">{error}</div>}
+        {saved && <div className="alert alert-ok">Saved.</div>}
 
-        <Row label="System Total Top-up (verified)" value={`${systemPoints.toLocaleString()} pts`} />
+        <Row label="System Total Top-up (verified)" value={`${systemPoints.toLocaleString()} pts`} unit="points" />
         <Row
           label="Vibe Company Statement"
           value={companyPoints != null ? `${Number(companyPoints).toLocaleString()} pts` : 'Not entered yet'}
+          unit={companyPoints != null ? 'points' : undefined}
         />
         <Row
           label="Difference"
           value={diff == null ? '—' : diff === 0 ? '✓ Matches exactly' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts`}
           highlight={diff === 0 ? 'good' : diff != null && diff !== 0 ? 'bad' : undefined}
         />
-        <Row label="Your 2% Due" value={`RM${systemProfit.toLocaleString()}`} highlight="gold" last />
+        <Row label="Your 2% Due" value={`RM ${systemProfit.toLocaleString()}`} unit="money" bold />
 
         <div className="mt-4 flex items-center gap-3">
           <form action={markReconciled}>
             <input type="hidden" name="month" value={month} />
-            <button
-              type="submit"
-              disabled={!statement}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
-            >
+            <button type="submit" disabled={!statement} className="btn-primary">
               Mark Reconciled ✓
             </button>
           </form>
-          {statement?.reconciled && (
-            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400">
-              Reconciled this month
-            </span>
-          )}
+          {statement?.reconciled && <span className="pill pill-jade">Reconciled this month</span>}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">Enter Vibe Statement</h3>
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Enter Vibe Statement</h3>
         <form action={saveStatement} className="flex flex-col gap-3.5">
           <input type="hidden" name="month" value={month} />
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Vibe total top-up (pts)</label>
+            <label className="field-label">Vibe total top-up (pts)</label>
             <input
               name="company_total_points"
               type="number"
               step="0.01"
               defaultValue={companyPoints ?? ''}
               required
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Vibe&apos;s Profit Figure (RM)</label>
+            <label className="field-label">Vibe&apos;s Profit Figure (RM)</label>
             <input
               name="company_profit_rm"
               type="number"
               step="0.01"
               defaultValue={statement?.company_profit_rm ?? ''}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Note</label>
-            <input
-              name="note"
-              type="text"
-              defaultValue={statement?.note ?? ''}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            />
+            <label className="field-label">Note</label>
+            <input name="note" type="text" defaultValue={statement?.note ?? ''} className="field-input" />
           </div>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
-          >
+          <button type="submit" className="btn-primary">
             Save &amp; Compare
           </button>
         </form>
-        <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
+        <p className="note-strip">
           Vibe provides a monthly total; the system compares it against verified records automatically so any
           mismatch is obvious right away.
         </p>
@@ -153,26 +118,30 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 function Row({
   label,
   value,
+  unit,
   highlight,
-  last,
+  bold,
 }: {
   label: string
   value: string
-  highlight?: 'good' | 'bad' | 'gold'
-  last?: boolean
+  unit?: 'money' | 'points'
+  highlight?: 'good' | 'bad'
+  bold?: boolean
 }) {
-  const color =
+  const valueClass =
     highlight === 'good'
-      ? 'text-emerald-400'
+      ? 'figure text-jade-bright'
       : highlight === 'bad'
-        ? 'text-red-400'
-        : highlight === 'gold'
-          ? 'text-amber-300'
-          : 'text-zinc-100'
+        ? 'figure text-clay-bright'
+        : unit === 'money'
+          ? 'figure-money'
+          : unit === 'points'
+            ? 'figure-points'
+            : 'text-paper'
   return (
-    <div className={`flex items-center justify-between py-2.5 ${last ? '' : 'border-b border-dashed border-zinc-800'}`}>
-      <span className="text-zinc-400">{label}</span>
-      <b className={color}>{value}</b>
+    <div className="docket-row">
+      <span className="text-paper-dim">{label}</span>
+      <b className={`${valueClass} ${bold ? 'text-base' : ''}`}>{value}</b>
     </div>
   )
 }

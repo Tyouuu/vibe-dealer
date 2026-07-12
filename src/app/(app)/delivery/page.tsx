@@ -22,11 +22,7 @@ export default async function DeliveryPage() {
   const user = await requireUser()
 
   if (user.role !== 'cs' && user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to view SIM delivery.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view SIM delivery.</div>
   }
 
   const supabase = await createClient()
@@ -38,14 +34,12 @@ export default async function DeliveryPage() {
   const typed = (rows ?? []) as DeliveryRow[]
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+    <div className="app-card">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-zinc-50">🚚 SIM Delivery</h1>
-        <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">
-          {typed.length} items
-        </span>
+        <h1 className="text-base font-bold text-paper">SIM Delivery</h1>
+        <span className="pill pill-neutral">{typed.length} items</span>
       </div>
-      <p className="mb-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
+      <p className="mb-4 rounded-md bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim">
         Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
         delivery needed.
       </p>
@@ -53,75 +47,62 @@ export default async function DeliveryPage() {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              <th className="px-3 py-2.5">Date</th>
-              <th className="px-3 py-2.5">Dealer</th>
-              <th className="px-3 py-2.5">Package</th>
-              <th className="px-3 py-2.5">SIM Type</th>
-              <th className="px-3 py-2.5">Status</th>
-              <th className="px-3 py-2.5">Action</th>
+            <tr>
+              <th className="th">Date</th>
+              <th className="th">Dealer</th>
+              <th className="th">Package</th>
+              <th className="th">SIM Type</th>
+              <th className="th">Status</th>
+              <th className="th">Action</th>
             </tr>
           </thead>
           <tbody>
             {typed.map((row) => (
-              <tr key={row.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                <td className="px-3 py-2.5 text-zinc-400">{row.tx_date}</td>
-                <td className="px-3 py-2.5 font-semibold text-zinc-100">{row.company_name}</td>
-                <td className="px-3 py-2.5 text-zinc-300">{row.package ? `Package ${row.package}` : '—'}</td>
-                <td className="px-3 py-2.5">
+              <tr key={row.id} className="tr-row">
+                <td className="td text-paper-dim">{row.tx_date}</td>
+                <td className="td font-semibold text-paper">{row.company_name}</td>
+                <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
+                <td className="td">
                   {row.sim_type === 'esim' ? (
-                    <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                      eSIM
-                    </span>
+                    <span className="pill pill-slate">eSIM</span>
                   ) : (
-                    <span className="text-zinc-400">Physical SIM</span>
+                    <span className="text-paper-dim">Physical SIM</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="td">
                   {row.delivery_status === 'sent' ? (
-                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
-                      Sent
-                    </span>
+                    <span className="pill pill-jade">Sent</span>
                   ) : row.delivery_status === 'pending' ? (
                     (() => {
                       const days = daysSince(row.tx_date)
                       const stalled = days >= DELIVERY_STALLED_DAYS_THRESHOLD
                       return stalled ? (
-                        <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-bold text-red-400">
-                          Pending · {days}d
-                        </span>
+                        <span className="pill pill-clay">Pending · {days}d</span>
                       ) : (
-                        <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                          Pending
-                        </span>
+                        <span className="pill pill-brass">Pending</span>
                       )
                     })()
                   ) : (
-                    <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
-                      Instant
-                    </span>
+                    <span className="pill pill-slate">Instant</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="td">
                   {row.delivery_status === 'pending' ? (
                     <form action={markDelivered}>
                       <input type="hidden" name="id" value={row.id} />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
-                      >
+                      <button type="submit" className="btn-jade">
                         Mark as Sent
                       </button>
                     </form>
                   ) : (
-                    <span className="text-zinc-600">—</span>
+                    <span className="text-paper-dim/50">—</span>
                   )}
                 </td>
               </tr>
             ))}
             {!typed.length && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
                   No delivery items right now.
                 </td>
               </tr>

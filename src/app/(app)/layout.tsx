@@ -1,6 +1,7 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { LogoutButton } from './logout-button'
 import { RealtimeRefresher } from './realtime-refresher'
+import { NavLinks } from './nav-links'
 
 const ROLE_LABEL = {
   master: 'Master',
@@ -25,32 +26,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-zinc-800 bg-zinc-950/80 px-7 py-3.5 backdrop-blur">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-cyan-400 text-sm font-extrabold text-white">
-            D
-          </div>
-          <span className="text-sm font-bold text-zinc-50">DealerHub</span>
-        </div>
-        <nav className="flex items-center gap-1 text-sm">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="rounded-lg px-3 py-1.5 font-medium text-zinc-300 hover:bg-zinc-900 hover:text-zinc-50"
+    <div className="min-h-screen bg-ink-950 text-paper">
+      <header className="sticky top-0 z-10 border-b border-ink-800 bg-ink-950/90 backdrop-blur">
+        <div className="flex items-center gap-4 px-7 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="grid h-8 w-8 place-items-center rounded-full bg-jade text-sm font-extrabold text-white"
+              style={{ boxShadow: '0 0 0 5px rgba(20, 122, 78, 0.08), 0 4px 12px -3px rgba(20, 122, 78, 0.35)' }}
             >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-        <div className="flex-1" />
-        <RealtimeRefresher />
-        <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
-          {ROLE_LABEL[user.role]}
-        </span>
-        <span className="text-xs text-zinc-500">{user.email}</span>
-        <LogoutButton />
+              D
+            </div>
+            <div className="leading-tight">
+              <div className="text-sm font-bold text-paper">DealerHub</div>
+              <div className="text-[10px] font-medium tracking-wide text-paper-dim">Vibe Mobile · Master Ledger</div>
+            </div>
+          </div>
+          <NavLinks items={navItems} />
+          <div className="flex-1" />
+          <RealtimeRefresher />
+          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-xs font-semibold text-paper-dim">
+            {ROLE_LABEL[user.role]}
+          </span>
+          <span className="hidden text-xs text-paper-dim sm:inline">{user.email}</span>
+          <LogoutButton />
+        </div>
+        <div className="h-px bg-gradient-to-r from-jade/50 via-ink-800 to-transparent" />
       </header>
       <main className="mx-auto w-full max-w-6xl px-7 py-8">{children}</main>
     </div>

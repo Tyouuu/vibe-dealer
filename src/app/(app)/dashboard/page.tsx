@@ -3,27 +3,34 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getYesterdaySummary } from '@/lib/reports/daily-summary'
 import { todayInMalaysia } from '@/lib/month'
-import { getDealerActivityMap, INACTIVE_DAYS_THRESHOLD } from '@/lib/dealer-activity'
+import { getDealerActivityMap, INACTIVE_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS, daysSince } from '@/lib/dealer-activity'
+import { PackageDistributionBar, type PackageSegment } from './package-distribution-bar'
+import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
+import { RankingView } from './ranking-view'
+import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Master Dashboard — DealerHub',
 }
 
-const PACKAGE_STYLE: Record<string, string> = {
-  A: 'text-zinc-300',
-  B: 'text-emerald-400',
-  C: 'text-amber-300',
+function monthsBack(n: number): { key: string; label: string }[] {
+  const today = todayInMalaysia()
+  const [y, m] = today.split('-').map(Number)
+  const out: { key: string; label: string }[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(y, m - 1 - i, 1))
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+    const label = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+    out.push({ key, label })
+  }
+  return out
 }
 
 export default async function DashboardPage() {
   const user = await requireUser()
 
   if (user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to view the dashboard.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view the dashboard.</div>
   }
 
   const supabase = await createClient()
@@ -31,17 +38,23 @@ export default async function DashboardPage() {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
   const currentMonthStr = today.slice(0, 7)
+  const trendMonths = monthsBack(6)
+  const trendStart = `${trendMonths[0].key}-01`
 
   const [
     { count: dealerCount },
-    { count: pendingCount },
+    { data: pendingRows },
     { data: monthTx },
     { data: dealerRows },
+    { data: trendTx },
+    { data: regionRows },
+    { data: deliveryPendingRows },
+    { data: currentStatement },
     yesterdaySummary,
     activityMap,
   ] = await Promise.all([
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
-    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
     supabase
       .from('transactions')
       .select('dealer_id, points, commission_rm, dealers(company_name)')
@@ -49,6 +62,15 @@ export default async function DashboardPage() {
       .gte('tx_date', monthStart)
       .lte('tx_date', today),
     supabase.from('dealers').select('id, company_name, package'),
+    supabase
+      .from('transactions')
+      .select('tx_date, points, dealers(region)')
+      .eq('status', 'verified')
+      .gte('tx_date', trendStart)
+      .lte('tx_date', today),
+    supabase.from('dealers').select('region').not('region', 'is', null),
+    supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending'),
+    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     getYesterdaySummary(supabase),
     getDealerActivityMap(supabase),
   ])
@@ -72,6 +94,14 @@ export default async function DashboardPage() {
     if (pkg === 'A' || pkg === 'B' || pkg === 'C') pkgCounts[pkg]++
     else pkgCounts.none++
   }
+  // jade-chart/brass-chart (not the -bright text tokens) — validated for use
+  // as adjacent chart-mark fills, see globals.css.
+  const packageSegments: PackageSegment[] = [
+    { key: 'A', label: 'Package A · 7%', count: pkgCounts.A, colorClass: 'bg-paper-dim' },
+    { key: 'B', label: 'Package B · 7.5%', count: pkgCounts.B, colorClass: 'bg-jade-chart' },
+    { key: 'C', label: 'Package C · 8%', count: pkgCounts.C, colorClass: 'bg-brass-chart' },
+    { key: 'none', label: 'Not Set', count: pkgCounts.none, colorClass: 'bg-paper-dim/25' },
+  ]
 
   const inactiveDealers = (dealerRows ?? [])
     .map((d) => {
@@ -84,179 +114,225 @@ export default async function DashboardPage() {
     .sort((a, b) => b.daysSinceLastActivity - a.daysSinceLastActivity)
     .slice(0, 10)
 
+  // Monthly trend, split by region — bucket every verified tx into its month
+  // + dealer region, defaulting every (month, region) pair to 0 so the chart
+  // still draws a continuous 6-month axis even where a region had no activity.
+  const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
+  const trendMap = new Map<string, number>() // `${month}|${region}` -> points
+  for (const t of trendTx ?? []) {
+    const monthKey = t.tx_date.slice(0, 7)
+    const rel = t.dealers as { region: string | null } | { region: string | null }[] | null
+    const region = (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
+    const k = `${monthKey}|${region}`
+    trendMap.set(k, (trendMap.get(k) ?? 0) + Number(t.points))
+  }
+  const trendRows: TrendRow[] = []
+  for (const { key: monthKey, label } of trendMonths) {
+    for (const region of regions) {
+      trendRows.push({ month: monthKey, label, region, points: trendMap.get(`${monthKey}|${region}`) ?? 0 })
+    }
+  }
+
+  // Delivery + reconciliation snapshots — the two statuses PROJECT_SPEC asked
+  // the dashboard to surface, so master doesn't have to visit both pages to
+  // know whether anything needs attention.
+  const deliveryPending = deliveryPendingRows ?? []
+  const deliveryStalled = deliveryPending.filter((r) => daysSince(r.tx_date) >= DELIVERY_STALLED_DAYS_THRESHOLD).length
+
+  const pendingTx = pendingRows ?? []
+  const pendingStale = pendingTx.filter((t) => daysSince(t.tx_date) >= PENDING_REVIEW_STALE_DAYS).length
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-        <Kpi
-          label="🎟️ This Month's Total Top-up"
-          value={`${totalPoints.toLocaleString()} pts`}
-          href={`/records?status=verified&month=${currentMonthStr}`}
-        />
-        <Kpi
-          label="⭐ Your Commission (2%)"
-          value={`RM${totalCommission.toLocaleString()}`}
-          gold
-          href={`/records?status=verified&month=${currentMonthStr}`}
-        />
-        <Kpi label="👥 Total Dealers" value={String(dealerCount ?? 0)} href="/dealers" />
-        <Kpi label="📋 Pending Review" value={String(pendingCount ?? 0)} amber href="/records?status=pending" />
+      <div className="docket-hero">
+        <a href={`/records?status=verified&month=${currentMonthStr}`} className="docket-half group hover:bg-jade/[0.03]">
+          <div className="docket-half-label">
+            <span className="icon-badge icon-badge-jade h-7 w-7">
+              <IconTrendUp className="h-4 w-4" />
+            </span>
+            Top-up This Month
+          </div>
+          <div className="figure-points mt-2.5 text-4xl font-extrabold">
+            {totalPoints.toLocaleString()} <span className="text-base font-semibold text-paper-dim">pts</span>
+          </div>
+        </a>
+        <div className="docket-perforation" aria-hidden="true" />
+        <a href={`/records?status=verified&month=${currentMonthStr}`} className="docket-half group hover:bg-brass/[0.03]">
+          <div className="docket-half-label">
+            <span className="icon-badge icon-badge-brass h-7 w-7">
+              <IconCoin className="h-4 w-4" />
+            </span>
+            Your Commission (2%)
+          </div>
+          <div className="figure-money mt-2.5 text-4xl font-extrabold">
+            RM {totalCommission.toLocaleString()}
+          </div>
+        </a>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🌅 Yesterday&apos;s Summary ({yesterdaySummary.date})</h3>
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+        <StatChip
+          icon={<IconUsers />}
+          iconColor="slate"
+          label="Total Dealers"
+          value={String(dealerCount ?? 0)}
+          href="/dealers"
+        />
+        <StatChip
+          icon={<IconAlertCircle />}
+          iconColor="clay"
+          label="Pending Review"
+          value={String(pendingTx.length)}
+          valueColor={pendingTx.length > 0 ? 'clay' : undefined}
+          sub={pendingStale > 0 ? `${pendingStale} older than ${PENDING_REVIEW_STALE_DAYS}d` : undefined}
+          subEmphasis
+          href="/records?status=pending"
+        />
+        <StatChip
+          icon={<IconTruck />}
+          iconColor="slate"
+          label="SIM Delivery"
+          value={`${deliveryPending.length} pending`}
+          href="/delivery"
+          pill={
+            deliveryStalled > 0 ? (
+              <span className="pill pill-clay">{deliveryStalled} stalled</span>
+            ) : (
+              <span className="pill pill-jade">On track</span>
+            )
+          }
+        />
+        <StatChip
+          icon={<IconCheckCircle />}
+          iconColor={currentStatement?.reconciled ? 'jade' : 'brass'}
+          label="Reconciliation"
+          sub={currentMonthStr}
+          value={currentStatement?.reconciled ? 'Reconciled' : 'Not yet'}
+          href="/reconcile"
+          pill={
+            currentStatement?.reconciled ? (
+              <span className="pill pill-jade">Done</span>
+            ) : (
+              <span className="pill pill-brass">Action needed</span>
+            )
+          }
+        />
+      </div>
+
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Yesterday&apos;s Summary — {yesterdaySummary.date}</h3>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <div className="text-xs text-zinc-500">Yesterday&apos;s Total</div>
-            <div className="mt-1 text-lg font-bold text-zinc-100">{yesterdaySummary.points.toLocaleString()} pts</div>
+            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
+              <span className="timeline-dot timeline-dot-jade" />
+              Yesterday&apos;s Total
+            </div>
+            <div className="figure-points mt-1 text-lg">{yesterdaySummary.points.toLocaleString()} pts</div>
           </div>
           <div>
-            <div className="text-xs text-zinc-500">Your 2%</div>
-            <div className="mt-1 text-lg font-bold text-amber-300">RM{yesterdaySummary.commission.toLocaleString()}</div>
+            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
+              <span className="timeline-dot timeline-dot-brass" />
+              Your 2%
+            </div>
+            <div className="figure-money mt-1 text-lg">RM {yesterdaySummary.commission.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-xs text-zinc-500">Most Active Dealer</div>
-            <div className="mt-1 text-lg font-bold text-zinc-100">
+            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
+              <span className="timeline-dot timeline-dot-slate" />
+              Most Active Dealer
+            </div>
+            <div className="mt-1 text-lg font-bold text-paper">
               {yesterdaySummary.mostActiveDealer ? yesterdaySummary.mostActiveDealer.name : '—'}
             </div>
           </div>
         </div>
-        <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          This same summary is emailed to all masters every morning at 8am (Malaysia time).
-        </p>
+        <p className="note-strip">This same summary is emailed to all masters every morning at 8am (Malaysia time).</p>
+      </div>
+
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
+        <MonthlyTrendChart rows={trendRows} regions={regions} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">🏆 Dealer Ranking (This Month&apos;s Top-up)</h3>
+        <div className="app-card">
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Dealer Ranking — This Month&apos;s Top-up</h3>
           {ranking.length ? (
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                  <th className="px-3 py-2">#</th>
-                  <th className="px-3 py-2">Dealer</th>
-                  <th className="px-3 py-2">This Month&apos;s Top-up</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranking.map((d, i) => (
-                  <tr key={d.name + i} className="border-b border-zinc-800 last:border-none">
-                    <td className="px-3 py-2">
-                      <span
-                        className={`grid h-6 w-6 place-items-center rounded-md text-xs font-extrabold ${
-                          i < 3 ? 'bg-amber-400/20 text-amber-300' : 'bg-zinc-800 text-zinc-400'
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-semibold text-zinc-100">{d.name}</td>
-                    <td className="px-3 py-2 text-zinc-300">{d.points.toLocaleString()} pts</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <RankingView items={ranking} />
           ) : (
-            <p className="text-sm text-zinc-500">No verified transactions this month yet.</p>
+            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
           )}
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <h3 className="mb-3.5 text-sm font-bold text-zinc-50">📦 Package Distribution</h3>
-          <div className="flex flex-col gap-2.5 text-sm">
-            <PkgRow label="Package A" count={pkgCounts.A} style={PACKAGE_STYLE.A} />
-            <PkgRow label="Package B" count={pkgCounts.B} style={PACKAGE_STYLE.B} />
-            <PkgRow label="Package C" count={pkgCounts.C} style={PACKAGE_STYLE.C} />
-            <PkgRow label="Not Set" count={pkgCounts.none} style="text-zinc-600" />
-          </div>
+        <div className="app-card">
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Package Distribution</h3>
+          <PackageDistributionBar segments={packageSegments} total={dealerCount ?? 0} />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3.5 text-sm font-bold text-zinc-50">
-          ⚠️ Inactive Dealers ({INACTIVE_DAYS_THRESHOLD}+ days)
-        </h3>
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Inactive Dealers — {INACTIVE_DAYS_THRESHOLD}+ days</h3>
         {inactiveDealers.length ? (
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                <th className="px-3 py-2">Dealer</th>
-                <th className="px-3 py-2">Days Since Last Activity</th>
+              <tr>
+                <th className="th">Dealer</th>
+                <th className="th text-right">Days Since Last Activity</th>
               </tr>
             </thead>
             <tbody>
               {inactiveDealers.map((d) => (
-                <tr key={d.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                  <td className="px-3 py-2">
-                    <a href={`/dealers/${d.id}`} className="font-semibold text-zinc-100 hover:text-violet-400">
+                <tr key={d.id} className="tr-row">
+                  <td className="td">
+                    <a href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
                       {d.name}
                     </a>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-bold text-red-400">
-                      {d.daysSinceLastActivity} days
-                    </span>
+                  <td className="td text-right">
+                    <span className="pill pill-clay">{d.daysSinceLastActivity} days</span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-zinc-500">No inactive dealers right now — everyone&apos;s been active recently.</p>
+          <p className="text-sm text-paper-dim">No inactive dealers right now — everyone&apos;s been active recently.</p>
         )}
       </div>
     </div>
   )
 }
 
-function Kpi({
+function StatChip({
   label,
   value,
-  gold,
-  amber,
+  valueColor,
   href,
+  sub,
+  subEmphasis,
+  icon,
+  iconColor = 'jade',
+  pill,
 }: {
   label: string
   value: string
-  gold?: boolean
-  amber?: boolean
-  href?: string
+  valueColor?: 'clay'
+  href: string
+  sub?: string
+  subEmphasis?: boolean
+  icon: React.ReactNode
+  iconColor?: 'jade' | 'brass' | 'clay' | 'slate'
+  pill?: React.ReactNode
 }) {
-  const content = (
-    <>
-      <div className="text-xs font-semibold text-zinc-400">{label}</div>
-      <div
-        className={`mt-1.5 text-2xl font-extrabold tracking-tight ${
-          gold ? 'text-amber-300' : amber ? 'text-amber-300' : 'text-zinc-50'
-        }`}
-      >
-        {value}
+  return (
+    <a href={href} className="app-tile flex items-center gap-3 transition-colors hover:border-jade/50">
+      <span className={`icon-badge icon-badge-${iconColor}`}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-semibold text-paper-dim">{label}</div>
+        <div className={`mt-0.5 text-lg font-bold ${valueColor === 'clay' ? 'text-clay-bright' : 'text-paper'}`}>{value}</div>
+        {sub && <div className={`text-[11px] font-semibold ${subEmphasis ? 'text-clay-bright' : 'text-paper-dim'}`}>{sub}</div>}
       </div>
-    </>
-  )
-
-  if (href) {
-    return (
-      <a
-        href={href}
-        className="block rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-4 transition-colors hover:border-violet-500"
-      >
-        {content}
-      </a>
-    )
-  }
-
-  return (
-    <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-4">
-      {content}
-    </div>
-  )
-}
-
-function PkgRow({ label, count, style }: { label: string; count: number; style: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-dashed border-zinc-800 pb-2.5 last:border-none">
-      <span className={style}>{label}</span>
-      <b className="text-zinc-100">{count} dealers</b>
-    </div>
+      {pill}
+    </a>
   )
 }

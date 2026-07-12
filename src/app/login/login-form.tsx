@@ -32,7 +32,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-zinc-400">
+        <label htmlFor="email" className="field-label">
           Email
         </label>
         <input
@@ -42,11 +42,11 @@ export function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+          className="field-input"
         />
       </div>
       <div>
-        <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-zinc-400">
+        <label htmlFor="password" className="field-label">
           Password
         </label>
         <input
@@ -56,17 +56,13 @@ export function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+          className="field-input"
         />
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-clay-bright">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-1 w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-60"
-      >
+      <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
         {pending ? 'Signing in…' : 'Sign In'}
       </button>
     </form>

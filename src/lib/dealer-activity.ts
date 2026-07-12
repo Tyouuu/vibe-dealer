@@ -8,6 +8,7 @@ import { todayInMalaysia } from '@/lib/month'
 // engine for this.
 export const INACTIVE_DAYS_THRESHOLD = 30
 export const DELIVERY_STALLED_DAYS_THRESHOLD = 5
+export const PENDING_REVIEW_STALE_DAYS = 2
 
 export function daysSince(dateStr: string): number {
   const from = new Date(dateStr + 'T00:00:00Z').getTime()

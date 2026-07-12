@@ -12,9 +12,11 @@ type DealerOption = {
   rate: number | null
 }
 
-export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
+export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[]; initialDealerId?: string }) {
   const formRef = useRef<HTMLFormElement>(null)
-  const [dealerId, setDealerId] = useState('')
+  const [dealerId, setDealerId] = useState(
+    initialDealerId && dealers.some((d) => d.id === initialDealerId) ? initialDealerId : ''
+  )
   const [type, setType] = useState<'topup' | 'package'>('topup')
   const [pkg, setPkg] = useState<PackageCode>('A')
   const [points, setPoints] = useState('')
@@ -71,24 +73,20 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h1 className="mb-4 text-base font-bold text-zinc-50">Record a Transaction</h1>
+      <div className="app-card">
+        <h1 className="mb-4 text-base font-bold text-paper">Record a Transaction</h1>
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3.5 py-2.5 text-sm text-red-300">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-bad">{error}</div>}
 
         <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Dealer</label>
+            <label className="field-label">Dealer</label>
             <select
               name="dealer_id"
               value={dealerId}
               onChange={(e) => setDealerId(e.target.value)}
               required
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="field-input"
             >
               <option value="">Select a dealer…</option>
               {dealers.map((d) => (
@@ -101,12 +99,12 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Type</label>
+            <label className="field-label">Type</label>
             <select
               name="type"
               value={type}
               onChange={(e) => setType(e.target.value as 'topup' | 'package')}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="field-input"
             >
               <option value="topup">Regular Top-up</option>
               <option value="package">Buy Package (updates rate)</option>
@@ -116,13 +114,8 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
           {type === 'package' ? (
             <>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Package</label>
-                <select
-                  name="package"
-                  value={pkg}
-                  onChange={(e) => setPkg(e.target.value as PackageCode)}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-                >
+                <label className="field-label">Package</label>
+                <select name="package" value={pkg} onChange={(e) => setPkg(e.target.value as PackageCode)} className="field-input">
                   {(Object.keys(PACKAGES) as PackageCode[]).map((code) => (
                     <option key={code} value={code}>
                       {PACKAGES[code].name} · RM{PACKAGES[code].price} · {PACKAGES[code].rate}%
@@ -131,12 +124,8 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">SIM Type</label>
-                <select
-                  name="sim_type"
-                  defaultValue="esim"
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-                >
+                <label className="field-label">SIM Type</label>
+                <select name="sim_type" defaultValue="esim" className="field-input">
                   <option value="esim">eSIM (instant)</option>
                   <option value="physical">Physical SIM (needs delivery)</option>
                 </select>
@@ -145,7 +134,7 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
           ) : (
             <>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Top-up Value (points)</label>
+                <label className="field-label">Top-up Value (points)</label>
                 <input
                   name="points"
                   type="number"
@@ -154,11 +143,11 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
                   onChange={(e) => setPoints(e.target.value)}
                   placeholder="e.g. 850"
                   required
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+                  className="field-input"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Amount Collected (RM)</label>
+                <label className="field-label">Amount Collected (RM)</label>
                 <input
                   name="money_rm"
                   type="number"
@@ -166,77 +155,63 @@ export function EntryForm({ dealers }: { dealers: DealerOption[] }) {
                   value={moneyOverride}
                   onChange={(e) => setMoneyOverride(e.target.value)}
                   placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+                  className="field-input"
                 />
               </div>
             </>
           )}
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Receipt (optional)</label>
+            <label className="field-label">Receipt (optional)</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-xs text-zinc-300 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-700 file:px-2.5 file:py-1 file:text-xs file:text-zinc-100"
+              className="field-input text-xs file:mr-3 file:rounded file:border-0 file:bg-ink-700 file:px-2.5 file:py-1 file:text-xs file:text-paper"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Note (optional)</label>
-            <input
-              name="note"
-              type="text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            />
+            <label className="field-label">Note (optional)</label>
+            <input name="note" type="text" className="field-input" />
           </div>
 
-          <button
-            type="submit"
-            disabled={uploading}
-            className="mt-2 w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
-          >
+          <button type="submit" disabled={uploading} className="btn-primary mt-2">
             {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
           </button>
-          <p className="rounded-lg border-l-2 border-violet-500 bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
+          <p className="note-strip">
             Buying a package automatically updates the dealer&apos;s rate (follows the latest package); a regular
             top-up uses their current rate to calculate your 2%.
           </p>
         </form>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-3 text-sm font-bold text-zinc-50">💡 Auto-calculated for you</h3>
+      <div className="app-card">
+        <h3 className="mb-3 text-sm font-bold text-paper">Auto-calculated for you</h3>
         {preview ? (
           <div className="flex flex-col text-sm">
-            <Row
-              label={type === 'package' ? 'Package Value' : 'Top-up Value'}
-              value={`${preview.points.toLocaleString()} pts`}
-            />
+            <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
             <Row label="Rate" value={`${preview.rate}%`} />
-            <Row label="Amount Collected" value={`RM${preview.money.toLocaleString()}`} />
-            <Row label="Your 2%" value={`RM${preview.commission.toLocaleString()}`} gold last />
+            <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
+            <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold />
           </div>
         ) : (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-paper-dim">
             {dealer ? 'This dealer has no package/rate yet — buy them a package first.' : 'Select a dealer first.'}
           </p>
         )}
-        <p className="mt-4 rounded-lg bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
-          Money and points are kept separate: In tracks money, Out tracks points — never mixed.
-        </p>
+        <p className="note-strip">Money and points are kept separate: In tracks money, Out tracks points — never mixed.</p>
       </div>
     </div>
   )
 }
 
-function Row({ label, value, gold, last }: { label: string; value: string; gold?: boolean; last?: boolean }) {
+function Row({ label, value, unit, bold }: { label: string; value: string; unit?: 'money' | 'points'; bold?: boolean }) {
+  const valueStyle = unit === 'money' ? 'figure-money' : unit === 'points' ? 'figure-points' : 'text-paper'
   return (
-    <div
-      className={`flex items-center justify-between py-2.5 ${last ? '' : 'border-b border-dashed border-zinc-800'}`}
-    >
-      <span className="text-zinc-400">{label}</span>
-      <b className={gold ? 'text-amber-300' : 'text-zinc-100'}>{value}</b>
+    <div className="docket-row">
+      <span className="text-paper-dim">{label}</span>
+      <b className={`${valueStyle} ${bold ? 'text-base' : ''}`}>{value}</b>
     </div>
   )
 }

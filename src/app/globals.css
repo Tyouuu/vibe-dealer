@@ -1,26 +1,270 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* DealerHub token system — white-and-green, matching Tekion's actual product
+   chrome (their marketing site is dark, but the real CRM/DMS screens are
+   white-card-on-light-gray with small colored circular icon badges — that's
+   the surface this app should read like). Green (jade) is the hero brand
+   color, echoing Vibe Mobile's own neon-mint identity. Money stays a distinct
+   brass/gold so RM and points never read as the same unit — the one hard
+   business rule of the product: money and points are two units that are
+   never added together. Alerts are clay, informational is slate. */
+@theme {
+  --color-ink-950: #f5f9f6;
+  --color-ink-900: #ffffff;
+  --color-ink-850: #eef4ef;
+  --color-ink-800: #dce6dd;
+  --color-ink-700: #c3d3c4;
+
+  --color-paper: #16241d;
+  --color-paper-dim: #5c6b61;
+
+  --color-brass: #9c6e15;
+  --color-brass-bright: #7a560f;
+
+  --color-jade: #147a4e;
+  --color-jade-bright: #0e6b42;
+
+  --color-clay: #b54b36;
+  --color-clay-bright: #8f3924;
+  --color-clay-deep: #9c3b29;
+
+  --color-slate: #3d6b87;
+  --color-slate-bright: #2c5269;
+
+  /* Chart-fill variants of jade/brass — retuned for adjacent-mark contrast
+     against the white surface (isolated-text tuning of the -bright pair
+     reads too dark/heavy as a large fill). Re-validate with the dataviz
+     skill's validate_palette.js if this file's background changes again.
+     Use these two for chart marks; keep the -bright pair for text/figures. */
+  --color-jade-chart: #0d7351;
+  --color-brass-chart: #815303;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  font-feature-settings: "tnum" 1;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink-950);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-jade);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@layer components {
+  .app-card {
+    @apply rounded-2xl border border-ink-800 bg-ink-900 p-5;
+    box-shadow:
+      0 1px 2px rgba(22, 36, 29, 0.03),
+      0 8px 20px -12px rgba(22, 36, 29, 0.10);
+  }
+
+  .app-tile {
+    @apply rounded-2xl border border-ink-800 bg-gradient-to-b from-ink-900 to-ink-850 p-4 transition-shadow;
+    box-shadow:
+      0 1px 2px rgba(22, 36, 29, 0.03),
+      0 5px 14px -9px rgba(22, 36, 29, 0.08);
+  }
+  a.app-tile:hover,
+  .app-tile:has(a:hover) {
+    box-shadow:
+      0 2px 4px rgba(22, 36, 29, 0.04),
+      0 12px 26px -8px rgba(22, 36, 29, 0.14);
+  }
+
+  .icon-badge {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full;
+  }
+  .icon-badge-jade {
+    @apply bg-jade/12 text-jade-bright;
+  }
+  .icon-badge-brass {
+    @apply bg-brass/12 text-brass-bright;
+  }
+  .icon-badge-clay {
+    @apply bg-clay/12 text-clay-bright;
+  }
+  .icon-badge-slate {
+    @apply bg-slate/12 text-slate-bright;
+  }
+  .icon-badge-neutral {
+    @apply bg-ink-700/25 text-paper-dim;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-paper-dim;
+  }
+
+  .field-input {
+    @apply w-full rounded-md border border-ink-700 bg-ink-850 px-3.5 py-2.5 text-sm text-paper outline-none transition-all placeholder:text-paper-dim/60 focus:border-jade focus:bg-ink-900;
+    box-shadow: 0 0 0 0 rgba(20, 122, 78, 0);
+  }
+  .field-input:focus {
+    box-shadow: 0 0 0 3px rgba(20, 122, 78, 0.12);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-jade px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-jade/20 transition-all hover:bg-jade-bright hover:shadow-md hover:shadow-jade/25 disabled:opacity-50 disabled:shadow-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-700 px-5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
+  }
+
+  .btn-jade {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-jade px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-jade-bright;
+  }
+
+  .btn-clay {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-clay-deep px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-clay;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide;
+  }
+  .pill-jade {
+    @apply bg-jade/15 text-jade-bright;
+  }
+  .pill-clay {
+    @apply bg-clay/15 text-clay-bright;
+  }
+  .pill-brass {
+    @apply bg-brass/15 text-brass-bright;
+  }
+  .pill-slate {
+    @apply bg-slate/15 text-slate-bright;
+  }
+  .pill-neutral {
+    @apply bg-ink-700/50 text-paper-dim;
+  }
+
+  .th {
+    @apply border-b border-ink-700 px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-paper-dim;
+  }
+  .td {
+    @apply px-3 py-2.5;
+  }
+  .tr-row {
+    @apply border-b border-ink-800 last:border-none hover:bg-ink-850/60;
+  }
+
+  .figure {
+    @apply font-mono tracking-tight tabular-nums;
+  }
+  .figure-money {
+    @apply font-mono font-semibold tracking-tight tabular-nums text-brass-bright;
+  }
+  .figure-points {
+    @apply font-mono font-semibold tracking-tight tabular-nums text-jade-bright;
+  }
+
+  .alert {
+    @apply mb-4 rounded-md border px-3.5 py-2.5 text-sm;
+  }
+  .alert-ok {
+    @apply border-jade/40 bg-jade/10 text-jade-bright;
+  }
+  .alert-warn {
+    @apply border-brass/40 bg-brass/10 text-brass-bright;
+  }
+  .alert-bad {
+    @apply border-clay/40 bg-clay/10 text-clay-bright;
+  }
+
+  /* The "docket split" — the one recurring signature: wherever money faces
+     points, a dashed tear-perforation keeps the two units visibly separate. */
+  .docket-row {
+    @apply flex items-center justify-between border-b border-dashed border-ink-700 py-2.5 last:border-none;
+  }
+
+  /* The ledger docket hero — the dashboard's headline figure, built like an
+     actual two-part ledger slip: top-up points on one side, commission RM on
+     the other, torn apart by a dashed perforation. Same signature as
+     `.docket-row`, scaled up to be the thing this page opens with. */
+  .docket-hero {
+    @apply grid overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 sm:grid-cols-[1fr_auto_1fr];
+    box-shadow:
+      0 1px 2px rgba(22, 36, 29, 0.03),
+      0 8px 20px -12px rgba(22, 36, 29, 0.1);
+  }
+  .docket-half {
+    @apply flex flex-1 flex-col justify-center px-5 py-5 transition-colors sm:px-7;
+  }
+  .docket-half-label {
+    @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-paper-dim;
+  }
+  .docket-perforation {
+    @apply h-px w-full border-t-2 border-dashed border-ink-700 sm:h-auto sm:w-px sm:border-t-0 sm:border-l-2 sm:border-dashed;
+  }
+
+  .note-strip {
+    @apply mt-4 rounded-md border-l-2 border-slate bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim;
+  }
+
+  .ticket-tile {
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  }
+
+  /* Segmented pill filter — a dark "ink" chip for the selected option against
+     plain outline pills for the rest, so filter state reads clearly without
+     reaching for the brand green (that stays reserved for primary actions).
+     Only fits a handful of options (~2-6); for anything with more choices
+     (e.g. a long region list) use `.select-pill` below instead — a wall of
+     wrapped pills is worse than the dropdown it was meant to replace. */
+  .pill-tab {
+    @apply inline-flex items-center rounded-full border border-ink-700 px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:border-ink-700 hover:bg-ink-850 hover:text-paper;
+  }
+  .pill-tab-active {
+    @apply border-paper bg-paper text-ink-900 hover:bg-paper hover:text-ink-900;
+  }
+
+  /* A native <select> restyled as a compact pill-with-chevron, for filters
+     with too many options for `.pill-tab` (keeps the dropdown's scalability,
+     loses the plain-box look). Pair with an absolutely-positioned chevron
+     icon in a `relative inline-block` wrapper. */
+  .select-pill {
+    @apply rounded-full border border-ink-700 bg-ink-900 px-3.5 py-1.5 text-xs font-semibold text-paper outline-none transition-colors hover:bg-ink-850 focus:border-jade;
+  }
+
+  /* Small colored status dot — pairs with a label for an at-a-glance activity
+     feed, distinct from the heavier `.pill` treatment used for table cells. */
+  .timeline-dot {
+    @apply inline-block h-2 w-2 shrink-0 rounded-full;
+  }
+  .timeline-dot-jade {
+    @apply bg-jade;
+  }
+  .timeline-dot-brass {
+    @apply bg-brass;
+  }
+  .timeline-dot-clay {
+    @apply bg-clay;
+  }
+  .timeline-dot-slate {
+    @apply bg-slate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

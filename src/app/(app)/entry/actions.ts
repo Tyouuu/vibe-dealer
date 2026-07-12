@@ -81,7 +81,7 @@ export async function createTransaction(formData: FormData) {
     // not just whichever one happened to be keyed in last. A package bought on a
     // later day still overrides normally (per PROJECT_SPEC.md 3.3, upgrades and
     // downgrades both apply over time — this only resolves same-day ties).
-    const { error: updateError } = await recomputeDealerRate(supabase, dealerId)
+    const { error: updateError } = await recomputeDealerRate(supabase, dealerId, user.id)
 
     if (updateError) fail('Transaction recorded, but updating the dealer package failed: ' + updateError.message)
   }

@@ -31,23 +31,15 @@ export default async function OnboardPage({ searchParams }: PageProps) {
   const { error } = await searchParams
 
   if (user.role !== 'cs' && user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to onboard dealers.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to onboard dealers.</div>
   }
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h1 className="mb-4 text-base font-bold text-zinc-50">🧾 Onboard Dealer</h1>
+      <div className="app-card">
+        <h1 className="mb-4 text-base font-bold text-paper">Onboard Dealer</h1>
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3.5 py-2.5 text-sm text-red-300">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-bad">{error}</div>}
 
         <form action={createDealer} className="flex flex-col gap-3.5">
           <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" />
@@ -56,13 +48,8 @@ export default async function OnboardPage({ searchParams }: PageProps) {
           <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
           <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Region</label>
-            <input
-              list="regions"
-              name="region"
-              placeholder="Select or type a region"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            />
+            <label className="field-label">Region</label>
+            <input list="regions" name="region" placeholder="Select or type a region" className="field-input" />
             <datalist id="regions">
               {REGIONS.map((r) => (
                 <option key={r} value={r} />
@@ -70,12 +57,8 @@ export default async function OnboardPage({ searchParams }: PageProps) {
             </datalist>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-400">Initial Package (optional, can change later)</label>
-            <select
-              name="package"
-              defaultValue=""
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-            >
+            <label className="field-label">Initial Package (optional, can change later)</label>
+            <select name="package" defaultValue="" className="field-input">
               <option value="">Not set yet</option>
               {(Object.keys(PACKAGES) as (keyof typeof PACKAGES)[]).map((code) => (
                 <option key={code} value={code}>
@@ -84,18 +67,15 @@ export default async function OnboardPage({ searchParams }: PageProps) {
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            className="mt-2 w-full rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
-          >
+          <button type="submit" className="btn-primary mt-2">
             Onboard Dealer
           </button>
         </form>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <h3 className="mb-2 text-sm font-bold text-zinc-50">Why onboarding happens here</h3>
-        <p className="rounded-lg border-l-2 border-violet-500 bg-zinc-800/60 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
+      <div className="app-card">
+        <h3 className="mb-2 text-sm font-bold text-paper">Why onboarding happens here</h3>
+        <p className="note-strip mt-0">
           Every dealer is onboarded by your team directly. Making &quot;onboarding = added to the system&quot; guarantees no
           dealer is ever missed. The details you fill in here carry over to every transaction automatically, no
           re-typing needed.
@@ -120,14 +100,8 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-zinc-400">{label}</label>
-      <input
-        name={name}
-        type={type}
-        required={required}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
-      />
+      <label className="field-label">{label}</label>
+      <input name={name} type={type} required={required} placeholder={placeholder} className="field-input" />
     </div>
   )
 }

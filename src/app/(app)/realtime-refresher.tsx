@@ -24,10 +24,10 @@ export function RealtimeRefresher() {
   return (
     <span
       className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-        connected ? 'border-emerald-800 bg-emerald-950/40 text-emerald-400' : 'border-zinc-700 bg-zinc-800 text-zinc-500'
+        connected ? 'border-jade/40 bg-jade/10 text-jade-bright' : 'border-ink-700 bg-ink-900 text-paper-dim'
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'animate-pulse bg-emerald-400' : 'bg-zinc-600'}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'animate-pulse bg-jade-bright' : 'bg-ink-700'}`} />
       Real-time
     </span>
   )

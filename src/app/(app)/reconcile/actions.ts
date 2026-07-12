@@ -36,7 +36,18 @@ export async function saveStatement(formData: FormData) {
 
   if (error) fail(month, error.message)
 
+  // Append-only history — company_statements only holds the latest value per
+  // month, so log every save here to keep what it used to say and who changed it.
+  await supabase.from('company_statement_revisions').insert({
+    month: monthDate,
+    company_total_points: totalPoints,
+    company_profit_rm: profitRm,
+    note,
+    recorded_by: user.id,
+  })
+
   revalidatePath('/reconcile')
+  revalidatePath('/audit')
   redirect(`/reconcile?month=${month}&saved=1`)
 }
 

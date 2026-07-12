@@ -20,9 +20,9 @@ type Dealer = {
 }
 
 const PACKAGE_STYLE: Record<string, string> = {
-  A: 'bg-zinc-500/15 text-zinc-300',
-  B: 'bg-emerald-500/15 text-emerald-400',
-  C: 'bg-amber-400/15 text-amber-300',
+  A: 'pill-neutral',
+  B: 'pill-jade',
+  C: 'pill-brass',
 }
 
 type PageProps = {
@@ -57,17 +57,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-      {onboarded && (
-        <div className="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3.5 py-2.5 text-sm text-emerald-300">
-          Dealer onboarded successfully.
-        </div>
-      )}
+    <div className="app-card">
+      {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-zinc-50">Dealers</h1>
-        <span className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400">
-          {count ?? 0} dealers
-        </span>
+        <h1 className="text-base font-bold text-paper">Dealers</h1>
+        <span className="pill pill-neutral">{count ?? 0} dealers</span>
       </div>
 
       <form className="mb-4 flex flex-wrap gap-3" action="/dealers" method="GET">
@@ -75,14 +69,10 @@ export default async function DealersPage({ searchParams }: PageProps) {
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="🔍 Search company / region / contact"
-          className="w-72 max-w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
+          placeholder="Search company / region / contact"
+          className="field-input w-72 max-w-full"
         />
-        <select
-          name="region"
-          defaultValue={region}
-          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
-        >
+        <select name="region" defaultValue={region} className="field-input w-auto">
           <option value="all">All Regions</option>
           {regions.map((r) => (
             <option key={r} value={r}>
@@ -90,10 +80,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-        >
+        <button type="submit" className="btn-primary">
           Filter
         </button>
       </form>
@@ -101,57 +88,45 @@ export default async function DealersPage({ searchParams }: PageProps) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              <th className="px-3 py-2.5">Company</th>
-              <th className="px-3 py-2.5">Region</th>
-              <th className="px-3 py-2.5">Phone</th>
-              <th className="px-3 py-2.5">Contact</th>
-              <th className="px-3 py-2.5">Package</th>
-              <th className="px-3 py-2.5">Rate</th>
-              <th className="px-3 py-2.5">Status</th>
+            <tr>
+              <th className="th">Company</th>
+              <th className="th">Region</th>
+              <th className="th">Phone</th>
+              <th className="th">Contact</th>
+              <th className="th">Package</th>
+              <th className="th">Rate</th>
+              <th className="th">Status</th>
             </tr>
           </thead>
           <tbody>
             {(dealers as Dealer[] | null)?.map((d) => {
               const activity = activityMap.get(d.id)
               return (
-                <tr key={d.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                  <td className="px-3 py-2.5">
+                <tr key={d.id} className="tr-row">
+                  <td className="td">
                     <div className="flex items-center gap-2">
-                      <Link href={`/dealers/${d.id}`} className="font-semibold text-zinc-100 hover:text-violet-400">
+                      <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
                         {d.company_name}
                       </Link>
                       {activity?.isInactive && (
-                        <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                          ⚠️ {activity.daysSinceLastActivity}d
-                        </span>
+                        <span className="pill pill-clay">{activity.daysSinceLastActivity}d</span>
                       )}
                     </div>
-                    {d.company_no && <div className="text-[11px] text-zinc-500">{d.company_no}</div>}
+                    {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}
                   </td>
-                  <td className="px-3 py-2.5 text-zinc-400">{d.region ?? '—'}</td>
-                  <td className="px-3 py-2.5 text-zinc-400">{d.phone ?? '—'}</td>
-                  <td className="px-3 py-2.5 text-zinc-400">{d.contact_person ?? '—'}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="td text-paper-dim">{d.region ?? '—'}</td>
+                  <td className="td figure text-paper-dim">{d.phone ?? '—'}</td>
+                  <td className="td text-paper-dim">{d.contact_person ?? '—'}</td>
+                  <td className="td">
                     {d.package ? (
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${PACKAGE_STYLE[d.package]}`}
-                      >
-                        {d.package}
-                      </span>
+                      <span className={`pill ${PACKAGE_STYLE[d.package]}`}>{d.package}</span>
                     ) : (
-                      <span className="text-zinc-600">—</span>
+                      <span className="text-paper-dim/50">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-zinc-300">{d.rate != null ? `${d.rate}%` : '—'}</td>
-                  <td className="px-3 py-2.5">
-                    <span
-                      className={
-                        d.status === 'active'
-                          ? 'rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400'
-                          : 'rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-bold text-zinc-400'
-                      }
-                    >
+                  <td className="td figure text-paper-dim">{d.rate != null ? `${d.rate}%` : '—'}</td>
+                  <td className="td">
+                    <span className={d.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
                       {d.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -160,7 +135,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             })}
             {!dealers?.length && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
                   No matching dealers.
                 </td>
               </tr>

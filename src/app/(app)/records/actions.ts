@@ -45,7 +45,7 @@ export async function flagTransaction(formData: FormData) {
   // A flagged package purchase may have been the one driving the dealer's
   // current rate — recompute it from whatever package transactions remain.
   if (tx?.type === 'package') {
-    await recomputeDealerRate(supabase, tx.dealer_id)
+    await recomputeDealerRate(supabase, tx.dealer_id, user.id)
   }
 
   revalidatePath('/records')

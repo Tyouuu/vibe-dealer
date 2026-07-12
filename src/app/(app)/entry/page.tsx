@@ -8,19 +8,15 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; dealer?: string }>
 }
 
 export default async function EntryPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error } = await searchParams
+  const { error, dealer } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-400">
-        Your role ({user.role}) does not have permission to enter transactions.
-      </div>
-    )
+    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to enter transactions.</div>
   }
 
   const supabase = await createClient()
@@ -31,12 +27,8 @@ export default async function EntryPage({ searchParams }: PageProps) {
 
   return (
     <>
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3.5 py-2.5 text-sm text-red-300">
-          {error}
-        </div>
-      )}
-      <EntryForm dealers={dealers ?? []} />
+      {error && <div className="alert alert-bad">{error}</div>}
+      <EntryForm dealers={dealers ?? []} initialDealerId={dealer} />
     </>
   )
 }

@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 
 function csvCell(value: string | number) {
+  // Prevent CSV/Excel formula injection: dealer company names are free text
+  // (entered by CS on onboarding) and get opened directly in Excel/Sheets.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
+    value = `'${value}`
+  }
   const s = String(value)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }

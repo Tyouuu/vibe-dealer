@@ -1,6 +1,35 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse, type NextRequest } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getYesterdaySummary } from '@/lib/reports/daily-summary'
+
+function isAuthorizedCronRequest(request: NextRequest): boolean {
+  const provided = Buffer.from(request.headers.get('authorization') ?? '')
+  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`)
+  return provided.length === expected.length && timingSafeEqual(provided, expected)
+}
+
+// profiles.email is a hand-maintained copy of the real Supabase Auth email
+// (there's no signup flow — profiles are created manually, see
+// supabase/migrations/0001_profiles_and_rls.sql). If whoever created a
+// master's profile row left it blank, fall back to the Auth record instead
+// of silently dropping that recipient from the daily report.
+async function resolveMasterEmails(
+  supabase: SupabaseClient,
+  masters: { id: string; email: string | null }[]
+): Promise<string[]> {
+  const emails: string[] = []
+  for (const m of masters) {
+    if (m.email) {
+      emails.push(m.email)
+      continue
+    }
+    const { data } = await supabase.auth.admin.getUserById(m.id)
+    if (data.user?.email) emails.push(data.user.email)
+  }
+  return emails
+}
 
 function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
   return `
@@ -30,19 +59,18 @@ function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createServiceClient()
 
   const [{ data: masters }, summary] = await Promise.all([
-    supabase.from('profiles').select('email').eq('role', 'master'),
+    supabase.from('profiles').select('id, email').eq('role', 'master'),
     getYesterdaySummary(supabase),
   ])
 
-  const recipients = (masters ?? []).map((m) => m.email).filter((e): e is string => !!e)
+  const recipients = await resolveMasterEmails(supabase, masters ?? [])
 
   if (!recipients.length) {
     return NextResponse.json({ status: 'skipped', reason: 'no master recipients' })

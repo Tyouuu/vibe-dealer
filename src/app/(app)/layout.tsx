@@ -17,6 +17,7 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
   { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'] },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'] },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'] },
+  { href: '/audit', label: 'Audit Log', roles: ['master'] },
 ]
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

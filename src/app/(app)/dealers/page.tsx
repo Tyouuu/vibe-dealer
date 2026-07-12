@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getDealerActivityMap } from '@/lib/dealer-activity'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -46,9 +48,10 @@ export default async function DealersPage({ searchParams }: PageProps) {
     query = query.eq('region', region)
   }
 
-  const [{ data: dealers, count }, { data: regionRows }] = await Promise.all([
+  const [{ data: dealers, count }, { data: regionRows }, activityMap] = await Promise.all([
     query,
     supabase.from('dealers').select('region').not('region', 'is', null),
+    getDealerActivityMap(supabase),
   ])
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
@@ -109,40 +112,52 @@ export default async function DealersPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {(dealers as Dealer[] | null)?.map((d) => (
-              <tr key={d.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
-                <td className="px-3 py-2.5">
-                  <div className="font-semibold text-zinc-100">{d.company_name}</div>
-                  {d.company_no && <div className="text-[11px] text-zinc-500">{d.company_no}</div>}
-                </td>
-                <td className="px-3 py-2.5 text-zinc-400">{d.region ?? '—'}</td>
-                <td className="px-3 py-2.5 text-zinc-400">{d.phone ?? '—'}</td>
-                <td className="px-3 py-2.5 text-zinc-400">{d.contact_person ?? '—'}</td>
-                <td className="px-3 py-2.5">
-                  {d.package ? (
+            {(dealers as Dealer[] | null)?.map((d) => {
+              const activity = activityMap.get(d.id)
+              return (
+                <tr key={d.id} className="border-b border-zinc-800 last:border-none hover:bg-zinc-800/50">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/dealers/${d.id}`} className="font-semibold text-zinc-100 hover:text-violet-400">
+                        {d.company_name}
+                      </Link>
+                      {activity?.isInactive && (
+                        <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
+                          ⚠️ {activity.daysSinceLastActivity}d
+                        </span>
+                      )}
+                    </div>
+                    {d.company_no && <div className="text-[11px] text-zinc-500">{d.company_no}</div>}
+                  </td>
+                  <td className="px-3 py-2.5 text-zinc-400">{d.region ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-zinc-400">{d.phone ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-zinc-400">{d.contact_person ?? '—'}</td>
+                  <td className="px-3 py-2.5">
+                    {d.package ? (
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${PACKAGE_STYLE[d.package]}`}
+                      >
+                        {d.package}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-zinc-300">{d.rate != null ? `${d.rate}%` : '—'}</td>
+                  <td className="px-3 py-2.5">
                     <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${PACKAGE_STYLE[d.package]}`}
+                      className={
+                        d.status === 'active'
+                          ? 'rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400'
+                          : 'rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-bold text-zinc-400'
+                      }
                     >
-                      {d.package}
+                      {d.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
-                  ) : (
-                    <span className="text-zinc-600">—</span>
-                  )}
-                </td>
-                <td className="px-3 py-2.5 text-zinc-300">{d.rate != null ? `${d.rate}%` : '—'}</td>
-                <td className="px-3 py-2.5">
-                  <span
-                    className={
-                      d.status === 'active'
-                        ? 'rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-400'
-                        : 'rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-bold text-zinc-400'
-                    }
-                  >
-                    {d.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              )
+            })}
             {!dealers?.length && (
               <tr>
                 <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { verifyTransaction } from './actions'
+import { monthRange } from '@/lib/month'
+import { verifyTransaction, flagTransaction } from './actions'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -29,12 +30,12 @@ const DELIVERY_LABEL: Record<string, string> = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ status?: string; submitted?: string }>
+  searchParams: Promise<{ status?: string; submitted?: string; month?: string }>
 }
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted } = await searchParams
+  const { status = 'all', submitted, month } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return (
@@ -57,6 +58,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
   if (status !== 'all') {
     query = query.eq('status', status)
+  }
+
+  if (month) {
+    const { start, end } = monthRange(month)
+    query = query.gte('tx_date', start).lte('tx_date', end)
   }
 
   const { data: rows, count } = await query
@@ -87,6 +93,12 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           <option value="verified">Verified</option>
           <option value="flagged">Flagged</option>
         </select>
+        <input
+          type="month"
+          name="month"
+          defaultValue={month ?? ''}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
+        />
         <button
           type="submit"
           className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
@@ -141,15 +153,26 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   </td>
                   <td className="px-3 py-2.5">
                     {tx.status === 'pending' ? (
-                      <form action={verifyTransaction}>
-                        <input type="hidden" name="id" value={tx.id} />
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
-                        >
-                          Verify ✓
-                        </button>
-                      </form>
+                      <div className="flex items-center gap-1.5">
+                        <form action={verifyTransaction}>
+                          <input type="hidden" name="id" value={tx.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
+                          >
+                            Verify ✓
+                          </button>
+                        </form>
+                        <form action={flagTransaction}>
+                          <input type="hidden" name="id" value={tx.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg bg-red-600/80 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                          >
+                            Flag ✕
+                          </button>
+                        </form>
+                      </div>
                     ) : (
                       <span className="text-zinc-600">—</span>
                     )}

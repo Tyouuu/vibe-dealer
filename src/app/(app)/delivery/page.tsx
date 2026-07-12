@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { daysSince, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { markDelivered } from './actions'
 
 export const metadata: Metadata = {
@@ -82,9 +83,19 @@ export default async function DeliveryPage() {
                       Sent
                     </span>
                   ) : row.delivery_status === 'pending' ? (
-                    <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                      Pending
-                    </span>
+                    (() => {
+                      const days = daysSince(row.tx_date)
+                      const stalled = days >= DELIVERY_STALLED_DAYS_THRESHOLD
+                      return stalled ? (
+                        <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-bold text-red-400">
+                          Pending · {days}d
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-bold text-amber-300">
+                          Pending
+                        </span>
+                      )
+                    })()
                   ) : (
                     <span className="rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-bold text-cyan-300">
                       Instant

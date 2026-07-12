@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { yesterdayInMalaysia } from '@/lib/month'
 
 export type DailySummary = {
   date: string
@@ -10,8 +11,7 @@ export type DailySummary = {
 }
 
 export async function getYesterdaySummary(supabase: SupabaseClient): Promise<DailySummary> {
-  const now = new Date()
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const yesterday = yesterdayInMalaysia()
 
   const [{ data: yesterdayTx }, { count: pendingCount }] = await Promise.all([
     supabase

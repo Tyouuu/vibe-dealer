@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { daysSince, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { markDelivered } from './actions'
+import { ConfirmSubmitButton } from '../confirm-submit-button'
 
 export const metadata: Metadata = {
   title: 'SIM Delivery — DealerHub',
@@ -18,18 +19,30 @@ type DeliveryRow = {
   delivery_status: 'na' | 'pending' | 'sent'
 }
 
-export default async function DeliveryPage() {
+type PageProps = {
+  searchParams: Promise<{ all?: string }>
+}
+
+export default async function DeliveryPage({ searchParams }: PageProps) {
   const user = await requireUser()
+  const { all } = await searchParams
+  const showAll = all === '1'
 
   if (user.role !== 'cs' && user.role !== 'master') {
     return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view SIM delivery.</div>
   }
 
   const supabase = await createClient()
-  const { data: rows } = await supabase
+  let query = supabase
     .from('delivery_queue')
     .select('id, company_name, tx_date, type, package, sim_type, delivery_status')
     .order('tx_date', { ascending: false })
+
+  if (!showAll) {
+    query = query.eq('delivery_status', 'pending')
+  }
+
+  const { data: rows } = await query
 
   const typed = (rows ?? []) as DeliveryRow[]
 
@@ -37,7 +50,12 @@ export default async function DeliveryPage() {
     <div className="app-card">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-bold text-paper">SIM Delivery</h1>
-        <span className="pill pill-neutral">{typed.length} items</span>
+        <div className="flex items-center gap-3">
+          <a href={showAll ? '/delivery' : '/delivery?all=1'} className="text-xs font-semibold text-paper-dim hover:text-paper">
+            {showAll ? 'Show pending only' : 'Show all'}
+          </a>
+          <span className="pill pill-neutral">{typed.length} items</span>
+        </div>
       </div>
       <p className="mb-4 rounded-md bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim">
         Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
@@ -90,9 +108,9 @@ export default async function DeliveryPage() {
                   {row.delivery_status === 'pending' ? (
                     <form action={markDelivered}>
                       <input type="hidden" name="id" value={row.id} />
-                      <button type="submit" className="btn-jade">
+                      <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
                         Mark as Sent
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   ) : (
                     <span className="text-paper-dim/50">—</span>

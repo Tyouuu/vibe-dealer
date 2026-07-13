@@ -18,6 +18,8 @@ export async function saveStatement(formData: FormData) {
   const totalPoints = Number(formData.get('company_total_points') ?? 0)
   const profitRm = Number(formData.get('company_profit_rm') ?? 0)
   const note = String(formData.get('note') ?? '').trim() || null
+  if (totalPoints < 0) fail(month, 'Vibe total top-up cannot be negative.')
+  if (profitRm < 0) fail(month, "Vibe's profit figure cannot be negative.")
   const monthDate = `${month}-01`
 
   const supabase = await createClient()
@@ -58,10 +60,31 @@ export async function markReconciled(formData: FormData) {
 
   const monthDate = `${month}-01`
   const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from('company_statements')
+    .select('company_total_points, company_profit_rm')
+    .eq('month', monthDate)
+    .maybeSingle()
+
+  if (!existing) fail(month, 'No statement found for this month.')
+
   const { error } = await supabase.from('company_statements').update({ reconciled: true }).eq('month', monthDate)
 
   if (error) fail(month, error.message)
 
+  // Reconciliation itself is a real change of record — log it in the same
+  // append-only history saveStatement uses, so audit shows who formally
+  // closed the month, not just who last edited the numbers.
+  await supabase.from('company_statement_revisions').insert({
+    month: monthDate,
+    company_total_points: existing.company_total_points,
+    company_profit_rm: existing.company_profit_rm,
+    note: 'Reconciliation marked complete',
+    recorded_by: user.id,
+  })
+
   revalidatePath('/reconcile')
+  revalidatePath('/audit')
   redirect(`/reconcile?month=${month}&saved=1`)
 }

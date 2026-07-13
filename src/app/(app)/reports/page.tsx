@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
+import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Monthly Report — DealerHub',
@@ -59,11 +60,49 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </a>
         </div>
 
-        <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-          <Kpi label="This Month's Total Top-up" value={`${totalPoints.toLocaleString()} pts`} unit="points" />
-          <Kpi label="Your 2%" value={`RM ${totalCommission.toLocaleString()}`} unit="money" />
-          <Kpi label="Transactions" value={String(rows?.length ?? 0)} />
-          <Kpi label="Active Dealers" value={String(breakdown.length)} />
+        <div className="docket-hero">
+          <div className="docket-half">
+            <div className="docket-half-label">
+              <span className="icon-badge icon-badge-jade h-7 w-7">
+                <IconTrendUp className="h-4 w-4" />
+              </span>
+              This Month&apos;s Total Top-up
+            </div>
+            <div className="figure-points mt-2 text-3xl font-semibold">
+              {totalPoints.toLocaleString()} <span className="text-sm font-semibold text-paper-dim">pts</span>
+            </div>
+          </div>
+          <div className="docket-perforation" aria-hidden="true" />
+          <div className="docket-half">
+            <div className="docket-half-label">
+              <span className="icon-badge icon-badge-brass h-7 w-7">
+                <IconCoin className="h-4 w-4" />
+              </span>
+              Your 2%
+            </div>
+            <div className="money-chip mt-2.5 text-2xl">RM {totalCommission.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5">
+          <div className="app-tile flex items-center gap-3">
+            <span className="icon-badge icon-badge-slate">
+              <IconCheckCircle />
+            </span>
+            <div>
+              <div className="text-xs font-semibold text-paper-dim">Transactions</div>
+              <div className="mt-0.5 text-lg font-bold text-paper">{rows?.length ?? 0}</div>
+            </div>
+          </div>
+          <div className="app-tile flex items-center gap-3">
+            <span className="icon-badge icon-badge-slate">
+              <IconUsers />
+            </span>
+            <div>
+              <div className="text-xs font-semibold text-paper-dim">Active Dealers</div>
+              <div className="mt-0.5 text-lg font-bold text-paper">{breakdown.length}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -101,16 +140,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </table>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Kpi({ label, value, unit }: { label: string; value: string; unit?: 'money' | 'points' }) {
-  const valueStyle = unit === 'money' ? 'figure-money' : unit === 'points' ? 'figure-points' : 'text-paper'
-  return (
-    <div className="app-tile ticket-tile">
-      <div className="text-xs font-semibold text-paper-dim">{label}</div>
-      <div className={`mt-1.5 text-2xl font-extrabold tracking-tight ${valueStyle}`}>{value}</div>
     </div>
   )
 }

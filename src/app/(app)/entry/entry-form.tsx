@@ -23,6 +23,7 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
   const [moneyOverride, setMoneyOverride] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const dealer = dealers.find((d) => d.id === dealerId)
@@ -53,6 +54,8 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
       return
     }
 
+    setSubmitting(true)
+
     const formData = new FormData(e.currentTarget)
 
     if (receiptFile) {
@@ -63,6 +66,7 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
       setUploading(false)
       if (uploadError) {
         setError('Receipt upload failed: ' + uploadError.message)
+        setSubmitting(false)
         return
       }
       formData.set('receipt_url', path)
@@ -152,6 +156,7 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
                   name="money_rm"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={moneyOverride}
                   onChange={(e) => setMoneyOverride(e.target.value)}
                   placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
@@ -176,7 +181,7 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
             <input name="note" type="text" className="field-input" />
           </div>
 
-          <button type="submit" disabled={uploading} className="btn-primary mt-2">
+          <button type="submit" disabled={uploading || submitting} className="btn-primary mt-2">
             {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
           </button>
           <p className="note-strip">

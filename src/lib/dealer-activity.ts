@@ -27,18 +27,13 @@ export type DealerActivity = {
 // "went quiet after purchasing," and callers should treat missing-from-map
 // as the former (render nothing / a neutral state, not an inactivity badge).
 export async function getDealerActivityMap(supabase: SupabaseClient): Promise<Map<string, DealerActivity>> {
-  const { data } = await supabase
-    .from('transactions')
-    .select('dealer_id, tx_date')
-    .eq('status', 'verified')
-    .order('tx_date', { ascending: false })
+  const { data } = await supabase.from('dealer_last_verified_activity').select('dealer_id, last_tx_date')
 
   const map = new Map<string, DealerActivity>()
   for (const row of data ?? []) {
-    if (map.has(row.dealer_id)) continue // first hit per dealer is the most recent (already sorted desc)
-    const days = daysSince(row.tx_date)
+    const days = daysSince(row.last_tx_date)
     map.set(row.dealer_id, {
-      lastVerifiedTxDate: row.tx_date,
+      lastVerifiedTxDate: row.last_tx_date,
       daysSinceLastActivity: days,
       isInactive: days >= INACTIVE_DAYS_THRESHOLD,
     })

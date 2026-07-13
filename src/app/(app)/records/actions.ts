@@ -13,7 +13,11 @@ export async function verifyTransaction(formData: FormData) {
   if (!id) return
 
   const supabase = await createClient()
-  await supabase.from('transactions').update({ status: 'verified', verified_by: user.id }).eq('id', id)
+  await supabase
+    .from('transactions')
+    .update({ status: 'verified', verified_by: user.id })
+    .eq('id', id)
+    .eq('status', 'pending')
 
   revalidatePath('/records')
 }

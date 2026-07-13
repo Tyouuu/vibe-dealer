@@ -40,6 +40,7 @@ export async function recomputeDealerRate(supabase: SupabaseClient, dealerId: st
   }
 
   const result = await supabase.from('dealers').update({ package: newPackage, rate: newRate }).eq('id', dealerId)
+  if (result.error) return result // update failed — don't record a history entry claiming it succeeded
 
   const oldPackage = before?.package ?? null
   const oldRate = before?.rate ?? null

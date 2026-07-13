@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
 import { verifyTransaction, flagTransaction } from './actions'
+import { ConfirmSubmitButton } from '../confirm-submit-button'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -71,7 +72,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-bold text-paper">Transactions</h1>
-        <span className="pill pill-neutral">{count ?? 0} transactions</span>
+        <span className="pill pill-neutral">
+          {count != null && count > 200
+            ? `Showing 200 of ${count} transactions — narrow with a filter to see more`
+            : `${count ?? 0} transactions`}
+        </span>
       </div>
 
       <form className="mb-4 flex gap-3" action="/records" method="GET">
@@ -136,9 +141,12 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </form>
                         <form action={flagTransaction}>
                           <input type="hidden" name="id" value={tx.id} />
-                          <button type="submit" className="btn-clay">
+                          <ConfirmSubmitButton
+                            className="btn-clay"
+                            confirmMessage="Flag this transaction as void? It will be excluded from reports and reconciliation and cannot be undone."
+                          >
                             Flag ✕
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       </div>
                     ) : (

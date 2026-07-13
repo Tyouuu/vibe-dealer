@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getYesterdaySummary } from '@/lib/reports/daily-summary'
 import { todayInMalaysia } from '@/lib/month'
 import { getDealerActivityMap, INACTIVE_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS, daysSince } from '@/lib/dealer-activity'
-import { PackageDistributionBar, type PackageSegment } from './package-distribution-bar'
+import { PackageDistributionDonut, type PackageSegment } from './package-distribution-bar'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RankingView } from './ranking-view'
 import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle } from '../icons'
@@ -44,10 +44,8 @@ export default async function DashboardPage() {
   const [
     { count: dealerCount },
     { data: pendingRows },
-    { data: monthTx },
     { data: dealerRows },
     { data: trendTx },
-    { data: regionRows },
     { data: deliveryPendingRows },
     { data: currentStatement },
     yesterdaySummary,
@@ -55,32 +53,30 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
     supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
+    supabase.from('dealers').select('id, company_name, package, region'),
     supabase
       .from('transactions')
-      .select('dealer_id, points, commission_rm, dealers(company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', monthStart)
-      .lte('tx_date', today),
-    supabase.from('dealers').select('id, company_name, package'),
-    supabase
-      .from('transactions')
-      .select('tx_date, points, dealers(region)')
+      .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
       .eq('status', 'verified')
       .gte('tx_date', trendStart)
       .lte('tx_date', today),
-    supabase.from('dealers').select('region').not('region', 'is', null),
     supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending'),
     supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     getYesterdaySummary(supabase),
     getDealerActivityMap(supabase),
   ])
 
-  const totalPoints = (monthTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
-  const totalCommission = (monthTx ?? []).reduce((sum, t) => sum + Number(t.commission_rm), 0)
+  // trendTx already covers the whole 6-month window (which fully contains the
+  // current month), so this month's totals/ranking are derived from it
+  // instead of firing a second, overlapping query.
+  const monthTx = (trendTx ?? []).filter((t) => t.tx_date >= monthStart)
+
+  const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
+  const totalCommission = monthTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
 
   const byDealer = new Map<string, { name: string; points: number }>()
-  for (const t of monthTx ?? []) {
-    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
+  for (const t of monthTx) {
+    const rel = t.dealers as { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null
     const name = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
     const prev = byDealer.get(t.dealer_id) ?? { name, points: 0 }
     prev.points += Number(t.points)
@@ -94,13 +90,15 @@ export default async function DashboardPage() {
     if (pkg === 'A' || pkg === 'B' || pkg === 'C') pkgCounts[pkg]++
     else pkgCounts.none++
   }
-  // jade-chart/brass-chart (not the -bright text tokens) — validated for use
-  // as adjacent chart-mark fills, see globals.css.
+  // jade-chart/brass-chart/slate (not the -bright text tokens) — validated
+  // for use as adjacent chart-mark fills, see globals.css. Each tier gets
+  // its own hue (blue/green/gold) rather than sharing gray, so the ring
+  // reads as colorful at a glance instead of "mostly neutral, one accent."
   const packageSegments: PackageSegment[] = [
-    { key: 'A', label: 'Package A · 7%', count: pkgCounts.A, colorClass: 'bg-paper-dim' },
-    { key: 'B', label: 'Package B · 7.5%', count: pkgCounts.B, colorClass: 'bg-jade-chart' },
-    { key: 'C', label: 'Package C · 8%', count: pkgCounts.C, colorClass: 'bg-brass-chart' },
-    { key: 'none', label: 'Not Set', count: pkgCounts.none, colorClass: 'bg-paper-dim/25' },
+    { key: 'A', label: 'Package A · 7%', count: pkgCounts.A, colorClass: 'bg-slate', stroke: 'var(--color-slate)' },
+    { key: 'B', label: 'Package B · 7.5%', count: pkgCounts.B, colorClass: 'bg-jade-chart', stroke: 'var(--color-jade-chart)' },
+    { key: 'C', label: 'Package C · 8%', count: pkgCounts.C, colorClass: 'bg-brass-chart', stroke: 'var(--color-brass-chart)' },
+    { key: 'none', label: 'Not Set', count: pkgCounts.none, colorClass: 'bg-ink-700', stroke: 'var(--color-ink-700)' },
   ]
 
   const inactiveDealers = (dealerRows ?? [])
@@ -117,11 +115,11 @@ export default async function DashboardPage() {
   // Monthly trend, split by region — bucket every verified tx into its month
   // + dealer region, defaulting every (month, region) pair to 0 so the chart
   // still draws a continuous 6-month axis even where a region had no activity.
-  const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
+  const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
   const trendMap = new Map<string, number>() // `${month}|${region}` -> points
   for (const t of trendTx ?? []) {
     const monthKey = t.tx_date.slice(0, 7)
-    const rel = t.dealers as { region: string | null } | { region: string | null }[] | null
+    const rel = t.dealers as { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null
     const region = (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
     const k = `${monthKey}|${region}`
     trendMap.set(k, (trendMap.get(k) ?? 0) + Number(t.points))
@@ -152,7 +150,7 @@ export default async function DashboardPage() {
             </span>
             Top-up This Month
           </div>
-          <div className="figure-points mt-2.5 text-4xl font-extrabold">
+          <div className="figure-points mt-2.5 text-5xl font-semibold">
             {totalPoints.toLocaleString()} <span className="text-base font-semibold text-paper-dim">pts</span>
           </div>
         </a>
@@ -164,9 +162,7 @@ export default async function DashboardPage() {
             </span>
             Your Commission (2%)
           </div>
-          <div className="figure-money mt-2.5 text-4xl font-extrabold">
-            RM {totalCommission.toLocaleString()}
-          </div>
+          <div className="money-chip mt-3 text-4xl">RM {totalCommission.toLocaleString()}</div>
         </a>
       </div>
 
@@ -266,7 +262,7 @@ export default async function DashboardPage() {
 
         <div className="app-card">
           <h3 className="mb-3.5 text-sm font-bold text-paper">Package Distribution</h3>
-          <PackageDistributionBar segments={packageSegments} total={dealerCount ?? 0} />
+          <PackageDistributionDonut segments={packageSegments} total={dealerCount ?? 0} />
         </div>
       </div>
 

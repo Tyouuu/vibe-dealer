@@ -5,8 +5,11 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getYesterdaySummary } from '@/lib/reports/daily-summary'
 
 function isAuthorizedCronRequest(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false
+
   const provided = Buffer.from(request.headers.get('authorization') ?? '')
-  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`)
+  const expected = Buffer.from(`Bearer ${secret}`)
   return provided.length === expected.length && timingSafeEqual(provided, expected)
 }
 

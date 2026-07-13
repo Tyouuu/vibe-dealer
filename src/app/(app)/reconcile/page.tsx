@@ -83,6 +83,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               name="company_total_points"
               type="number"
               step="0.01"
+              min="0"
               defaultValue={companyPoints ?? ''}
               required
               className="field-input"
@@ -94,6 +95,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               name="company_profit_rm"
               type="number"
               step="0.01"
+              min="0"
               defaultValue={statement?.company_profit_rm ?? ''}
               className="field-input"
             />

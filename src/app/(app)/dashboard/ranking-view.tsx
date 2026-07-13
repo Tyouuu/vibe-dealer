@@ -52,6 +52,7 @@ export function RankingView({ items }: { items: RankingItem[] }) {
         <div className="flex flex-col gap-2.5">
           {items.map((d, i) => {
             const pct = Math.max(4, (d.points / maxPoints) * 100)
+            const barColor = i === 0 ? 'var(--color-brass)' : i === 1 ? 'var(--color-slate)' : i === 2 ? 'var(--color-clay)' : 'var(--color-jade-bright)'
             return (
               <div key={d.name + i} className="flex items-center gap-2.5">
                 <div className="w-28 shrink-0 truncate text-xs font-semibold text-paper" title={d.name}>
@@ -59,8 +60,8 @@ export function RankingView({ items }: { items: RankingItem[] }) {
                 </div>
                 <div className="relative h-4 flex-1">
                   <div
-                    className="h-full rounded-r bg-jade-bright transition-[width]"
-                    style={{ width: `${pct}%`, borderRadius: '2px 4px 4px 2px' }}
+                    className="h-full transition-[width]"
+                    style={{ width: `${pct}%`, background: barColor, borderRadius: '2px 4px 4px 2px' }}
                   />
                 </div>
                 <div className="figure-points w-16 shrink-0 text-right text-xs">{d.points.toLocaleString()}</div>

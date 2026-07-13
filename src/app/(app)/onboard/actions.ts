@@ -18,22 +18,47 @@ export async function createDealer(formData: FormData) {
   }
 
   const pkg = (formData.get('package') as PackageCode) || null
+  if (pkg && !(pkg in PACKAGES)) {
+    redirect('/onboard?error=' + encodeURIComponent('Invalid package selected.'))
+  }
+
   const supabase = await createClient()
 
-  const { error } = await supabase.from('dealers').insert({
-    company_name: companyName,
-    company_no: String(formData.get('company_no') ?? '').trim() || null,
-    contact_person: String(formData.get('contact_person') ?? '').trim() || null,
-    phone: String(formData.get('phone') ?? '').trim() || null,
-    email: String(formData.get('email') ?? '').trim() || null,
-    address: String(formData.get('address') ?? '').trim() || null,
-    region: String(formData.get('region') ?? '').trim() || null,
-    package: pkg,
-    rate: pkg ? PACKAGES[pkg].rate : null,
-  })
+  const { data: dealer, error } = await supabase
+    .from('dealers')
+    .insert({
+      company_name: companyName,
+      company_no: String(formData.get('company_no') ?? '').trim() || null,
+      contact_person: String(formData.get('contact_person') ?? '').trim() || null,
+      phone: String(formData.get('phone') ?? '').trim() || null,
+      email: String(formData.get('email') ?? '').trim() || null,
+      address: String(formData.get('address') ?? '').trim() || null,
+      region: String(formData.get('region') ?? '').trim() || null,
+      package: pkg,
+      rate: pkg ? PACKAGES[pkg].rate : null,
+      onboarded_by: user.id,
+    })
+    .select('id')
+    .single()
 
-  if (error) {
-    redirect('/onboard?error=' + encodeURIComponent(error.message))
+  if (error || !dealer) {
+    redirect('/onboard?error=' + encodeURIComponent(error?.message ?? 'Failed to create dealer.'))
+  }
+
+  // Onboarding can set an Initial Package directly on the new dealer row
+  // (no prior transactions to derive it from, so recomputeDealerRate doesn't
+  // apply here) — snapshot that first assignment so dealer_rate_history has
+  // a starting point instead of the dealer's package/rate appearing from
+  // nowhere.
+  if (pkg) {
+    await supabase.from('dealer_rate_history').insert({
+      dealer_id: dealer.id,
+      old_package: null,
+      old_rate: null,
+      new_package: pkg,
+      new_rate: PACKAGES[pkg].rate,
+      changed_by: user.id,
+    })
   }
 
   revalidatePath('/dealers')

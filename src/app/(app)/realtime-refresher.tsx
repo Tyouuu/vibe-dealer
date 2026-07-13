@@ -1,22 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+const REFRESH_DEBOUNCE_MS = 2000
 
 export function RealtimeRefresher() {
   const router = useRouter()
   const [connected, setConnected] = useState(false)
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
+      refreshTimeout.current = setTimeout(() => router.refresh(), REFRESH_DEBOUNCE_MS)
+    }
+
     const supabase = createClient()
     const channel = supabase
       .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => router.refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dealers' }, () => router.refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dealers' }, scheduleRefresh)
       .subscribe((status) => setConnected(status === 'SUBSCRIBED'))
 
     return () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
       supabase.removeChannel(channel)
     }
   }, [router])

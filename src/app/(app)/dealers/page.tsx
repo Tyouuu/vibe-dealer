@@ -25,6 +25,15 @@ const PACKAGE_STYLE: Record<string, string> = {
   C: 'pill-brass',
 }
 
+// Deterministic per-dealer color so the list reads less like a spreadsheet —
+// same idea as Tekion's avatar photos, minus the photos we don't have.
+const AVATAR_COLORS = ['jade', 'brass', 'clay', 'slate'] as const
+function avatarColor(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
 type PageProps = {
   searchParams: Promise<{ q?: string; region?: string; onboarded?: string }>
 }
@@ -42,7 +51,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
     .order('company_name', { ascending: true })
 
   if (q) {
-    query = query.or(`company_name.ilike.%${q}%,region.ilike.%${q}%,contact_person.ilike.%${q}%`)
+    // Strip characters with special meaning in PostgREST's .or() filter syntax
+    // so a search term can't break out of the intended filter structure.
+    const safeQ = q.replace(/[,()%]/g, '')
+    if (safeQ) {
+      query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
+    }
   }
   if (region !== 'all') {
     query = query.eq('region', region)
@@ -104,15 +118,22 @@ export default async function DealersPage({ searchParams }: PageProps) {
               return (
                 <tr key={d.id} className="tr-row">
                   <td className="td">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
-                        {d.company_name}
-                      </Link>
-                      {activity?.isInactive && (
-                        <span className="pill pill-clay">{activity.daysSinceLastActivity}d</span>
-                      )}
+                    <div className="flex items-center gap-2.5">
+                      <span className={`icon-badge icon-badge-${avatarColor(d.company_name)} h-7 w-7 shrink-0 text-[11px] font-bold`}>
+                        {d.company_name.charAt(0).toUpperCase()}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
+                            {d.company_name}
+                          </Link>
+                          {activity?.isInactive && (
+                            <span className="pill pill-clay">{activity.daysSinceLastActivity}d</span>
+                          )}
+                        </div>
+                        {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}
+                      </div>
                     </div>
-                    {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}
                   </td>
                   <td className="td text-paper-dim">{d.region ?? '—'}</td>
                   <td className="td figure text-paper-dim">{d.phone ?? '—'}</td>

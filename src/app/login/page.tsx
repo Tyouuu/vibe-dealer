@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LoginForm } from './login-form'
+import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
   title: 'Sign In — DealerHub',
@@ -11,12 +12,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="app-card">
           <div className="mb-6 flex flex-col items-center gap-2.5 text-center">
-            <div
-              className="grid h-11 w-11 place-items-center rounded-full bg-jade text-lg font-extrabold text-white"
-              style={{ boxShadow: '0 0 0 6px rgba(20, 122, 78, 0.08), 0 6px 16px -4px rgba(20, 122, 78, 0.35)' }}
-            >
-              D
-            </div>
+            <span style={{ filter: 'drop-shadow(0 6px 16px rgba(20, 122, 78, 0.35))' }}>
+              <LogoMark className="h-11 w-11" />
+            </span>
             <div>
               <p className="text-base font-bold text-paper">DealerHub</p>
               <p className="text-xs text-paper-dim">Vibe Mobile · Master Ledger</p>

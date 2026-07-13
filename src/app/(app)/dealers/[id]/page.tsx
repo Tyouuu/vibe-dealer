@@ -5,6 +5,8 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
 import { markDelivered } from '../../delivery/actions'
+import { IconTrendUp, IconCoin } from '../../icons'
+import { ConfirmSubmitButton } from '../../confirm-submit-button'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -130,6 +132,7 @@ export default async function DealerDetailPage({ params }: PageProps) {
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
+      .limit(100)
     txRows = (data as TxRow[] | null) ?? []
 
     const { data: rateHistoryData } = await supabase
@@ -174,47 +177,114 @@ export default async function DealerDetailPage({ params }: PageProps) {
         <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
       )}
 
-      <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-paper">{typedDealer.company_name}</h1>
-            {typedDealer.company_no && <div className="text-[11px] text-paper-dim">{typedDealer.company_no}</div>}
-          </div>
-          <div className="flex items-center gap-3.5">
-            {isFinance && (
-              <a href={`/entry?dealer=${id}`} className="text-xs font-semibold text-jade-bright hover:text-jade">
-                + Record Transaction
-              </a>
-            )}
-            <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
-              {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm md:grid-cols-3">
-          <Field label="Contact Person" value={typedDealer.contact_person} />
-          <Field label="Phone" value={typedDealer.phone} />
-          <Field label="Email" value={typedDealer.email} />
-          <Field label="Region" value={typedDealer.region} />
-          <Field label="Address" value={typedDealer.address} />
-          <div>
-            <div className="text-xs text-paper-dim">Package / Rate</div>
-            <div className="mt-1">
-              {typedDealer.package ? (
-                <span className={`pill ${PACKAGE_STYLE[typedDealer.package]}`}>
-                  {typedDealer.package} · {typedDealer.rate}%
-                </span>
-              ) : (
-                <span className="text-paper-dim/50">—</span>
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr]">
+        <div className="app-card">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-base font-bold text-paper">{typedDealer.company_name}</h1>
+              {typedDealer.company_no && <div className="text-[11px] text-paper-dim">{typedDealer.company_no}</div>}
+            </div>
+            <div className="flex items-center gap-3.5">
+              {isFinance && (
+                <a href={`/entry?dealer=${id}`} className="text-xs font-semibold text-jade-bright hover:text-jade">
+                  + Record Transaction
+                </a>
               )}
+              <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
+                {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm">
+            <Field label="Contact Person" value={typedDealer.contact_person} />
+            <Field label="Phone" value={typedDealer.phone} />
+            <Field label="Email" value={typedDealer.email} />
+            <Field label="Region" value={typedDealer.region} />
+            <div className="col-span-2">
+              <Field label="Address" value={typedDealer.address} />
+            </div>
+            <div>
+              <div className="text-xs text-paper-dim">Package / Rate</div>
+              <div className="mt-1">
+                {typedDealer.package ? (
+                  <span className={`pill ${PACKAGE_STYLE[typedDealer.package]}`}>
+                    {typedDealer.package} · {typedDealer.rate}%
+                  </span>
+                ) : (
+                  <span className="text-paper-dim/50">—</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {isFinance ? (
+          (() => {
+            const verified = txRows.filter((t) => t.status === 'verified')
+            const lifetimePoints = verified.reduce((s, t) => s + Number(t.points), 0)
+            const lifetimeCommission = verified.reduce((s, t) => s + Number(t.commission_rm), 0)
+            return (
+              <div className="flex flex-col gap-5">
+                <div className="docket-hero">
+                  <div className="docket-half">
+                    <div className="docket-half-label">
+                      <span className="icon-badge icon-badge-jade h-7 w-7">
+                        <IconTrendUp className="h-4 w-4" />
+                      </span>
+                      Lifetime Top-up
+                    </div>
+                    <div className="figure-points mt-2 text-3xl font-semibold">
+                      {lifetimePoints.toLocaleString()} <span className="text-sm font-semibold text-paper-dim">pts</span>
+                    </div>
+                  </div>
+                  <div className="docket-perforation" aria-hidden="true" />
+                  <div className="docket-half">
+                    <div className="docket-half-label">
+                      <span className="icon-badge icon-badge-brass h-7 w-7">
+                        <IconCoin className="h-4 w-4" />
+                      </span>
+                      Commission Earned
+                    </div>
+                    <div className="money-chip mt-2.5 text-2xl">RM {lifetimeCommission.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {txRows.length > 0 && (
+                  <div className="app-card">
+                    <h3 className="mb-1 text-sm font-bold text-paper">Recent Activity</h3>
+                    <div className="flex flex-col">
+                      {txRows.slice(0, 6).map((tx) => (
+                        <div key={tx.id} className="docket-row">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`timeline-dot ${
+                                tx.status === 'verified' ? 'timeline-dot-jade' : tx.status === 'flagged' ? 'timeline-dot-clay' : 'timeline-dot-brass'
+                              }`}
+                            />
+                            <span className="text-sm text-paper">
+                              {tx.type === 'package' ? `Package ${tx.package} assigned` : 'Top-up recorded'} ·{' '}
+                              <span className="figure-points">{tx.points.toLocaleString()} pts</span>
+                            </span>
+                          </div>
+                          <span className="text-xs text-paper-dim">{tx.tx_date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()
+        ) : (
+          <div className="app-card flex flex-col items-center justify-center gap-2 text-center text-sm text-paper-dim">
+            <span>Financial summary is only visible to accountant and master roles.</span>
+          </div>
+        )}
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'Transaction History' : 'Delivery History'}</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
 
         {isFinance ? (
           <div className="overflow-x-auto">
@@ -283,9 +353,9 @@ export default async function DealerDetailPage({ params }: PageProps) {
                       {row.delivery_status === 'pending' ? (
                         <form action={markDelivered}>
                           <input type="hidden" name="id" value={row.id} />
-                          <button type="submit" className="btn-jade">
+                          <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
                             Mark as Sent
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       ) : (
                         <span className="text-paper-dim/50">—</span>

@@ -57,6 +57,8 @@ export async function createTransaction(formData: FormData) {
     moneyRm = money ? Number(money) : Math.round(points * (1 - rate / 100) * 100) / 100
   }
 
+  if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('请输入有效的金额。')
+
   const simType = type === 'package' ? simTypeRaw || null : null
 
   const { error: txError } = await supabase.from('transactions').insert({

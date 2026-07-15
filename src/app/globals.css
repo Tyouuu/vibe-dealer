@@ -5,44 +5,71 @@
   --font-mono: var(--font-plex-mono);
 }
 
-/* DealerHub token system — white-and-green, matching Tekion's actual product
-   chrome (their marketing site is dark, but the real CRM/DMS screens are
-   white-card-on-light-gray with small colored circular icon badges — that's
-   the surface this app should read like). Green (jade) is the hero brand
-   color, echoing Vibe Mobile's own neon-mint identity. Money stays a distinct
-   brass/gold so RM and points never read as the same unit — the one hard
-   business rule of the product: money and points are two units that are
-   never added together. Alerts are clay, informational is slate. */
+/* DealerHub token system v3 — adopted from the "DealerHub — App" design
+   reference (sidebar rail + topbar shell, purple brand accent, light
+   card-on-gray surface). Purple is a BRAND/ACCENT color (logo, focus rings,
+   chart highlight, "Live" indicator, rail active state's soft badge) — it is
+   NOT the primary button color. Primary buttons are solid ink/near-black
+   (`.btn-primary`), matching the reference's `.btn-dark`. Status colors
+   (jade=positive/verified, brass=pending/warning, clay=negative/flagged,
+   slate=neutral/instant) are independent of the brand accent and never
+   reused for "series 4" in a chart. `info` (blue) is a spare categorical hue
+   for contexts needing a 3rd/4th distinct color (e.g. the package
+   distribution donut) — validated against these values with the dataviz
+   skill's validate_palette.js.
+
+   Money stays visually distinct from points (figure-money vs figure-points)
+   even though the reference mockup renders all table numerics in one plain
+   ink color — this app's one hard business rule is that money (RM) and
+   points are never added together, and that distinction predates this
+   palette pass, so it's kept as a deliberate, small departure from the
+   reference rather than dropped. */
 @theme {
-  --color-ink-950: #fafafa;
+  --color-ink-950: #eef0f4;
   --color-ink-900: #ffffff;
-  --color-ink-850: #f2f2f3;
-  --color-ink-800: #e6e6e8;
-  --color-ink-700: #cfcfd3;
+  --color-ink-850: #f5f5f8;
+  --color-ink-800: #ececf0;
+  --color-ink-700: #dcdce2;
 
-  --color-paper: #16241d;
-  --color-paper-dim: #5c6b61;
+  --color-paper: #1f2126;
+  --color-paper-dim: #8b8d97;
 
-  --color-brass: #9c6e15;
-  --color-brass-bright: #7a560f;
+  /* brand / primary accent (purple) — focus rings, chart highlights, logo,
+     "Live" indicator, rail active-badge. Not used for solid primary buttons. */
+  --color-primary: #6c5ce7;
+  --color-primary-deep: #5b48d9;
+  --color-primary-soft: #efeafd;
 
-  --color-jade: #147a4e;
-  --color-jade-bright: #0e6b42;
+  /* status: pending / warning */
+  --color-brass: #a8710a;
+  --color-brass-bright: #8a5d08;
 
-  --color-clay: #b54b36;
-  --color-clay-bright: #8f3924;
-  --color-clay-deep: #9c3b29;
+  /* status: positive / verified */
+  --color-jade: #1a9a4d;
+  --color-jade-bright: #14803f;
 
-  --color-slate: #3d6b87;
-  --color-slate-bright: #2c5269;
+  /* status: negative / flagged */
+  --color-clay: #e0393e;
+  --color-clay-bright: #c02329;
+  --color-clay-deep: #d33338;
 
-  /* Chart-fill variants of jade/brass — retuned for adjacent-mark contrast
-     against the white surface (isolated-text tuning of the -bright pair
-     reads too dark/heavy as a large fill). Re-validate with the dataviz
-     skill's validate_palette.js if this file's background changes again.
-     Use these two for chart marks; keep the -bright pair for text/figures. */
-  --color-jade-chart: #0d7351;
-  --color-brass-chart: #815303;
+  /* status: neutral / instant */
+  --color-slate: #6b6d76;
+  --color-slate-bright: #54565f;
+
+  /* spare categorical hue (donut 3rd slot, avatar variety) — validated
+     alongside jade/brass: #3b62d9,#1a9a4d,#a8710a passes CVD/contrast/chroma
+     on the white card surface. */
+  --color-info: #3b62d9;
+  --color-info-bright: #2d4bb0;
+
+  /* Chart-fill aliases — jade/brass already pass the categorical checks
+     directly as chart marks on the white surface (validated with the
+     dataviz skill's validate_palette.js), so these are just aliases kept
+     around for existing chart components (e.g. the package distribution
+     donut) that reference the -chart names explicitly. */
+  --color-jade-chart: #1a9a4d;
+  --color-brass-chart: #a8710a;
 }
 
 :root {
@@ -59,7 +86,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-jade);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -68,41 +95,41 @@ body {
   .app-card {
     @apply rounded-2xl border border-ink-800 bg-ink-900 p-5;
     box-shadow:
-      0 1px 2px rgba(22, 36, 29, 0.03),
-      0 8px 20px -12px rgba(22, 36, 29, 0.10);
+      0 1px 2px rgba(20, 20, 43, 0.05),
+      0 1px 1px rgba(20, 20, 43, 0.03);
   }
 
   .app-tile {
     @apply rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-all duration-200 ease-out;
     box-shadow:
-      0 1px 2px rgba(22, 36, 29, 0.03),
-      0 5px 14px -9px rgba(22, 36, 29, 0.08);
+      0 1px 2px rgba(20, 20, 43, 0.05),
+      0 1px 1px rgba(20, 20, 43, 0.03);
   }
   a.app-tile:hover,
   .app-tile:has(a:hover) {
     @apply -translate-y-0.5 border-ink-700;
     box-shadow:
-      0 2px 4px rgba(22, 36, 29, 0.04),
-      0 16px 30px -10px rgba(22, 36, 29, 0.16);
+      0 2px 4px rgba(20, 20, 43, 0.06),
+      0 16px 30px -10px rgba(20, 20, 43, 0.16);
   }
 
   .icon-badge {
-    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full;
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-800 bg-ink-900;
   }
   .icon-badge-jade {
-    @apply bg-jade/12 text-jade-bright;
+    @apply text-jade-bright;
   }
   .icon-badge-brass {
-    @apply bg-brass/12 text-brass-bright;
+    @apply text-brass-bright;
   }
   .icon-badge-clay {
-    @apply bg-clay/12 text-clay-bright;
+    @apply text-clay-bright;
   }
   .icon-badge-slate {
-    @apply bg-slate/12 text-slate-bright;
+    @apply text-slate-bright;
   }
   .icon-badge-neutral {
-    @apply bg-ink-700/25 text-paper-dim;
+    @apply text-paper-dim;
   }
 
   .field-label {
@@ -110,107 +137,122 @@ body {
   }
 
   .field-input {
-    @apply w-full rounded-md border border-ink-700 bg-ink-850 px-3.5 py-2.5 text-sm text-paper outline-none transition-all placeholder:text-paper-dim/60 focus:border-jade focus:bg-ink-900;
-    box-shadow: 0 0 0 0 rgba(20, 122, 78, 0);
+    @apply w-full rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 text-sm text-paper outline-none transition-all placeholder:text-paper-dim/70 focus:border-primary;
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
   }
   .field-input:focus {
-    box-shadow: 0 0 0 3px rgba(20, 122, 78, 0.12);
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
   }
 
+  /* Primary CTA — solid ink/near-black, matching the reference's `.btn-dark`.
+     Purple is reserved for accents/focus, not the main button color. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-jade px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-jade/20 transition-all duration-150 ease-out hover:bg-jade-bright hover:shadow-md hover:shadow-jade/25 active:scale-[0.97] disabled:opacity-50 disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-paper px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:shadow-none;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-700 px-5 py-2 text-sm font-semibold text-paper transition-all duration-150 ease-out hover:bg-ink-850 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-5 py-2 text-sm font-semibold text-paper transition-all duration-150 ease-out hover:bg-ink-850 active:scale-[0.97];
   }
 
   .btn-jade {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-jade px-3 py-1 text-xs font-semibold text-white transition-all duration-150 ease-out hover:bg-jade-bright active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-jade/12 px-3 py-1.5 text-xs font-bold text-jade-bright transition-all duration-150 ease-out hover:bg-jade/20 active:scale-[0.97];
   }
 
   .btn-clay {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-clay-deep px-3 py-1 text-xs font-semibold text-white transition-all duration-150 ease-out hover:bg-clay active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-clay/12 px-3 py-1.5 text-xs font-bold text-clay-bright transition-all duration-150 ease-out hover:bg-clay/20 active:scale-[0.97];
   }
 
   .pill {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide;
   }
   .pill-jade {
-    @apply bg-jade/15 text-jade-bright;
+    @apply bg-jade/12 text-jade-bright;
   }
   .pill-clay {
-    @apply bg-clay/15 text-clay-bright;
+    @apply bg-clay/12 text-clay-bright;
   }
   .pill-brass {
-    @apply bg-brass/15 text-brass-bright;
+    @apply bg-brass/12 text-brass-bright;
   }
   .pill-slate {
-    @apply bg-slate/15 text-slate-bright;
+    @apply bg-slate/12 text-slate-bright;
   }
   .pill-neutral {
-    @apply bg-ink-700/50 text-paper-dim;
+    @apply bg-ink-800 text-paper-dim;
+  }
+
+  /* Small "up/down/warn" change-indicator pill for KPI cards
+     (e.g. "↑ 8.2%" against last month). */
+  .chg {
+    @apply inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11.5px] font-bold;
+  }
+  .chg-up {
+    @apply bg-jade/12 text-jade-bright;
+  }
+  .chg-down {
+    @apply bg-clay/12 text-clay-bright;
+  }
+  .chg-warn {
+    @apply bg-brass/12 text-brass-bright;
   }
 
   .th {
-    @apply border-b border-ink-700 px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-paper-dim;
+    @apply border-b border-ink-800 px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-paper-dim;
   }
   .td {
     @apply px-3 py-2.5;
   }
   .tr-row {
-    @apply border-b border-ink-800 last:border-none hover:bg-ink-850/60;
+    @apply border-b border-ink-800 last:border-none hover:bg-ink-850/70;
   }
 
   .figure {
     @apply font-mono tracking-tight tabular-nums;
   }
+  /* Money vs points stay visually distinct (see file header) — a deliberate
+     small departure from the reference's single plain-ink `.mono` cells. */
   .figure-money {
-    @apply font-mono font-semibold tracking-tight tabular-nums text-brass-bright;
+    @apply font-mono font-bold tracking-tight tabular-nums text-brass-bright;
   }
   .figure-points {
-    @apply font-mono font-semibold tracking-tight tabular-nums text-jade-bright;
+    @apply font-mono font-bold tracking-tight tabular-nums text-jade-bright;
   }
 
-  /* The one deliberate bold-color moment on an otherwise quiet white page —
-     a solid brass chip behind the commission figure, borrowed from the
-     confident color-block KPI tiles real DMS dashboards use, scoped to a
-     single element instead of spreading across the whole surface. */
   .money-chip {
-    @apply inline-block rounded-xl bg-brass-bright px-4 py-2 font-mono font-semibold tracking-tight tabular-nums text-white;
+    @apply inline-block rounded-xl bg-brass-bright px-4 py-2 font-mono font-bold tracking-tight tabular-nums text-white;
     box-shadow:
       0 1px 2px rgba(122, 86, 15, 0.15),
       0 10px 22px -8px rgba(122, 86, 15, 0.45);
   }
 
   .alert {
-    @apply mb-4 rounded-md border px-3.5 py-2.5 text-sm;
+    @apply mb-4 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold;
   }
   .alert-ok {
-    @apply border-jade/40 bg-jade/10 text-jade-bright;
+    @apply bg-jade/10 text-jade-bright;
   }
   .alert-warn {
-    @apply border-brass/40 bg-brass/10 text-brass-bright;
+    @apply bg-brass/10 text-brass-bright;
   }
   .alert-bad {
-    @apply border-clay/40 bg-clay/10 text-clay-bright;
+    @apply bg-clay/10 text-clay-bright;
   }
 
-  /* The "docket split" — the one recurring signature: wherever money faces
-     points, a dashed tear-perforation keeps the two units visibly separate. */
+  /* purple "info strip" — a step above alert-ok/warn/bad in tone, used for
+     neutral explanatory notices (matches the reference's `.info-strip`). */
+  .info-strip {
+    @apply mb-4 flex items-start gap-2.5 rounded-xl bg-primary-soft px-4 py-3 text-[12.5px] leading-relaxed text-primary-deep;
+  }
+
   .docket-row {
-    @apply flex items-center justify-between border-b border-dashed border-ink-700 py-2.5 last:border-none;
+    @apply flex items-center justify-between border-b border-dashed border-ink-800 py-2.5 last:border-none;
   }
 
-  /* The ledger docket hero — the dashboard's headline figure, built like an
-     actual two-part ledger slip: top-up points on one side, commission RM on
-     the other, torn apart by a dashed perforation. Same signature as
-     `.docket-row`, scaled up to be the thing this page opens with. */
   .docket-hero {
     @apply grid overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 sm:grid-cols-[1fr_auto_1fr];
     box-shadow:
-      0 1px 2px rgba(22, 36, 29, 0.03),
-      0 8px 20px -12px rgba(22, 36, 29, 0.1);
+      0 1px 2px rgba(20, 20, 43, 0.05),
+      0 1px 1px rgba(20, 20, 43, 0.03);
   }
   .docket-half {
     @apply flex flex-1 flex-col justify-center px-5 py-6 transition-all duration-200 ease-out sm:px-8;
@@ -219,36 +261,24 @@ body {
     @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-paper-dim;
   }
   .docket-perforation {
-    @apply h-px w-full border-t-2 border-dashed border-ink-700 sm:h-auto sm:w-px sm:border-t-0 sm:border-l-2 sm:border-dashed;
+    @apply h-px w-full border-t-2 border-dashed border-ink-800 sm:h-auto sm:w-px sm:border-t-0 sm:border-l-2 sm:border-dashed;
   }
 
   .note-strip {
-    @apply mt-4 rounded-md border-l-2 border-slate bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim;
+    @apply mt-4 rounded-lg border-l-2 border-primary bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim;
   }
 
-  /* Segmented pill filter — a dark "ink" chip for the selected option against
-     plain outline pills for the rest, so filter state reads clearly without
-     reaching for the brand green (that stays reserved for primary actions).
-     Only fits a handful of options (~2-6); for anything with more choices
-     (e.g. a long region list) use `.select-pill` below instead — a wall of
-     wrapped pills is worse than the dropdown it was meant to replace. */
   .pill-tab {
-    @apply inline-flex items-center rounded-full border border-ink-700 px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:border-ink-700 hover:bg-ink-850 hover:text-paper;
+    @apply inline-flex items-center rounded-full border border-ink-800 px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
   }
   .pill-tab-active {
-    @apply border-paper bg-paper text-ink-900 hover:bg-paper hover:text-ink-900;
+    @apply border-paper bg-paper text-white hover:bg-paper hover:text-white;
   }
 
-  /* A native <select> restyled as a compact pill-with-chevron, for filters
-     with too many options for `.pill-tab` (keeps the dropdown's scalability,
-     loses the plain-box look). Pair with an absolutely-positioned chevron
-     icon in a `relative inline-block` wrapper. */
   .select-pill {
-    @apply rounded-full border border-ink-700 bg-ink-900 px-3.5 py-1.5 text-xs font-semibold text-paper outline-none transition-colors hover:bg-ink-850 focus:border-jade;
+    @apply rounded-full border border-ink-800 bg-ink-900 px-3.5 py-1.5 text-xs font-semibold text-paper outline-none transition-colors hover:bg-ink-850 focus:border-primary;
   }
 
-  /* Small colored status dot — pairs with a label for an at-a-glance activity
-     feed, distinct from the heavier `.pill` treatment used for table cells. */
   .timeline-dot {
     @apply inline-block h-2 w-2 shrink-0 rounded-full;
   }
@@ -264,14 +294,149 @@ body {
   .timeline-dot-slate {
     @apply bg-slate;
   }
+  .timeline-dot-primary {
+    @apply bg-primary;
+  }
 
-  /* The one bold, non-"safe" move — a rotated ink-stamp mark for the single
-     most ceremonial state in a ledger app (the month is closed and
-     verified). Meant to be used once per screen, never as a repeated icon. */
   .stamp-mark {
     transform: rotate(-9deg);
     opacity: 0.88;
-    filter: drop-shadow(0 1px 0 rgba(20, 122, 78, 0.12));
+    filter: drop-shadow(0 1px 0 rgba(108, 92, 231, 0.15));
+  }
+
+  /* ---------- new primitives for the rail + topbar shell ---------- */
+
+  /* Collapsed icon rail that expands to show labels on hover — the
+     reference's left-side nav, replacing the old top nav row entirely on
+     md+ screens. Below md, RailNav isn't rendered at all; MobileNav (the
+     existing hamburger panel) covers phones instead, since a hover-expand
+     rail has no equivalent on a touch device. */
+  .rail {
+    @apply sticky top-0 flex h-screen w-[76px] shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 p-3.5 transition-[width] duration-200 ease-out;
+  }
+  .rail:hover {
+    @apply w-[248px];
+  }
+  .rail-group-label {
+    @apply overflow-hidden px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim/70 opacity-0 transition-opacity first:pt-1;
+  }
+  .rail:hover .rail-group-label {
+    @apply opacity-100;
+  }
+  .rail-item {
+    @apply mb-0.5 flex w-full items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
+  }
+  .rail-item.active {
+    @apply bg-paper text-white hover:bg-paper hover:text-white;
+  }
+  .rail-item svg {
+    @apply h-[18px] w-[18px] shrink-0;
+  }
+  .rail-item .lbl {
+    @apply overflow-hidden whitespace-nowrap opacity-0 transition-opacity;
+  }
+  .rail:hover .rail-item .lbl {
+    @apply opacity-100;
+  }
+  .rail-item .badge {
+    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary opacity-0 transition-opacity;
+  }
+  .rail:hover .rail-item .badge {
+    @apply opacity-100;
+  }
+  .rail-item.active .badge {
+    @apply bg-white/15 text-white;
+  }
+  .rail-item.logout {
+    @apply text-clay-bright hover:bg-clay/10;
+  }
+
+  /* Topbar icon buttons (search trigger, notification bell, help) + the
+     dropdown panels they open (notification list, help menu, profile menu,
+     period pickers) — all share one popover treatment. */
+  .icon-btn {
+    @apply relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink-800 bg-ink-900 text-paper transition-colors hover:bg-ink-850;
+  }
+  .icon-btn .dot {
+    @apply absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-ink-900 bg-clay;
+  }
+  .dropdown-panel {
+    @apply absolute right-0 top-[calc(100%+8px)] z-50 min-w-[210px] rounded-xl border border-ink-800 bg-ink-900 p-1.5 shadow-2xl;
+  }
+  .dropdown-panel .hd {
+    @apply px-2.5 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim;
+  }
+  .dropdown-item {
+    @apply block w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
+  }
+  .dropdown-notif-item {
+    @apply rounded-lg px-2.5 py-2 transition-colors hover:bg-ink-850;
+  }
+
+  .range-pill {
+    @apply inline-flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
+  }
+
+  .mini-search {
+    @apply flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-sm text-paper-dim;
+  }
+
+  .segmented {
+    @apply inline-flex items-center gap-0.5 rounded-lg border border-ink-800 bg-ink-850 p-0.5;
+  }
+  .segmented-btn {
+    @apply rounded-md px-3.5 py-1.5 text-xs font-bold text-paper-dim transition-colors;
+  }
+  .segmented-btn.active {
+    @apply bg-ink-900 text-paper shadow-sm;
+  }
+
+  .region-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 py-1 pl-1.5 pr-2.5 text-xs font-bold text-paper;
+  }
+  .region-chip .swatch {
+    @apply h-3.5 w-3.5 shrink-0 rounded;
+  }
+
+  .live-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-primary-soft py-1 pl-1.5 pr-2.5 text-[10.5px] font-bold text-primary-deep;
+  }
+  .live-dot {
+    @apply h-1.5 w-1.5 shrink-0 rounded-full bg-primary;
+    animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot {
+      animation: none;
+    }
+  }
+
+  .status-dot {
+    @apply inline-block h-2 w-2 shrink-0 rounded-full;
+  }
+  .status-dot.pulse {
+    animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .status-dot.pulse {
+      animation: none;
+    }
+  }
+
+  .profile-grid {
+    @apply grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2;
+  }
+  .profile-field label {
+    @apply mb-1 block text-[11.5px] font-bold text-paper-dim;
   }
 }
 

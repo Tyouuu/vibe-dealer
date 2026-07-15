@@ -10,9 +10,9 @@ export default function DealersLoading() {
         <Bone className="h-5 w-20 rounded-full" />
       </div>
       <div className="mb-4 flex gap-3">
-        <Bone className="h-9 w-72 rounded-full" />
-        <Bone className="h-9 w-40 rounded-full" />
-        <Bone className="h-9 w-24 rounded-full" />
+        <Bone className="h-9 w-72 rounded-lg" />
+        <Bone className="h-9 w-40 rounded-lg" />
+        <Bone className="h-9 w-24 rounded-lg" />
       </div>
       <div className="flex flex-col gap-3">
         {Array.from({ length: 8 }).map((_, i) => (

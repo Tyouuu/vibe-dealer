@@ -1,11 +1,12 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { LogoutButton } from './logout-button'
-import { RealtimeRefresher } from './realtime-refresher'
-import { NavLinks } from './nav-links'
-import { LogoMark } from './icons'
+import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
+import { todayInMalaysia } from '@/lib/month'
+import { RailNav, type RailItem } from './rail-nav'
 import { CommandPalette } from './command-palette'
+import { TopbarMenus, type Notification } from './topbar-menus'
 import { MobileNav } from './mobile-nav'
+import { LogoMark } from './icons'
 
 const ROLE_LABEL = {
   master: 'Master',
@@ -13,60 +14,97 @@ const ROLE_LABEL = {
   cs: 'CS',
 } as const
 
-const NAV_ITEMS: { href: string; label: string; roles: Role[] }[] = [
-  { href: '/dashboard', label: 'Dashboard', roles: ['master'] },
-  { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'] },
-  { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'] },
-  { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'] },
-  { href: '/records', label: 'Transactions', roles: ['master', 'accountant'] },
-  { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'] },
-  { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'] },
-  { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'] },
-  { href: '/audit', label: 'Audit Log', roles: ['master'] },
+const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
+  { href: '/dashboard', label: 'Dashboard', roles: ['master'], group: 'Overview' },
+  { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Dealers' },
+  { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Dealers' },
+  { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Transactions' },
+  { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Transactions' },
+  { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },
+  { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
+  { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
+  { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Finance' },
 ]
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
-  const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
-
   const supabase = await createClient()
-  const { data: dealerRows } = await supabase.from('dealers').select('id, company_name').order('company_name')
+
+  const today = todayInMalaysia()
+  const monthStart = `${today.slice(0, 7)}-01`
+
+  const [{ data: dealerRows, count: dealerCount }, { data: pendingRows, count: pendingCount }, { data: statement }, activityMap] =
+    await Promise.all([
+      supabase.from('dealers').select('id, company_name', { count: 'exact' }).order('company_name'),
+      supabase.from('transactions').select('id, tx_date', { count: 'exact' }).eq('status', 'pending'),
+      supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
+      getDealerActivityMap(supabase),
+    ])
+
+  const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
+  const railItems: RailItem[] = navItems.map((item) => ({
+    href: item.href,
+    label: item.label,
+    group: item.group,
+    badge: item.href === '/dealers' ? (dealerCount ?? undefined) : item.href === '/records' ? (pendingCount ?? undefined) : undefined,
+  }))
+
+  // Notification bell content — every item here is derived from the same
+  // real queries the dashboard itself uses (pending review, inactive
+  // dealers, reconciliation status), just reshaped into a short "needs
+  // attention" list. Only master sees the reconciliation nudge here since
+  // only master/accountant can act on it and cs has no /reconcile access.
+  const notifications: Notification[] = []
+  if (pendingRows?.length) {
+    const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
+    notifications.push({
+      title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
+      subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
+    })
+  }
+  const mostInactive = [...activityMap.entries()]
+    .filter(([, a]) => a.isInactive)
+    .sort((a, b) => b[1].daysSinceLastActivity - a[1].daysSinceLastActivity)[0]
+  if (mostInactive) {
+    const dealerName = dealerRows?.find((d) => d.id === mostInactive[0])?.company_name ?? 'A dealer'
+    notifications.push({
+      title: `${dealerName} is inactive`,
+      subtitle: `No activity in ${mostInactive[1].daysSinceLastActivity} days`,
+    })
+  }
+  if ((user.role === 'master' || user.role === 'accountant') && !statement?.reconciled) {
+    notifications.push({
+      title: `${today.slice(0, 7)} statement not reconciled`,
+      subtitle: 'Enter the Vibe statement and mark it reconciled',
+    })
+  }
 
   return (
-    <div className="min-h-screen bg-ink-950 text-paper">
-      <header className="sticky top-0 z-10 border-b border-ink-800 bg-ink-950/90 backdrop-blur">
-        <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-7">
-          <div className="flex items-center gap-2.5">
-            <span style={{ filter: 'drop-shadow(0 4px 10px rgba(20, 122, 78, 0.3))' }}>
-              <LogoMark className="h-8 w-8" />
-            </span>
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-paper">DealerHub</div>
-              <div className="hidden text-[10px] font-medium tracking-wide text-paper-dim sm:block">Vibe Mobile · Master Ledger</div>
-            </div>
-          </div>
-          <div className="hidden md:block">
-            <NavLinks items={navItems} />
-          </div>
+    <div className="min-h-screen bg-ink-950 text-paper md:flex">
+      <div className="hidden md:block">
+        <RailNav items={railItems} />
+      </div>
+
+      <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
+          <LogoMark className="h-8 w-8 shrink-0" />
+          <span className="text-sm font-bold text-paper">DealerHub</span>
           <div className="flex-1" />
-          <div className="hidden md:block">
+          <MobileNav items={navItems} roleLabel={ROLE_LABEL[user.role]} email={user.email} notifications={notifications} />
+        </div>
+
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
+          <div className="hidden flex-1 sm:block">
             <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
           </div>
-          <div className="hidden md:block">
-            <RealtimeRefresher />
-          </div>
-          <span className="hidden rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-xs font-semibold text-paper-dim md:inline-flex">
-            {ROLE_LABEL[user.role]}
-          </span>
-          <span className="hidden text-xs text-paper-dim lg:inline">{user.email}</span>
-          <div className="hidden md:block">
-            <LogoutButton />
-          </div>
-          <MobileNav items={navItems} roleLabel={ROLE_LABEL[user.role]} email={user.email} />
-        </div>
-        <div className="h-px bg-gradient-to-r from-jade/50 via-ink-800 to-transparent" />
-      </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-7 sm:py-8">{children}</main>
+          <div className="flex-1 sm:hidden" />
+          <TopbarMenus notifications={notifications} userName={user.name ?? user.email ?? 'User'} roleLabel={ROLE_LABEL[user.role]} />
+        </header>
+
+        <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8">
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
+        </main>
+      </div>
     </div>
   )
 }

@@ -51,9 +51,14 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-bold text-paper">SIM Delivery</h1>
         <div className="flex items-center gap-3">
-          <a href={showAll ? '/delivery' : '/delivery?all=1'} className="text-xs font-semibold text-paper-dim hover:text-paper">
-            {showAll ? 'Show pending only' : 'Show all'}
-          </a>
+          <div className="segmented">
+            <a href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
+              Show pending only
+            </a>
+            <a href="/delivery?all=1" className={`segmented-btn ${showAll ? 'active' : ''}`}>
+              Show all
+            </a>
+          </div>
           <span className="pill pill-neutral">{typed.length} items</span>
         </div>
       </div>

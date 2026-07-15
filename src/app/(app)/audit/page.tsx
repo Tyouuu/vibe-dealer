@@ -113,170 +113,170 @@ export default async function AuditPage() {
 
   return (
     <div className="flex flex-col gap-5">
-    <div className="app-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-paper">Audit Log</h1>
-        <span className="pill pill-neutral">Last {txRows.length} transactions</span>
-      </div>
+      <div className="app-card">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-base font-bold text-paper">Audit Log</h1>
+          <span className="pill pill-neutral">Last {txRows.length} transactions</span>
+        </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="th">Time</th>
-              <th className="th">Dealer</th>
-              <th className="th">Type</th>
-              <th className="th text-right">In (RM)</th>
-              <th className="th text-right">Out (pts)</th>
-              <th className="th">Status</th>
-              <th className="th">Activity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {txRows.map((tx) => {
-              const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
-              return (
-                <tr key={tx.id} className="tr-row">
-                  <td className="td text-paper-dim">{formatDateTime(tx.created_at)}</td>
-                  <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                  <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
-                  <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
-                  <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                  <td className="td">
-                    <span
-                      className={
-                        tx.status === 'verified' ? 'pill pill-jade' : tx.status === 'flagged' ? 'pill pill-clay' : 'pill pill-brass'
-                      }
-                    >
-                      {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
-                    </span>
-                  </td>
-                  <td className="td">
-                    <div className="flex flex-col gap-0.5 text-xs text-paper-dim">
-                      <span>
-                        Recorded by <span className="font-semibold text-paper">{displayName(tx.recorded_by)}</span>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="th">Time</th>
+                <th className="th">Dealer</th>
+                <th className="th">Type</th>
+                <th className="th text-right">In (RM)</th>
+                <th className="th text-right">Out (pts)</th>
+                <th className="th">Status</th>
+                <th className="th">Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {txRows.map((tx) => {
+                const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
+                return (
+                  <tr key={tx.id} className="tr-row">
+                    <td className="td text-paper-dim">{formatDateTime(tx.created_at)}</td>
+                    <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
+                    <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                    <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                    <td className="td">
+                      <span
+                        className={
+                          tx.status === 'verified' ? 'pill pill-jade' : tx.status === 'flagged' ? 'pill pill-clay' : 'pill pill-brass'
+                        }
+                      >
+                        {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
                       </span>
-                      {tx.status === 'verified' && (
-                        <span className="text-jade-bright">
-                          Verified by <span className="font-semibold">{displayName(tx.verified_by)}</span>
+                    </td>
+                    <td className="td">
+                      <div className="flex flex-col gap-0.5 text-xs text-paper-dim">
+                        <span>
+                          Recorded by <span className="font-semibold text-paper">{displayName(tx.recorded_by)}</span>
                         </span>
-                      )}
-                      {tx.status === 'flagged' && (
-                        <span className="text-clay-bright">
-                          Flagged by <span className="font-semibold">{displayName(tx.verified_by)}</span>
-                        </span>
-                      )}
-                    </div>
+                        {tx.status === 'verified' && (
+                          <span className="text-jade-bright">
+                            Verified by <span className="font-semibold">{displayName(tx.verified_by)}</span>
+                          </span>
+                        )}
+                        {tx.status === 'flagged' && (
+                          <span className="text-clay-bright">
+                            Flagged by <span className="font-semibold">{displayName(tx.verified_by)}</span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              {!txRows.length && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
+                    No transactions recorded yet.
                   </td>
                 </tr>
-              )
-            })}
-            {!txRows.length && (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
-                  No transactions recorded yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
-    <div className="app-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-paper">Reconciliation Activity</h2>
-        <span className="pill pill-neutral">Last {revisions.length} saves</span>
-      </div>
-      <p className="note-strip">
-        Every save to a month&apos;s Vibe statement is logged here — company_statements only keeps the latest
-        value, this is the history behind it.
-      </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="th">Time</th>
-              <th className="th">Month</th>
-              <th className="th text-right">Vibe Top-up (pts)</th>
-              <th className="th text-right">Vibe Profit (RM)</th>
-              <th className="th">Saved by</th>
-              <th className="th">Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {revisions.map((rev) => (
-              <tr key={rev.id} className="tr-row">
-                <td className="td text-paper-dim">{formatDateTime(rev.created_at)}</td>
-                <td className="td font-semibold text-paper">{rev.month.slice(0, 7)}</td>
-                <td className="td figure-points text-right">
-                  {rev.company_total_points != null ? rev.company_total_points.toLocaleString() : '—'}
-                </td>
-                <td className="td figure-money text-right">
-                  {rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—'}
-                </td>
-                <td className="td text-paper">{displayName(rev.recorded_by)}</td>
-                <td className="td text-paper-dim">{rev.note ?? '—'}</td>
-              </tr>
-            ))}
-            {!revisions.length && (
+      <div className="app-card">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-paper">Reconciliation Activity</h2>
+          <span className="pill pill-neutral">Last {revisions.length} saves</span>
+        </div>
+        <p className="note-strip">
+          Every save to a month&apos;s Vibe statement is logged here — company_statements only keeps the latest
+          value, this is the history behind it.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
-                  No reconciliation saves logged yet.
-                </td>
+                <th className="th">Time</th>
+                <th className="th">Month</th>
+                <th className="th text-right">Vibe Top-up (pts)</th>
+                <th className="th text-right">Vibe Profit (RM)</th>
+                <th className="th">Saved by</th>
+                <th className="th">Note</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div className="app-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-paper">Dealer Rate Changes</h2>
-        <span className="pill pill-neutral">Last {rateHistory.length} changes</span>
-      </div>
-      <p className="note-strip">
-        Every time recomputeDealerRate changes a dealer&apos;s package/rate, the before/after snapshot is logged
-        here — dealers only keeps the current value, this is the history behind it.
-      </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="th">Time</th>
-              <th className="th">Dealer</th>
-              <th className="th">Before</th>
-              <th className="th">After</th>
-              <th className="th">Changed by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rateHistory.map((rh) => {
-              const dealerName = Array.isArray(rh.dealers) ? rh.dealers[0]?.company_name : rh.dealers?.company_name
-              const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : '—'
-              const after = rh.new_package ? `${rh.new_package} · ${rh.new_rate}%` : '—'
-              return (
-                <tr key={rh.id} className="tr-row">
-                  <td className="td text-paper-dim">{formatDateTime(rh.created_at)}</td>
-                  <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                  <td className="td text-paper-dim">{before}</td>
-                  <td className="td text-paper">{after}</td>
-                  <td className="td text-paper-dim">{displayName(rh.changed_by)}</td>
+            </thead>
+            <tbody>
+              {revisions.map((rev) => (
+                <tr key={rev.id} className="tr-row">
+                  <td className="td text-paper-dim">{formatDateTime(rev.created_at)}</td>
+                  <td className="td font-semibold text-paper">{rev.month.slice(0, 7)}</td>
+                  <td className="td figure-points text-right">
+                    {rev.company_total_points != null ? rev.company_total_points.toLocaleString() : '—'}
+                  </td>
+                  <td className="td figure-money text-right">
+                    {rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—'}
+                  </td>
+                  <td className="td text-paper">{displayName(rev.recorded_by)}</td>
+                  <td className="td text-paper-dim">{rev.note ?? '—'}</td>
                 </tr>
-              )
-            })}
-            {!rateHistory.length && (
-              <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
-                  No dealer rate changes logged yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+              {!revisions.length && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
+                    No reconciliation saves logged yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <div className="app-card">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-paper">Dealer Rate Changes</h2>
+          <span className="pill pill-neutral">Last {rateHistory.length} changes</span>
+        </div>
+        <p className="note-strip">
+          Every time recomputeDealerRate changes a dealer&apos;s package/rate, the before/after snapshot is logged
+          here — dealers only keeps the current value, this is the history behind it.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="th">Time</th>
+                <th className="th">Dealer</th>
+                <th className="th">Before</th>
+                <th className="th">After</th>
+                <th className="th">Changed by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rateHistory.map((rh) => {
+                const dealerName = Array.isArray(rh.dealers) ? rh.dealers[0]?.company_name : rh.dealers?.company_name
+                const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : '—'
+                const after = rh.new_package ? `${rh.new_package} · ${rh.new_rate}%` : '—'
+                return (
+                  <tr key={rh.id} className="tr-row">
+                    <td className="td text-paper-dim">{formatDateTime(rh.created_at)}</td>
+                    <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
+                    <td className="td text-paper-dim">{before}</td>
+                    <td className="td text-paper">{after}</td>
+                    <td className="td text-paper-dim">{displayName(rh.changed_by)}</td>
+                  </tr>
+                )
+              })}
+              {!rateHistory.length && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
+                    No rate changes logged yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

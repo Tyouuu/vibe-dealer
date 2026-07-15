@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle, IconSearch } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -80,13 +80,16 @@ export default async function DealersPage({ searchParams }: PageProps) {
       </div>
 
       <form className="mb-4 flex flex-wrap gap-3" action="/dealers" method="GET">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Search company / region / contact"
-          className="field-input w-72 max-w-full"
-        />
+        <label className="mini-search w-72 max-w-full transition-colors focus-within:border-primary">
+          <IconSearch className="h-4 w-4 shrink-0" />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search company / region / contact"
+            className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
+          />
+        </label>
         <select name="region" defaultValue={region} className="field-input w-auto">
           <option value="all">All Regions</option>
           {regions.map((r) => (

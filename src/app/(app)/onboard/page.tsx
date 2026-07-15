@@ -42,11 +42,22 @@ export default async function OnboardPage({ searchParams }: PageProps) {
         {error && <div className="alert alert-bad">{error}</div>}
 
         <form action={createDealer} className="flex flex-col gap-3.5">
+          <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-paper-dim first:mt-0">
+            Company Details
+          </h3>
           <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" />
           <Field label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
+
+          <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-paper-dim first:mt-0">
+            Contact Info
+          </h3>
           <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
           <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
           <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
+
+          <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-paper-dim first:mt-0">
+            Region &amp; Package
+          </h3>
           <div>
             <label className="field-label">Region</label>
             <input list="regions" name="region" placeholder="Select or type a region" className="field-input" />

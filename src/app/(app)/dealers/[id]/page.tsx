@@ -196,17 +196,30 @@ export default async function DealerDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 text-sm sm:grid-cols-2">
-            <Field label="Contact Person" value={typedDealer.contact_person} />
-            <Field label="Phone" value={typedDealer.phone} />
-            <Field label="Email" value={typedDealer.email} />
-            <Field label="Region" value={typedDealer.region} />
-            <div className="sm:col-span-2">
-              <Field label="Address" value={typedDealer.address} />
+          <div className="profile-grid text-sm">
+            <div className="profile-field">
+              <label>Contact Person</label>
+              <div>{typedDealer.contact_person ?? '—'}</div>
             </div>
-            <div>
-              <div className="text-xs text-paper-dim">Package / Rate</div>
-              <div className="mt-1">
+            <div className="profile-field">
+              <label>Phone</label>
+              <div>{typedDealer.phone ?? '—'}</div>
+            </div>
+            <div className="profile-field">
+              <label>Email</label>
+              <div>{typedDealer.email ?? '—'}</div>
+            </div>
+            <div className="profile-field">
+              <label>Region</label>
+              <div>{typedDealer.region ?? '—'}</div>
+            </div>
+            <div className="profile-field sm:col-span-2">
+              <label>Address</label>
+              <div>{typedDealer.address ?? '—'}</div>
+            </div>
+            <div className="profile-field">
+              <label>Package / Rate</label>
+              <div>
                 {typedDealer.package ? (
                   <span className={`pill ${PACKAGE_STYLE[typedDealer.package]}`}>
                     {typedDealer.package} · {typedDealer.rate}%
@@ -414,15 +427,6 @@ export default async function DealerDetailPage({ params }: PageProps) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <div className="text-xs text-paper-dim">{label}</div>
-      <div className="mt-1 text-paper">{value ?? '—'}</div>
     </div>
   )
 }

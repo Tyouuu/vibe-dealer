@@ -8,7 +8,7 @@ const base = 'h-5 w-5'
 export function LogoMark({ className = 'h-8 w-8' }: IconProps) {
   return (
     <svg viewBox="0 0 32 32" fill="none" className={className}>
-      <circle cx="16" cy="16" r="16" fill="var(--color-jade)" />
+      <circle cx="16" cy="16" r="16" fill="var(--color-primary)" />
       <line
         x1="16"
         y1="7.5"
@@ -150,6 +150,52 @@ export function IconTag({ className = th }: IconProps) {
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M11 3.5h4.5V8L7 16.5l-4.5-4.5L11 3.5z" />
       <circle cx="13" cy="6" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function IconBell({ className = 'h-[17px] w-[17px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 7.5a5 5 0 0 1 10 0c0 5.8 2.5 7.5 2.5 7.5H2.5s2.5-1.7 2.5-7.5Z" />
+      <path d="M11.4 17.5a1.7 1.7 0 0 1-2.8 0" />
+    </svg>
+  )
+}
+
+export function IconHelp({ className = 'h-[17px] w-[17px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="10" cy="10" r="8.3" />
+      <path d="M7.6 7.5a2.5 2.5 0 0 1 4.8.83c0 1.67-2.5 1.67-2.5 3.34" />
+      <path d="M10 14.2h.01" />
+    </svg>
+  )
+}
+
+export function IconChevronDown({ className = 'h-3.5 w-3.5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m5 8 5 5 5-5" />
+    </svg>
+  )
+}
+
+export function IconSearch({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="9" cy="9" r="6.5" />
+      <path d="m18 18-3.6-3.6" />
+    </svg>
+  )
+}
+
+export function IconLogout({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M7.5 17.5h-3a1.7 1.7 0 0 1-1.7-1.7v-11.6a1.7 1.7 0 0 1 1.7-1.7h3" />
+      <path d="M13.3 14.2 17.5 10l-4.2-4.2" />
+      <path d="M17.5 10h-10" />
     </svg>
   )
 }

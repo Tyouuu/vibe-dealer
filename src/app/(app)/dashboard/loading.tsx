@@ -45,7 +45,22 @@ export default function DashboardLoading() {
 
       <div className="app-card">
         <Bone className="mb-4 h-4 w-44" />
+        <Bone className="mb-3.5 h-9 w-64" />
+        <Bone className="h-40 w-full" />
+      </div>
+
+      <div className="app-card">
+        <Bone className="mb-4 h-4 w-44" />
         <Bone className="h-44 w-full" />
+      </div>
+
+      <div className="app-card">
+        <Bone className="mb-4 h-4 w-40" />
+        <div className="flex flex-wrap gap-2.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Bone key={i} className="h-7 w-24 rounded-full" />
+          ))}
+        </div>
       </div>
     </div>
   )

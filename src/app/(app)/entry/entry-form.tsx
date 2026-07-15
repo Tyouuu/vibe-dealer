@@ -82,117 +82,136 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
 
         {error && <div className="alert alert-bad">{error}</div>}
 
-        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-          <div>
-            <label className="field-label">Dealer</label>
-            <select
-              name="dealer_id"
-              value={dealerId}
-              onChange={(e) => setDealerId(e.target.value)}
-              required
-              className="field-input"
-            >
-              <option value="">Select a dealer…</option>
-              {dealers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.company_name}
-                  {d.package ? ` (current ${d.package}·${d.rate}%)` : ' (no package set)'}
-                </option>
-              ))}
-            </select>
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3.5">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-paper-dim">Dealer &amp; Type</h3>
+            <div>
+              <label className="field-label">Dealer</label>
+              <select
+                name="dealer_id"
+                value={dealerId}
+                onChange={(e) => setDealerId(e.target.value)}
+                required
+                className="field-input"
+              >
+                <option value="">Select a dealer…</option>
+                {dealers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.company_name}
+                    {d.package ? ` (current ${d.package}·${d.rate}%)` : ' (no package set)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="field-label">Type</label>
+              <select
+                name="type"
+                value={type}
+                onChange={(e) => setType(e.target.value as 'topup' | 'package')}
+                className="field-input"
+              >
+                <option value="topup">Regular Top-up</option>
+                <option value="package">Buy Package (updates rate)</option>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="field-label">Type</label>
-            <select
-              name="type"
-              value={type}
-              onChange={(e) => setType(e.target.value as 'topup' | 'package')}
-              className="field-input"
-            >
-              <option value="topup">Regular Top-up</option>
-              <option value="package">Buy Package (updates rate)</option>
-            </select>
+          <div className="flex flex-col gap-3.5 border-t border-ink-800 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-paper-dim">
+              {type === 'package' ? 'Package Details' : 'Top-up Details'}
+            </h3>
+            {type === 'package' ? (
+              <>
+                <div>
+                  <label className="field-label">Package</label>
+                  <select name="package" value={pkg} onChange={(e) => setPkg(e.target.value as PackageCode)} className="field-input">
+                    {(Object.keys(PACKAGES) as PackageCode[]).map((code) => (
+                      <option key={code} value={code}>
+                        {PACKAGES[code].name} · RM{PACKAGES[code].price} · {PACKAGES[code].rate}%
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">SIM Type</label>
+                  <select name="sim_type" defaultValue="esim" className="field-input">
+                    <option value="esim">eSIM (instant)</option>
+                    <option value="physical">Physical SIM (needs delivery)</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="field-label">Top-up Value (points)</label>
+                  <input
+                    name="points"
+                    type="number"
+                    min="1"
+                    value={points}
+                    onChange={(e) => setPoints(e.target.value)}
+                    placeholder="e.g. 850"
+                    required
+                    className="field-input"
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Amount Collected (RM)</label>
+                  <input
+                    name="money_rm"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={moneyOverride}
+                    onChange={(e) => setMoneyOverride(e.target.value)}
+                    placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
+                    className="field-input"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          {type === 'package' ? (
-            <>
-              <div>
-                <label className="field-label">Package</label>
-                <select name="package" value={pkg} onChange={(e) => setPkg(e.target.value as PackageCode)} className="field-input">
-                  {(Object.keys(PACKAGES) as PackageCode[]).map((code) => (
-                    <option key={code} value={code}>
-                      {PACKAGES[code].name} · RM{PACKAGES[code].price} · {PACKAGES[code].rate}%
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="field-label">SIM Type</label>
-                <select name="sim_type" defaultValue="esim" className="field-input">
-                  <option value="esim">eSIM (instant)</option>
-                  <option value="physical">Physical SIM (needs delivery)</option>
-                </select>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <label className="field-label">Top-up Value (points)</label>
-                <input
-                  name="points"
-                  type="number"
-                  min="1"
-                  value={points}
-                  onChange={(e) => setPoints(e.target.value)}
-                  placeholder="e.g. 850"
-                  required
-                  className="field-input"
-                />
-              </div>
-              <div>
-                <label className="field-label">Amount Collected (RM)</label>
-                <input
-                  name="money_rm"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={moneyOverride}
-                  onChange={(e) => setMoneyOverride(e.target.value)}
-                  placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
-                  className="field-input"
-                />
-              </div>
-            </>
-          )}
+          <div className="flex flex-col gap-3.5 border-t border-ink-800 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-paper-dim">Attachments &amp; Notes</h3>
+            <div>
+              <label className="field-label">Receipt (optional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                className="field-input text-xs file:mr-3 file:rounded file:border-0 file:bg-ink-700 file:px-2.5 file:py-1 file:text-xs file:text-paper"
+              />
+            </div>
 
-          <div>
-            <label className="field-label">Receipt (optional)</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-              className="field-input text-xs file:mr-3 file:rounded file:border-0 file:bg-ink-700 file:px-2.5 file:py-1 file:text-xs file:text-paper"
-            />
+            <div>
+              <label className="field-label">Note (optional)</label>
+              <input name="note" type="text" className="field-input" />
+            </div>
           </div>
 
-          <div>
-            <label className="field-label">Note (optional)</label>
-            <input name="note" type="text" className="field-input" />
+          <div className="flex flex-col gap-3.5 border-t border-ink-800 pt-4">
+            <button type="submit" disabled={uploading || submitting} className="btn-primary">
+              {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
+            </button>
+            <p className="note-strip mt-0">
+              Buying a package automatically updates the dealer&apos;s rate (follows the latest package); a regular
+              top-up uses their current rate to calculate your 2%.
+            </p>
           </div>
-
-          <button type="submit" disabled={uploading || submitting} className="btn-primary mt-2">
-            {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
-          </button>
-          <p className="note-strip">
-            Buying a package automatically updates the dealer&apos;s rate (follows the latest package); a regular
-            top-up uses their current rate to calculate your 2%.
-          </p>
         </form>
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3 text-sm font-bold text-paper">Auto-calculated for you</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-paper">Auto-calculated for you</h3>
+          <span className="live-badge">
+            <span className="live-dot" />
+            Live
+          </span>
+        </div>
         {preview ? (
           <div className="flex flex-col text-sm">
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />

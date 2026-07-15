@@ -23,3 +23,17 @@ export function yesterdayInMalaysia(): string {
 export function currentMonth() {
   return todayInMalaysia().slice(0, 7)
 }
+
+export function formatMonthLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString('en-MY', { year: 'numeric', month: 'long' })
+}
+
+export function formatDateLabel(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00Z').toLocaleString('en-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}

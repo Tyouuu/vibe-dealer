@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, currentMonth } from '@/lib/month'
+import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle } from '../icons'
 
 export const metadata: Metadata = {
@@ -43,12 +43,19 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   const breakdown = [...byDealer.values()].sort((a, b) => b.points - a.points)
   const totalPoints = breakdown.reduce((s, d) => s + d.points, 0)
+  const totalMoney = breakdown.reduce((s, d) => s + d.money, 0)
   const totalCommission = breakdown.reduce((s, d) => s + d.commission, 0)
+  const maxMoney = Math.max(...breakdown.map((d) => d.money), 0)
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="app-card border-t-[3px] border-t-primary">
+        <h1 className="text-2xl font-bold text-paper">Monthly Report</h1>
+        <p className="mt-1 text-[11.5px] font-bold uppercase tracking-wide text-paper-dim">
+          Generated {formatDateLabel(todayInMalaysia())} · Period: {formatMonthLabel(month)}
+        </p>
+
+        <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
           <form className="flex items-center gap-3" action="/reports" method="GET">
             <input type="month" name="month" defaultValue={month} className="field-input w-auto" />
             <button type="submit" className="btn-primary">
@@ -60,48 +67,44 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </a>
         </div>
 
-        <div className="docket-hero">
-          <div className="docket-half">
+        <div className="grid grid-cols-2 divide-x divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 shadow-sm sm:grid-cols-4 sm:divide-y-0">
+          <div className="p-4 sm:p-5">
             <div className="docket-half-label">
               <span className="icon-badge icon-badge-jade h-7 w-7">
                 <IconTrendUp className="h-4 w-4" />
               </span>
-              This Month&apos;s Total Top-up
+              Total Top-up
             </div>
-            <div className="figure-points mt-2 text-3xl font-semibold">
-              {totalPoints.toLocaleString()} <span className="text-sm font-semibold text-paper-dim">pts</span>
+            <div className="figure-points mt-2 text-2xl font-semibold">
+              {totalPoints.toLocaleString()} <span className="text-xs font-semibold text-paper-dim">pts</span>
             </div>
           </div>
-          <div className="docket-perforation" aria-hidden="true" />
-          <div className="docket-half">
+          <div className="p-4 sm:p-5">
             <div className="docket-half-label">
               <span className="icon-badge icon-badge-brass h-7 w-7">
                 <IconCoin className="h-4 w-4" />
               </span>
               Your 2%
             </div>
-            <div className="money-chip mt-2.5 text-2xl">RM {totalCommission.toLocaleString()}</div>
+            <div className="figure-money mt-2 text-2xl font-semibold">RM {totalCommission.toLocaleString()}</div>
           </div>
-        </div>
-
-        <div className="mt-3.5 grid grid-cols-2 gap-3.5">
-          <div className="app-tile flex items-center gap-3">
-            <span className="icon-badge icon-badge-slate">
-              <IconCheckCircle />
-            </span>
-            <div>
-              <div className="text-xs font-semibold text-paper-dim">Transactions</div>
-              <div className="mt-0.5 text-lg font-bold text-paper">{rows?.length ?? 0}</div>
+          <div className="p-4 sm:p-5">
+            <div className="docket-half-label">
+              <span className="icon-badge icon-badge-slate h-7 w-7">
+                <IconCheckCircle className="h-4 w-4" />
+              </span>
+              Transactions
             </div>
+            <div className="mt-2 text-2xl font-semibold text-paper">{rows?.length ?? 0}</div>
           </div>
-          <div className="app-tile flex items-center gap-3">
-            <span className="icon-badge icon-badge-slate">
-              <IconUsers />
-            </span>
-            <div>
-              <div className="text-xs font-semibold text-paper-dim">Active Dealers</div>
-              <div className="mt-0.5 text-lg font-bold text-paper">{breakdown.length}</div>
+          <div className="p-4 sm:p-5">
+            <div className="docket-half-label">
+              <span className="icon-badge icon-badge-slate h-7 w-7">
+                <IconUsers className="h-4 w-4" />
+              </span>
+              Active Dealers
             </div>
+            <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
           </div>
         </div>
       </div>
@@ -120,15 +123,30 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </tr>
             </thead>
             <tbody>
-              {breakdown.map((d, i) => (
-                <tr key={d.name + i} className="tr-row">
-                  <td className="td text-paper-dim">{i + 1}</td>
-                  <td className="td font-semibold text-paper">{d.name}</td>
-                  <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
-                  <td className="td figure text-right text-paper-dim">RM {d.money.toLocaleString()}</td>
-                  <td className="td figure-money text-right">RM {d.commission.toLocaleString()}</td>
+              {breakdown.map((d, i) => {
+                const pct = maxMoney > 0 ? Math.round((d.money / maxMoney) * 100) : 0
+                return (
+                  <tr key={d.name + i} className="tr-row">
+                    <td className="td text-paper-dim">{i + 1}</td>
+                    <td className="td font-semibold text-paper">{d.name}</td>
+                    <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
+                    <td className="td figure relative text-right text-paper-dim">
+                      <span className="absolute -left-1.5 bottom-[3px] top-[3px] rounded-md bg-primary-soft" style={{ width: `${pct}%` }} />
+                      <span className="relative">RM {d.money.toLocaleString()}</span>
+                    </td>
+                    <td className="td figure-money text-right">RM {d.commission.toLocaleString()}</td>
+                  </tr>
+                )
+              })}
+              {breakdown.length > 0 && (
+                <tr className="border-t-2 border-paper bg-ink-850/60 font-extrabold">
+                  <td className="td" />
+                  <td className="td text-paper">Total</td>
+                  <td className="td figure-points text-right">{totalPoints.toLocaleString()} pts</td>
+                  <td className="td figure text-right text-paper">RM {totalMoney.toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {totalCommission.toLocaleString()}</td>
                 </tr>
-              ))}
+              )}
               {!breakdown.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">

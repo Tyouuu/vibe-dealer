@@ -1,12 +1,9 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getYesterdaySummary } from '@/lib/reports/daily-summary'
 import { todayInMalaysia } from '@/lib/month'
-import { getDealerActivityMap, INACTIVE_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS, daysSince } from '@/lib/dealer-activity'
-import { PackageDistributionDonut, type PackageSegment } from './package-distribution-bar'
+import { DELIVERY_STALLED_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS, daysSince } from '@/lib/dealer-activity'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
-import { RankingView } from './ranking-view'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle, ReconciledStamp } from '../icons'
 
@@ -58,8 +55,6 @@ export default async function DashboardPage() {
     { data: deliveryPendingRows },
     { data: currentStatement },
     { data: recentTxRows },
-    yesterdaySummary,
-    activityMap,
   ] = await Promise.all([
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
     // "last month end" baseline for the Total Dealers chg badge — dealers
@@ -81,8 +76,6 @@ export default async function DashboardPage() {
       .select('id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
       .order('created_at', { ascending: false })
       .limit(10),
-    getYesterdaySummary(supabase),
-    getDealerActivityMap(supabase),
   ])
 
   // trendTx already covers the whole 6-month window (which fully contains the
@@ -104,44 +97,6 @@ export default async function DashboardPage() {
   const pointsChg = pctChange(totalPoints, prevMonthPoints)
   const commissionChg = pctChange(totalCommission, prevMonthCommission)
   const dealerChg = pctChange(dealerCount ?? 0, dealerCountLastMonth ?? 0)
-
-  const byDealer = new Map<string, { name: string; points: number }>()
-  for (const t of monthTx) {
-    const rel = t.dealers as { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null
-    const name = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
-    const prev = byDealer.get(t.dealer_id) ?? { name, points: 0 }
-    prev.points += Number(t.points)
-    byDealer.set(t.dealer_id, prev)
-  }
-  const ranking = [...byDealer.values()].sort((a, b) => b.points - a.points).slice(0, 10)
-
-  const pkgCounts = { A: 0, B: 0, C: 0, none: 0 }
-  for (const row of dealerRows ?? []) {
-    const pkg = row.package as 'A' | 'B' | 'C' | null
-    if (pkg === 'A' || pkg === 'B' || pkg === 'C') pkgCounts[pkg]++
-    else pkgCounts.none++
-  }
-  // jade-chart/brass-chart/slate (not the -bright text tokens) — validated
-  // for use as adjacent chart-mark fills, see globals.css. Each tier gets
-  // its own hue (blue/green/gold) rather than sharing gray, so the ring
-  // reads as colorful at a glance instead of "mostly neutral, one accent."
-  const packageSegments: PackageSegment[] = [
-    { key: 'A', label: 'Package A · 7%', count: pkgCounts.A, colorClass: 'bg-slate', stroke: 'var(--color-slate)' },
-    { key: 'B', label: 'Package B · 7.5%', count: pkgCounts.B, colorClass: 'bg-jade-chart', stroke: 'var(--color-jade-chart)' },
-    { key: 'C', label: 'Package C · 8%', count: pkgCounts.C, colorClass: 'bg-brass-chart', stroke: 'var(--color-brass-chart)' },
-    { key: 'none', label: 'Not Set', count: pkgCounts.none, colorClass: 'bg-ink-700', stroke: 'var(--color-ink-700)' },
-  ]
-
-  const inactiveDealers = (dealerRows ?? [])
-    .map((d) => {
-      const activity = activityMap.get(d.id)
-      return activity?.isInactive
-        ? { id: d.id, name: d.company_name, daysSinceLastActivity: activity.daysSinceLastActivity }
-        : null
-    })
-    .filter((d): d is { id: string; name: string; daysSinceLastActivity: number } => d !== null)
-    .sort((a, b) => b.daysSinceLastActivity - a.daysSinceLastActivity)
-    .slice(0, 10)
 
   // Monthly trend, split by region — bucket every verified tx into its month
   // + dealer region, defaulting every (month, region) pair to 0 so the chart
@@ -233,7 +188,7 @@ export default async function DashboardPage() {
             </span>
             Your Commission (2%)
           </div>
-          <div className="money-chip mt-3 text-4xl">RM {totalCommission.toLocaleString()}</div>
+          <div className="figure-money mt-2.5 text-5xl font-semibold">RM {totalCommission.toLocaleString()}</div>
           <ChgBadge pct={commissionChg} className="mt-2.5" />
         </a>
       </div>
@@ -288,36 +243,6 @@ export default async function DashboardPage() {
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Yesterday&apos;s Summary — {yesterdaySummary.date}</h3>
-        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
-              <span className="timeline-dot timeline-dot-jade" />
-              Yesterday&apos;s Total
-            </div>
-            <div className="figure-points mt-1 text-lg">{yesterdaySummary.points.toLocaleString()} pts</div>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
-              <span className="timeline-dot timeline-dot-brass" />
-              Your 2%
-            </div>
-            <div className="figure-money mt-1 text-lg">RM {yesterdaySummary.commission.toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-paper-dim">
-              <span className="timeline-dot timeline-dot-slate" />
-              Most Active Dealer
-            </div>
-            <div className="mt-1 text-lg font-bold text-paper">
-              {yesterdaySummary.mostActiveDealer ? yesterdaySummary.mostActiveDealer.name : '—'}
-            </div>
-          </div>
-        </div>
-        <p className="note-strip">This same summary is emailed to all masters every morning at 8am (Malaysia time).</p>
-      </div>
-
-      <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
@@ -344,53 +269,6 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Dealer Ranking — This Month&apos;s Top-up</h3>
-          {ranking.length ? (
-            <RankingView items={ranking} />
-          ) : (
-            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
-          )}
-        </div>
-
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Package Distribution</h3>
-          <PackageDistributionDonut segments={packageSegments} total={dealerCount ?? 0} />
-        </div>
-      </div>
-
-      <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Inactive Dealers — {INACTIVE_DAYS_THRESHOLD}+ days</h3>
-        {inactiveDealers.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="th">Dealer</th>
-                  <th className="th text-right">Days Since Last Activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inactiveDealers.map((d) => (
-                  <tr key={d.id} className="tr-row">
-                    <td className="td">
-                      <a href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
-                        {d.name}
-                      </a>
-                    </td>
-                    <td className="td text-right">
-                      <span className="pill pill-clay">{d.daysSinceLastActivity} days</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-paper-dim">No inactive dealers right now — everyone&apos;s been active recently.</p>
-        )}
-      </div>
     </div>
   )
 }

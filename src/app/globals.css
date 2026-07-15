@@ -491,6 +491,17 @@ body {
     @apply inline-flex items-center gap-2 text-xs font-bold;
   }
 
+  /* Row-level urgency accent for queues where "how long has this been
+     waiting" matters (SIM delivery). Softer amber first, red once it's
+     crossed the stalled threshold — mirrors the approved design's
+     tr.warn/tr.urgent inset accent. */
+  .tr-warn {
+    box-shadow: inset 3px 0 0 0 var(--color-brass-bright);
+  }
+  .tr-urgent {
+    box-shadow: inset 3px 0 0 0 var(--color-clay-bright);
+  }
+
   .profile-grid {
     @apply grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2;
   }

@@ -8,6 +8,7 @@ import { todayInMalaysia } from '@/lib/month'
 // engine for this.
 export const INACTIVE_DAYS_THRESHOLD = 30
 export const INACTIVE_SEVERE_DAYS_THRESHOLD = 60
+export const DELIVERY_WARN_DAYS_THRESHOLD = 1
 export const DELIVERY_STALLED_DAYS_THRESHOLD = 5
 export const PENDING_REVIEW_STALE_DAYS = 2
 

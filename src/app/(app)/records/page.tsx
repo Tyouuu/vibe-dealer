@@ -7,6 +7,7 @@ import { verifyTransaction, flagTransaction } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { IconSearch } from '../icons'
 import { avatarColor } from '@/lib/avatar'
+import { StatusDot } from '../status-dot'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -210,13 +211,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
                   <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
                   <td className="td">
-                    <span className="status-dot-row" style={{ color: `var(--color-${statusColor})` }}>
-                      <span
-                        className={`status-dot ${tx.status === 'pending' ? 'pulse' : ''}`}
-                        style={{ background: `var(--color-${statusColor})` }}
-                      />
-                      {statusLabel}
-                    </span>
+                    <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
                   </td>
                   <td className="td">
                     {tx.status === 'pending' ? (

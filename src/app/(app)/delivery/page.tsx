@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { daysSince, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
+import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { markDelivered } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
+import { IconInfo } from '../icons'
+import { StatusDot } from '../status-dot'
 
 export const metadata: Metadata = {
   title: 'SIM Delivery — DealerHub',
@@ -62,10 +64,13 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
           <span className="pill pill-neutral">{typed.length} items</span>
         </div>
       </div>
-      <p className="mb-4 rounded-md bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim">
-        Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
-        delivery needed.
-      </p>
+      <div className="info-strip">
+        <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
+        <span>
+          Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
+          delivery needed.
+        </span>
+      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
@@ -80,49 +85,51 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {typed.map((row) => (
-              <tr key={row.id} className="tr-row">
-                <td className="td text-paper-dim">{row.tx_date}</td>
-                <td className="td font-semibold text-paper">{row.company_name}</td>
-                <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
-                <td className="td">
-                  {row.sim_type === 'esim' ? (
-                    <span className="pill pill-slate">eSIM</span>
-                  ) : (
-                    <span className="text-paper-dim">Physical SIM</span>
-                  )}
-                </td>
-                <td className="td">
-                  {row.delivery_status === 'sent' ? (
-                    <span className="pill pill-jade">Sent</span>
-                  ) : row.delivery_status === 'pending' ? (
-                    (() => {
-                      const days = daysSince(row.tx_date)
-                      const stalled = days >= DELIVERY_STALLED_DAYS_THRESHOLD
-                      return stalled ? (
-                        <span className="pill pill-clay">Pending · {days}d</span>
-                      ) : (
-                        <span className="pill pill-brass">Pending</span>
-                      )
-                    })()
-                  ) : (
-                    <span className="pill pill-slate">Instant</span>
-                  )}
-                </td>
-                <td className="td">
-                  {row.delivery_status === 'pending' ? (
-                    <form action={markDelivered}>
-                      <input type="hidden" name="id" value={row.id} />
-                      <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
-                        Mark as Sent
-                      </ConfirmSubmitButton>
-                    </form>
-                  ) : (
-                    <span className="text-paper-dim/50">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {typed.map((row) => {
+              const days = row.delivery_status === 'pending' ? daysSince(row.tx_date) : 0
+              const warn = row.delivery_status === 'pending' && days >= DELIVERY_WARN_DAYS_THRESHOLD
+              const urgent = row.delivery_status === 'pending' && days >= DELIVERY_STALLED_DAYS_THRESHOLD
+              const rowClass = `tr-row ${urgent ? 'tr-urgent' : warn ? 'tr-warn' : ''}`
+              return (
+                <tr key={row.id} className={rowClass}>
+                  <td className="td text-paper-dim">{row.tx_date}</td>
+                  <td className="td font-semibold text-paper">{row.company_name}</td>
+                  <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
+                  <td className="td">
+                    {row.sim_type === 'esim' ? (
+                      <span className="pill pill-jade">eSIM</span>
+                    ) : (
+                      <span className="pill pill-slate">Physical SIM</span>
+                    )}
+                  </td>
+                  <td className="td">
+                    {row.delivery_status === 'sent' ? (
+                      <StatusDot color="jade-bright" label="Sent" />
+                    ) : row.delivery_status === 'pending' ? (
+                      <StatusDot
+                        color={urgent ? 'clay-bright' : 'brass-bright'}
+                        label={warn ? `Pending · ${days}d` : 'Pending'}
+                        pulse
+                      />
+                    ) : (
+                      <StatusDot color="slate-bright" label="Instant" />
+                    )}
+                  </td>
+                  <td className="td">
+                    {row.delivery_status === 'pending' ? (
+                      <form action={markDelivered}>
+                        <input type="hidden" name="id" value={row.id} />
+                        <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
+                          Mark as Sent
+                        </ConfirmSubmitButton>
+                      </form>
+                    ) : (
+                      <span className="text-paper-dim/50">—</span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
             {!typed.length && (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">

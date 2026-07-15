@@ -83,3 +83,73 @@ export function IconCheckCircle({ className = base }: IconProps) {
     </svg>
   )
 }
+
+// Small (3.5-4 units) table-column-header icons — same idea as Attio's
+// icon-before-label headers ("🌐 Company", "◎ Owner"): a tiny bit of visual
+// texture on a plain-text row so the eye has something to anchor on.
+const th = 'h-3.5 w-3.5'
+
+export function IconBuilding({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 17V4.5h7V17" />
+      <path d="M12 9h3v8" />
+      <path d="M7 7h1M7 10h1M7 13h1" />
+    </svg>
+  )
+}
+
+export function IconMapPin({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 17.5S16 12.6 16 8a6 6 0 1 0-12 0c0 4.6 6 9.5 6 9.5z" />
+      <circle cx="10" cy="8" r="2" />
+    </svg>
+  )
+}
+
+export function IconPhone({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4.5 3.5h3l1.3 3.6-1.8 1.4a9 9 0 0 0 4.5 4.5l1.4-1.8 3.6 1.3v3a1.3 1.3 0 0 1-1.4 1.3A13 13 0 0 1 3.2 4.9a1.3 1.3 0 0 1 1.3-1.4z" />
+    </svg>
+  )
+}
+
+// The bold move: an actual ink-stamp graphic for the one truly ceremonial
+// state in a ledger app — "the books are closed and verified." No CRM or
+// DMS template has this, because it only makes sense for a business that
+// deals in dockets and receipts, which is exactly what this one does.
+export function ReconciledStamp({ label = 'RECONCILED', sub }: { label?: string; sub?: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="stamp-mark h-16 w-16 text-jade">
+      <defs>
+        <path id="stamp-arc-top" d="M 12,58 A 38,38 0 1 1 88,58" fill="none" />
+      </defs>
+      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1.6 2.2" />
+      <text fontSize="10.5" fontWeight="800" letterSpacing="2.2" fill="currentColor">
+        <textPath href="#stamp-arc-top" startOffset="50%" textAnchor="middle">
+          {label}
+        </textPath>
+      </text>
+      <text x="50" y="55" textAnchor="middle" fontSize="17" fontWeight="800" fill="currentColor">
+        ✓
+      </text>
+      {sub && (
+        <text x="50" y="73" textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="1" fill="currentColor">
+          {sub}
+        </text>
+      )}
+    </svg>
+  )
+}
+
+export function IconTag({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M11 3.5h4.5V8L7 16.5l-4.5-4.5L11 3.5z" />
+      <circle cx="13" cy="6" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

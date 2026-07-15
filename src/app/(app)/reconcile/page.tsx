@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 import { saveStatement, markReconciled } from './actions'
+import { ReconciledStamp } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -35,10 +36,15 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <div className="app-card">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="app-card relative overflow-visible">
+        {statement?.reconciled && (
+          <div className="pointer-events-none absolute -right-3 -top-5">
+            <ReconciledStamp sub={month} />
+          </div>
+        )}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-paper">Reconciliation · {month}</h3>
-          <form action="/reconcile" method="GET" className="flex items-center gap-2">
+          <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
             <input type="month" name="month" defaultValue={month} className="field-input w-auto py-1.5" />
             <button type="submit" className="btn-ghost py-1.5 text-xs">
               View
@@ -69,7 +75,6 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               Mark Reconciled ✓
             </button>
           </form>
-          {statement?.reconciled && <span className="pill pill-jade">Reconciled this month</span>}
         </div>
       </div>
 

@@ -196,12 +196,12 @@ export default async function DealerDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 text-sm sm:grid-cols-2">
             <Field label="Contact Person" value={typedDealer.contact_person} />
             <Field label="Phone" value={typedDealer.phone} />
             <Field label="Email" value={typedDealer.email} />
             <Field label="Region" value={typedDealer.region} />
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Field label="Address" value={typedDealer.address} />
             </div>
             <div>

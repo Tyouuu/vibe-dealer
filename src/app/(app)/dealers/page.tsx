@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -103,13 +104,25 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className="th">Company</th>
-              <th className="th">Region</th>
-              <th className="th">Phone</th>
-              <th className="th">Contact</th>
-              <th className="th">Package</th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconBuilding /> Company</span>
+              </th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconMapPin /> Region</span>
+              </th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconPhone /> Phone</span>
+              </th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconUsers className="h-3.5 w-3.5" /> Contact</span>
+              </th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconTag /> Package</span>
+              </th>
               <th className="th">Rate</th>
-              <th className="th">Status</th>
+              <th className="th">
+                <span className="inline-flex items-center gap-1.5"><IconCheckCircle className="h-3.5 w-3.5" /> Status</span>
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -7,7 +7,7 @@ import { getDealerActivityMap, INACTIVE_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_TH
 import { PackageDistributionDonut, type PackageSegment } from './package-distribution-bar'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RankingView } from './ranking-view'
-import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle } from '../icons'
+import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle, ReconciledStamp } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Master Dashboard — DealerHub',
@@ -205,10 +205,9 @@ export default async function DashboardPage() {
           sub={currentMonthStr}
           value={currentStatement?.reconciled ? 'Reconciled' : 'Not yet'}
           href="/reconcile"
+          stamp={currentStatement?.reconciled ? <ReconciledStamp sub={currentMonthStr} /> : undefined}
           pill={
-            currentStatement?.reconciled ? (
-              <span className="pill pill-jade">Done</span>
-            ) : (
+            currentStatement?.reconciled ? undefined : (
               <span className="pill pill-brass">Action needed</span>
             )
           }
@@ -217,7 +216,7 @@ export default async function DashboardPage() {
 
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Yesterday&apos;s Summary — {yesterdaySummary.date}</h3>
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
             <div className="flex items-center gap-1.5 text-xs text-paper-dim">
               <span className="timeline-dot timeline-dot-jade" />
@@ -269,28 +268,30 @@ export default async function DashboardPage() {
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Inactive Dealers — {INACTIVE_DAYS_THRESHOLD}+ days</h3>
         {inactiveDealers.length ? (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="th">Dealer</th>
-                <th className="th text-right">Days Since Last Activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inactiveDealers.map((d) => (
-                <tr key={d.id} className="tr-row">
-                  <td className="td">
-                    <a href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
-                      {d.name}
-                    </a>
-                  </td>
-                  <td className="td text-right">
-                    <span className="pill pill-clay">{d.daysSinceLastActivity} days</span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="th">Dealer</th>
+                  <th className="th text-right">Days Since Last Activity</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {inactiveDealers.map((d) => (
+                  <tr key={d.id} className="tr-row">
+                    <td className="td">
+                      <a href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
+                        {d.name}
+                      </a>
+                    </td>
+                    <td className="td text-right">
+                      <span className="pill pill-clay">{d.daysSinceLastActivity} days</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-sm text-paper-dim">No inactive dealers right now — everyone&apos;s been active recently.</p>
         )}
@@ -309,6 +310,7 @@ function StatChip({
   icon,
   iconColor = 'jade',
   pill,
+  stamp,
 }: {
   label: string
   value: string
@@ -319,9 +321,10 @@ function StatChip({
   icon: React.ReactNode
   iconColor?: 'jade' | 'brass' | 'clay' | 'slate'
   pill?: React.ReactNode
+  stamp?: React.ReactNode
 }) {
   return (
-    <a href={href} className="app-tile flex items-center gap-3 transition-colors hover:border-jade/50">
+    <a href={href} className="app-tile relative flex items-center gap-3 overflow-visible transition-colors hover:border-jade/50">
       <span className={`icon-badge icon-badge-${iconColor}`}>{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="text-xs font-semibold text-paper-dim">{label}</div>
@@ -329,6 +332,7 @@ function StatChip({
         {sub && <div className={`text-[11px] font-semibold ${subEmphasis ? 'text-clay-bright' : 'text-paper-dim'}`}>{sub}</div>}
       </div>
       {pill}
+      {stamp && <div className="pointer-events-none absolute -right-3 -top-4">{stamp}</div>}
     </a>
   )
 }

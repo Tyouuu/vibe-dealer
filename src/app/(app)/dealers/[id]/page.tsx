@@ -259,7 +259,7 @@ export default async function DealerDetailPage({ params }: PageProps) {
                       </span>
                       Commission Earned
                     </div>
-                    <div className="money-chip mt-2.5 text-2xl">RM {lifetimeCommission.toLocaleString()}</div>
+                    <div className="figure-money mt-2 text-3xl font-semibold">RM {lifetimeCommission.toLocaleString()}</div>
                   </div>
                 </div>
 

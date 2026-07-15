@@ -284,6 +284,22 @@ body {
     @apply mb-4 flex items-start gap-2.5 rounded-xl bg-primary-soft px-4 py-3 text-[12.5px] leading-relaxed text-primary-deep;
   }
 
+  /* At-a-glance status counts above a transaction table. The trailing total
+     stays plain ink (not accent-colored) — stacking a colored figure on top
+     of colored dots read as too busy in review, so only the dots carry color. */
+  .txn-summary {
+    @apply mb-4 flex flex-wrap items-center gap-5 rounded-xl border border-ink-800 bg-ink-900 px-4 py-3 text-sm;
+  }
+  .txn-summary-item {
+    @apply flex items-center gap-2 text-paper-dim;
+  }
+  .txn-summary-item b {
+    @apply font-bold text-paper;
+  }
+  .txn-summary-item.accent {
+    @apply ml-auto;
+  }
+
   .docket-row {
     @apply flex items-center justify-between border-b border-dashed border-ink-800 py-2.5 last:border-none;
   }
@@ -470,6 +486,9 @@ body {
     .status-dot.pulse {
       animation: none;
     }
+  }
+  .status-dot-row {
+    @apply inline-flex items-center gap-2 text-xs font-bold;
   }
 
   .profile-grid {

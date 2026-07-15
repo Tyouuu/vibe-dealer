@@ -6,6 +6,7 @@ import { monthRange } from '@/lib/month'
 import { verifyTransaction, flagTransaction } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { IconSearch } from '../icons'
+import { avatarColor } from '@/lib/avatar'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -76,6 +77,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   }
 
   const { data: rows, count } = await query
+  const pageRows = (rows as unknown as TxRow[] | null) ?? []
+  const pendingCount = pageRows.filter((r) => r.status === 'pending').length
+  const verifiedCount = pageRows.filter((r) => r.status === 'verified').length
+  const flaggedCount = pageRows.filter((r) => r.status === 'flagged').length
+  const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
   function buildHref(overrides: { sort?: string }) {
     const params = new URLSearchParams()
@@ -146,6 +152,24 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      <div className="txn-summary">
+        <span className="txn-summary-item">
+          <span className="status-dot" style={{ background: 'var(--color-brass-bright)' }} />
+          Pending <b>{pendingCount}</b>
+        </span>
+        <span className="txn-summary-item">
+          <span className="status-dot" style={{ background: 'var(--color-jade-bright)' }} />
+          Verified <b>{verifiedCount}</b>
+        </span>
+        <span className="txn-summary-item">
+          <span className="status-dot" style={{ background: 'var(--color-clay-bright)' }} />
+          Flagged <b>{flaggedCount}</b>
+        </span>
+        <span className="txn-summary-item accent">
+          Your 2% on this page <b>RM {pageCommission.toLocaleString()}</b>
+        </span>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -163,12 +187,22 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {(rows as unknown as TxRow[] | null)?.map((tx) => {
+            {pageRows.map((tx) => {
               const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
+              const statusColor =
+                tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
+              const statusLabel = tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'
               return (
                 <tr key={tx.id} className="tr-row">
                   <td className="td text-paper-dim">{tx.tx_date}</td>
-                  <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
+                  <td className="td">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`icon-badge icon-badge-${avatarColor(dealerName ?? '?')} h-6 w-6 shrink-0 text-[10.5px] font-bold`}>
+                        {(dealerName ?? '?').charAt(0).toUpperCase()}
+                      </span>
+                      <span className="font-semibold text-paper">{dealerName ?? '—'}</span>
+                    </div>
+                  </td>
                   <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
                   <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                   <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
@@ -176,12 +210,12 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
                   <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
                   <td className="td">
-                    <span
-                      className={
-                        tx.status === 'verified' ? 'pill pill-jade' : tx.status === 'flagged' ? 'pill pill-clay' : 'pill pill-brass'
-                      }
-                    >
-                      {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
+                    <span className="status-dot-row" style={{ color: `var(--color-${statusColor})` }}>
+                      <span
+                        className={`status-dot ${tx.status === 'pending' ? 'pulse' : ''}`}
+                        style={{ background: `var(--color-${statusColor})` }}
+                      />
+                      {statusLabel}
                     </span>
                   </td>
                   <td className="td">

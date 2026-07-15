@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { avatarColor } from '@/lib/avatar'
 import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle, IconSearch } from '../icons'
 
 export const metadata: Metadata = {
@@ -24,15 +25,6 @@ const PACKAGE_STYLE: Record<string, string> = {
   A: 'pill-neutral',
   B: 'pill-jade',
   C: 'pill-brass',
-}
-
-// Deterministic per-dealer color so the list reads less like a spreadsheet —
-// same idea as Tekion's avatar photos, minus the photos we don't have.
-const AVATAR_COLORS = ['jade', 'brass', 'clay', 'slate'] as const
-function avatarColor(name: string) {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
 type PageProps = {

@@ -154,6 +154,15 @@ export function IconTag({ className = th }: IconProps) {
   )
 }
 
+export function IconUpload({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 13V4M10 4L6.5 7.5M10 4l3.5 3.5" />
+      <path d="M4 13v2a1 1 0 001 1h10a1 1 0 001-1v-2" />
+    </svg>
+  )
+}
+
 export function IconBell({ className = 'h-[17px] w-[17px]' }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>

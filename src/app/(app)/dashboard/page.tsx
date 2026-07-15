@@ -2,10 +2,9 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
-import { DELIVERY_STALLED_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS, daysSince } from '@/lib/dealer-activity'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
-import { IconTrendUp, IconCoin, IconUsers, IconAlertCircle, IconTruck, IconCheckCircle, ReconciledStamp } from '../icons'
+import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, ReconciledStamp } from '../icons'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
 // skip rendering the chg badge rather than show a divide-by-zero NaN/Infinity.
@@ -49,10 +48,8 @@ export default async function DashboardPage() {
   const [
     { count: dealerCount },
     { count: dealerCountLastMonth },
-    { data: pendingRows },
     { data: dealerRows },
     { data: trendTx },
-    { data: deliveryPendingRows },
     { data: currentStatement },
     { data: recentTxRows },
   ] = await Promise.all([
@@ -61,7 +58,6 @@ export default async function DashboardPage() {
     // created before this month started, i.e. how many existed as of last
     // month's close.
     supabase.from('dealers').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
-    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
     supabase.from('dealers').select('id, company_name, package, region'),
     supabase
       .from('transactions')
@@ -69,7 +65,6 @@ export default async function DashboardPage() {
       .eq('status', 'verified')
       .gte('tx_date', trendStart)
       .lte('tx_date', today),
-    supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending'),
     supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     supabase
       .from('transactions')
@@ -117,15 +112,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Delivery + reconciliation snapshots — the two statuses PROJECT_SPEC asked
-  // the dashboard to surface, so master doesn't have to visit both pages to
-  // know whether anything needs attention.
-  const deliveryPending = deliveryPendingRows ?? []
-  const deliveryStalled = deliveryPending.filter((r) => daysSince(r.tx_date) >= DELIVERY_STALLED_DAYS_THRESHOLD).length
-
-  const pendingTx = pendingRows ?? []
-  const pendingStale = pendingTx.filter((t) => daysSince(t.tx_date) >= PENDING_REVIEW_STALE_DAYS).length
-
   // Growth by Region — this month's verified points, grouped by dealer
   // region, as a share of the month total. Reuses monthTx (already fetched
   // above) instead of firing another query. Top 4 by points, each ranked
@@ -167,108 +153,70 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="docket-hero">
-        <a href={`/records?status=verified&month=${currentMonthStr}`} className="docket-half group hover:bg-jade/[0.03]">
-          <div className="docket-half-label">
-            <span className="icon-badge icon-badge-jade h-7 w-7">
-              <IconTrendUp className="h-4 w-4" />
-            </span>
-            Top-up This Month
-          </div>
-          <div className="figure-points mt-2.5 text-5xl font-semibold">
-            {totalPoints.toLocaleString()} <span className="text-base font-semibold text-paper-dim">pts</span>
-          </div>
-          <ChgBadge pct={pointsChg} className="mt-2.5" />
-        </a>
-        <div className="docket-perforation" aria-hidden="true" />
-        <a href={`/records?status=verified&month=${currentMonthStr}`} className="docket-half group hover:bg-brass/[0.03]">
-          <div className="docket-half-label">
-            <span className="icon-badge icon-badge-brass h-7 w-7">
-              <IconCoin className="h-4 w-4" />
-            </span>
-            Your Commission (2%)
-          </div>
-          <div className="figure-money mt-2.5 text-5xl font-semibold">RM {totalCommission.toLocaleString()}</div>
-          <ChgBadge pct={commissionChg} className="mt-2.5" />
-        </a>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-        <StatChip
-          icon={<IconUsers />}
-          iconColor="slate"
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          icon={<IconTrendUp className="h-4 w-4" />}
+          label="Top-up This Month"
+          value={`${totalPoints.toLocaleString()} pts`}
+          chg={pointsChg}
+          footer={`Last month: ${prevMonthPoints.toLocaleString()} pts`}
+          href={`/records?status=verified&month=${currentMonthStr}`}
+        />
+        <KpiCard
+          icon={<IconCoin className="h-4 w-4" />}
+          label="Your Commission (2%)"
+          value={`RM ${totalCommission.toLocaleString()}`}
+          chg={commissionChg}
+          footer={`Last month: RM ${prevMonthCommission.toLocaleString()}`}
+          href={`/records?status=verified&month=${currentMonthStr}`}
+        />
+        <KpiCard
+          icon={<IconUsers className="h-4 w-4" />}
           label="Total Dealers"
           value={String(dealerCount ?? 0)}
+          chg={dealerChg}
+          footer={`Last month: ${dealerCountLastMonth ?? 0}`}
           href="/dealers"
-          chg={<ChgBadge pct={dealerChg} />}
         />
-        <StatChip
-          icon={<IconAlertCircle />}
-          iconColor="clay"
-          label="Pending Review"
-          value={String(pendingTx.length)}
-          valueColor={pendingTx.length > 0 ? 'clay' : undefined}
-          sub={pendingStale > 0 ? `${pendingStale} older than ${PENDING_REVIEW_STALE_DAYS}d` : undefined}
-          subEmphasis
-          href="/records?status=pending"
-        />
-        <StatChip
-          icon={<IconTruck />}
-          iconColor="slate"
-          label="SIM Delivery"
-          value={`${deliveryPending.length} pending`}
-          href="/delivery"
-          pill={
-            deliveryStalled > 0 ? (
-              <span className="pill pill-clay">{deliveryStalled} stalled</span>
-            ) : (
-              <span className="pill pill-jade">On track</span>
-            )
-          }
-        />
-        <StatChip
-          icon={<IconCheckCircle />}
-          iconColor={currentStatement?.reconciled ? 'jade' : 'brass'}
+        <KpiCard
+          icon={<IconCheckCircle className="h-4 w-4" />}
           label="Reconciliation"
-          sub={currentMonthStr}
           value={currentStatement?.reconciled ? 'Reconciled' : 'Not yet'}
+          statusPill={currentStatement?.reconciled ? undefined : 'Action needed'}
+          footer={`For ${currentMonthStr}`}
           href="/reconcile"
           stamp={currentStatement?.reconciled ? <ReconciledStamp sub={currentMonthStr} /> : undefined}
-          pill={
-            currentStatement?.reconciled ? undefined : (
-              <span className="pill pill-brass">Action needed</span>
-            )
-          }
         />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
+        <div className="app-card">
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
+          <MonthlyTrendChart rows={trendRows} regions={regions} />
+        </div>
+
+        <div className="app-card">
+          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
+          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
+          {regionGrowth.length ? (
+            <div className="flex flex-wrap gap-2.5">
+              {regionGrowth.map((r) => (
+                <span key={r.region} className="region-chip">
+                  <span className="swatch" style={{ background: r.color }} />
+                  {r.region} {r.pct}%
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
+          )}
+        </div>
       </div>
 
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
-
-      <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
-        <MonthlyTrendChart rows={trendRows} regions={regions} />
-      </div>
-
-      <div className="app-card">
-        <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
-        <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
-        {regionGrowth.length ? (
-          <div className="flex flex-wrap gap-2.5">
-            {regionGrowth.map((r) => (
-              <span key={r.region} className="region-chip">
-                <span className="swatch" style={{ background: r.color }} />
-                {r.region} {r.pct}%
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
-        )}
-      </div>
-
     </div>
   )
 }
@@ -293,43 +241,41 @@ function ChgBadge({ pct, className = '' }: { pct: number | null; className?: str
   )
 }
 
-function StatChip({
+// Uniform KPI card — all four dashboard headline metrics share this exact
+// treatment (icon tile, label, big number, chg/status pill, footer) rather
+// than each getting its own visual weight, per design review: no single
+// metric should read as more "important" than the others at a glance.
+function KpiCard({
   label,
   value,
-  valueColor,
   href,
-  sub,
-  subEmphasis,
   icon,
-  iconColor = 'jade',
-  pill,
-  stamp,
   chg,
+  statusPill,
+  footer,
+  stamp,
 }: {
   label: string
   value: string
-  valueColor?: 'clay'
   href: string
-  sub?: string
-  subEmphasis?: boolean
   icon: React.ReactNode
-  iconColor?: 'jade' | 'brass' | 'clay' | 'slate'
-  pill?: React.ReactNode
+  chg?: number | null
+  statusPill?: string
+  footer: string
   stamp?: React.ReactNode
-  chg?: React.ReactNode
 }) {
   return (
-    <a href={href} className="app-tile relative flex items-center gap-3 overflow-visible transition-colors hover:border-jade/50">
-      <span className={`icon-badge icon-badge-${iconColor}`}>{icon}</span>
-      <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold text-paper-dim">{label}</div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className={`mt-0.5 text-lg font-bold ${valueColor === 'clay' ? 'text-clay-bright' : 'text-paper'}`}>{value}</div>
-          {chg}
-        </div>
-        {sub && <div className={`text-[11px] font-semibold ${subEmphasis ? 'text-clay-bright' : 'text-paper-dim'}`}>{sub}</div>}
+    <a href={href} className="app-tile relative flex flex-col gap-3 overflow-visible transition-colors hover:border-jade/50">
+      <div className="flex items-start justify-between">
+        <span className="text-[13px] font-semibold text-paper-dim">{label}</span>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary">{icon}</span>
       </div>
-      {pill}
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="text-[26px] font-extrabold tracking-tight text-paper tabular-nums">{value}</span>
+        {chg !== undefined && <ChgBadge pct={chg ?? null} />}
+        {statusPill && <span className="chg chg-down w-fit">{statusPill}</span>}
+      </div>
+      <div className="text-[12.5px] text-paper-dim">{footer}</div>
       {stamp && <div className="pointer-events-none absolute -right-3 -top-4">{stamp}</div>}
     </a>
   )

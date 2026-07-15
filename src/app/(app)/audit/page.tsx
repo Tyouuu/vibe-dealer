@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { formatMonthLabel } from '@/lib/month'
 
 export const metadata: Metadata = {
   title: 'Audit Log — DealerHub',
@@ -118,8 +119,9 @@ export default async function AuditPage() {
           <h1 className="text-base font-bold text-paper">Audit Log</h1>
           <span className="pill pill-neutral">Last {txRows.length} transactions</span>
         </div>
+        <p className="note-strip">A read-only history of who did what — every transaction, reconciliation, and rate change, with who and when.</p>
 
-        <div className="overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
@@ -139,7 +141,7 @@ export default async function AuditPage() {
                   <tr key={tx.id} className="tr-row">
                     <td className="td text-paper-dim">{formatDateTime(tx.created_at)}</td>
                     <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                    <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                    <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
                     <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                     <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                     <td className="td">
@@ -208,7 +210,7 @@ export default async function AuditPage() {
               {revisions.map((rev) => (
                 <tr key={rev.id} className="tr-row">
                   <td className="td text-paper-dim">{formatDateTime(rev.created_at)}</td>
-                  <td className="td font-semibold text-paper">{rev.month.slice(0, 7)}</td>
+                  <td className="td font-semibold text-paper">{formatMonthLabel(rev.month)}</td>
                   <td className="td figure-points text-right">
                     {rev.company_total_points != null ? rev.company_total_points.toLocaleString() : '—'}
                   </td>
@@ -254,7 +256,7 @@ export default async function AuditPage() {
             <tbody>
               {rateHistory.map((rh) => {
                 const dealerName = Array.isArray(rh.dealers) ? rh.dealers[0]?.company_name : rh.dealers?.company_name
-                const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : '—'
+                const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : 'Not Set'
                 const after = rh.new_package ? `${rh.new_package} · ${rh.new_rate}%` : '—'
                 return (
                   <tr key={rh.id} className="tr-row">

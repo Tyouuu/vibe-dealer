@@ -7,6 +7,7 @@ import { todayInMalaysia } from '@/lib/month'
 // but vibe-dealer's scale (242 dealers, 3 staff) doesn't justify a rules
 // engine for this.
 export const INACTIVE_DAYS_THRESHOLD = 30
+export const INACTIVE_SEVERE_DAYS_THRESHOLD = 60
 export const DELIVERY_STALLED_DAYS_THRESHOLD = 5
 export const PENDING_REVIEW_STALE_DAYS = 2
 
@@ -20,6 +21,7 @@ export type DealerActivity = {
   lastVerifiedTxDate: string
   daysSinceLastActivity: number
   isInactive: boolean
+  isSeverelyInactive: boolean
 }
 
 // Keyed by dealer_id. A dealer with zero verified transactions is simply
@@ -36,6 +38,7 @@ export async function getDealerActivityMap(supabase: SupabaseClient): Promise<Ma
       lastVerifiedTxDate: row.last_tx_date,
       daysSinceLastActivity: days,
       isInactive: days >= INACTIVE_DAYS_THRESHOLD,
+      isSeverelyInactive: days >= INACTIVE_SEVERE_DAYS_THRESHOLD,
     })
   }
   return map

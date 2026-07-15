@@ -132,7 +132,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             {(dealers as Dealer[] | null)?.map((d) => {
               const activity = activityMap.get(d.id)
               return (
-                <tr key={d.id} className="tr-row">
+                <tr key={d.id} className="tr-row relative">
                   <td className="td">
                     <div className="flex items-center gap-2.5">
                       <span className={`icon-badge icon-badge-${avatarColor(d.company_name)} h-7 w-7 shrink-0 text-[11px] font-bold`}>
@@ -140,11 +140,16 @@ export default async function DealersPage({ searchParams }: PageProps) {
                       </span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
+                          <Link
+                            href={`/dealers/${d.id}`}
+                            className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                          >
                             {d.company_name}
                           </Link>
                           {activity?.isInactive && (
-                            <span className="pill pill-clay">{activity.daysSinceLastActivity}d</span>
+                            <span className={`pill ${activity.isSeverelyInactive ? 'pill-clay' : 'pill-brass'}`}>
+                              {activity.daysSinceLastActivity}d
+                            </span>
                           )}
                         </div>
                         {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}
@@ -161,7 +166,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
                       <span className="text-paper-dim/50">—</span>
                     )}
                   </td>
-                  <td className="td figure text-paper-dim">{d.rate != null ? `${d.rate}%` : '—'}</td>
+                  <td className="td figure font-semibold text-paper">{d.rate != null ? `${d.rate}%` : '—'}</td>
                   <td className="td">
                     <span className={d.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
                       {d.status === 'active' ? 'Active' : 'Inactive'}
@@ -173,7 +178,9 @@ export default async function DealersPage({ searchParams }: PageProps) {
             {!dealers?.length && (
               <tr>
                 <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
-                  No matching dealers.
+                  {q || region !== 'all'
+                    ? `No dealers match${q ? ` "${q}"` : ''}${region !== 'all' ? ` in ${region}` : ''}.`
+                    : 'No matching dealers.'}
                 </td>
               </tr>
             )}

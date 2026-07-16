@@ -1,0 +1,78 @@
+'use client'
+
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+export function ChangePasswordForm() {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [pending, setPending] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSuccess(false)
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setPending(true)
+    const supabase = createClient()
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+    setPending(false)
+
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+
+    setSuccess(true)
+    setPassword('')
+    setConfirm('')
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      {error && <div className="alert alert-bad">{error}</div>}
+      {success && <div className="alert alert-ok">Password updated.</div>}
+      <div className="form-grid">
+        <div>
+          <label className="field-label">New Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            className="field-input"
+          />
+        </div>
+        <div>
+          <label className="field-label">Confirm New Password</label>
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            className="field-input"
+          />
+        </div>
+      </div>
+      <span className="hint">Must be at least 8 characters.</span>
+      <button type="submit" disabled={pending} className="btn-primary mt-1 w-fit">
+        {pending ? 'Updating…' : 'Update Password'}
+      </button>
+    </form>
+  )
+}

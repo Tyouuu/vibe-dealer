@@ -16,3 +16,14 @@ export async function markDelivered(formData: FormData) {
 
   revalidatePath('/delivery')
 }
+
+export async function bulkMarkDelivered(ids: string[]) {
+  const user = await requireUser()
+  if (user.role !== 'cs' && user.role !== 'master') return
+  if (!ids.length) return
+
+  const supabase = await createClient()
+  await Promise.all(ids.map((id) => supabase.rpc('mark_delivered', { p_tx_id: id })))
+
+  revalidatePath('/delivery')
+}

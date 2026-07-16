@@ -79,9 +79,9 @@ export function TopbarMenus({
         {open === 'help' && (
           <div className="dropdown-panel w-56">
             <div className="hd">Help</div>
-            <a href="/PROJECT_SPEC.md" target="_blank" rel="noopener noreferrer" className="dropdown-item">
+            <Link href="/help" className="dropdown-item">
               Getting started guide
-            </a>
+            </Link>
             <a href="mailto:support@creatiqai.com" className="dropdown-item">
               Contact support
             </a>

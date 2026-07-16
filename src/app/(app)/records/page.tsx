@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
+import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { verifyTransaction, flagTransaction } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { IconSearch } from '../icons'
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 
 type TxRow = {
   id: string
+  dealer_id: string
   tx_date: string
   type: 'package' | 'topup'
   package: string | null
@@ -23,15 +25,9 @@ type TxRow = {
   rate: number | null
   commission_rm: number
   sim_type: string | null
-  delivery_status: string
+  delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
   dealers: { company_name: string } | { company_name: string }[] | null
-}
-
-const DELIVERY_LABEL: Record<string, string> = {
-  na: '—',
-  pending: 'Pending',
-  sent: 'Sent',
 }
 
 type PageProps = {
@@ -51,7 +47,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, dealers(company_name)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, dealers(company_name)',
       { count: 'exact' }
     )
     .order('tx_date', { ascending: sortAscending })
@@ -135,21 +131,26 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </button>
         </form>
 
-        <div className="segmented" role="group" aria-label="Sort transactions by date">
-          <Link
-            href={buildHref({ sort: 'desc' })}
-            className={`segmented-btn ${!sortAscending ? 'active' : ''}`}
-            aria-label="Sort by date, newest first"
-          >
-            Newest first
-          </Link>
-          <Link
-            href={buildHref({ sort: 'asc' })}
-            className={`segmented-btn ${sortAscending ? 'active' : ''}`}
-            aria-label="Sort by date, oldest first"
-          >
-            Oldest first
-          </Link>
+        <div className="flex items-center gap-2.5">
+          <div className="segmented" role="group" aria-label="Sort transactions by date">
+            <Link
+              href={buildHref({ sort: 'desc' })}
+              className={`segmented-btn ${!sortAscending ? 'active' : ''}`}
+              aria-label="Sort by date, newest first"
+            >
+              Newest first
+            </Link>
+            <Link
+              href={buildHref({ sort: 'asc' })}
+              className={`segmented-btn ${sortAscending ? 'active' : ''}`}
+              aria-label="Sort by date, oldest first"
+            >
+              Oldest first
+            </Link>
+          </div>
+          <button type="button" className="btn-ghost">
+            ⤓ Export
+          </button>
         </div>
       </div>
 
@@ -193,21 +194,36 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               const statusColor =
                 tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
               const statusLabel = tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'
+              const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
+              const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
               return (
-                <tr key={tx.id} className="tr-row">
+                <tr key={tx.id} className="tr-row relative">
                   <td className="td text-paper-dim">{tx.tx_date}</td>
                   <td className="td">
                     <div className="flex items-center gap-2.5">
                       <Avatar name={dealerName ?? '?'} size={24} />
-                      <span className="font-semibold text-paper">{dealerName ?? '—'}</span>
+                      <a
+                        href={`/dealers/${tx.dealer_id}`}
+                        className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                      >
+                        {dealerName ?? '—'}
+                      </a>
                     </div>
                   </td>
-                  <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                  <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
                   <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                   <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                   <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
                   <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
-                  <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
+                  <td className="td">
+                    {tx.delivery_status === 'sent' ? (
+                      <span className="pill pill-jade">Sent</span>
+                    ) : tx.delivery_status === 'pending' ? (
+                      <span className="pill pill-brass">{deliveryWarn ? `Pending·${deliveryDays}d` : 'Pending'}</span>
+                    ) : (
+                      <span className="text-paper-dim/50">—</span>
+                    )}
+                  </td>
                   <td className="td">
                     <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
                   </td>

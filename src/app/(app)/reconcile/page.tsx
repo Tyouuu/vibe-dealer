@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
-import { saveStatement, markReconciled } from './actions'
-import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument, IconUpload } from '../icons'
+import { markReconciled } from './actions'
+import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
+import { StatementForm } from './statement-form'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -18,7 +19,10 @@ type BreakdownRow = {
   type: 'package' | 'topup'
   package: string | null
   points: number
-  dealers: { company_name: string } | { company_name: string }[] | null
+  dealers:
+    | { company_name: string; package: string | null }
+    | { company_name: string; package: string | null }[]
+    | null
 }
 
 type PageProps = {
@@ -39,7 +43,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const [{ data: verifiedTx }, { data: statement }] = await Promise.all([
     supabase
       .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, dealers(company_name)')
+      .select('id, dealer_id, tx_date, type, package, points, dealers(company_name, package)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
@@ -166,13 +170,15 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                 </thead>
                 <tbody>
                   {breakdownRows.slice(0, 8).map((tx) => {
-                    const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
+                    const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
+                    const dealerName = dealerRel?.company_name
+                    const dealerPackage = dealerRel?.package ?? null
                     return (
                       <tr key={tx.id} className="tr-row relative">
                         <td className="td text-paper-dim">{tx.tx_date}</td>
                         <td className="td">
                           <div className="flex items-center gap-2.5">
-                            <Avatar name={dealerName ?? '?'} size={24} />
+                            <Avatar name={dealerName ?? '?'} size={24} package={dealerPackage} />
                             {tx.dealer_id ? (
                               <a
                                 href={`/dealers/${tx.dealer_id}`}
@@ -209,44 +215,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Enter Vibe Statement</h3>
-        <form action={saveStatement} className="flex flex-col gap-3.5">
-          <input type="hidden" name="month" value={month} />
-          <label className="upload-box">
-            <IconUpload />
-            <span>Drag Vibe&apos;s statement here, or click to upload — we&apos;ll fill in the numbers below</span>
-            <input type="file" name="statement_file" accept="image/*,.pdf,.csv,.xlsx" className="hidden" />
-          </label>
-          <div>
-            <label className="field-label">Vibe total top-up (pts)</label>
-            <input
-              name="company_total_points"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={companyPoints ?? ''}
-              required
-              className="field-input"
-            />
-          </div>
-          <div>
-            <label className="field-label">Vibe&apos;s Profit Figure (RM)</label>
-            <input
-              name="company_profit_rm"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={statement?.company_profit_rm ?? ''}
-              className="field-input"
-            />
-          </div>
-          <div>
-            <label className="field-label">Note</label>
-            <input name="note" type="text" defaultValue={statement?.note ?? ''} className="field-input" />
-          </div>
-          <button type="submit" className="btn-primary w-full">
-            Save &amp; Compare
-          </button>
-        </form>
+        <StatementForm
+          month={month}
+          initialPoints={companyPoints}
+          initialProfit={statement?.company_profit_rm ?? null}
+          initialNote={statement?.note ?? ''}
+        />
         <p className="note-strip">
           Vibe provides a monthly total; the system compares it against verified records automatically so any
           mismatch is obvious right away.

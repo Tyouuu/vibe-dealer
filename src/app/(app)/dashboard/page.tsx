@@ -69,7 +69,7 @@ export default async function DashboardPage() {
     supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     supabase
       .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
+      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name, package)')
       .order('created_at', { ascending: false })
       .limit(10),
   ])
@@ -138,8 +138,8 @@ export default async function DashboardPage() {
   // filter below is client-side (see recent-transactions-table.tsx) since
   // it's just narrowing this already-fetched small batch, not a new query.
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
-    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
-    const dealerName = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
+    const rel = t.dealers as { company_name: string; package: string | null } | { company_name: string; package: string | null }[] | null
+    const dealerRel = Array.isArray(rel) ? rel[0] : rel
     return {
       id: t.id,
       tx_date: t.tx_date,
@@ -148,8 +148,9 @@ export default async function DashboardPage() {
       points: Number(t.points),
       money_rm: Number(t.money_rm),
       status: t.status as 'pending' | 'verified' | 'flagged',
-      dealerName,
+      dealerName: dealerRel?.company_name ?? '—',
       dealerId: t.dealer_id as string | null,
+      dealerPackage: dealerRel?.package ?? null,
     }
   })
 

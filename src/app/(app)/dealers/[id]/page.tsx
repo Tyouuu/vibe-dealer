@@ -243,7 +243,7 @@ export default async function DealerDetailPage({ params }: PageProps) {
       <div className="app-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar name={typedDealer.company_name} size={44} />
+            <Avatar name={typedDealer.company_name} size={44} package={typedDealer.package} />
             <div>
               <h2 className="text-lg font-extrabold text-paper">{typedDealer.company_name}</h2>
               {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}

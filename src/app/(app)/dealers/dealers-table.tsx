@@ -146,7 +146,7 @@ export function DealersTable({
                     )}
                     <td className="td">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={d.company_name} />
+                        <Avatar name={d.company_name} package={d.package} />
                         <div>
                           <div className="flex items-center gap-2">
                             <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">

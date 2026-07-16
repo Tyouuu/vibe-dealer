@@ -1,22 +1,27 @@
-const AVATAR_COLORS = ['jade', 'brass', 'clay', 'slate'] as const
+// Solid fill for the avatar badge, keyed by package — same colors as the
+// Package pill (pill-neutral/pill-jade/pill-brass) so the avatar reinforces
+// what the Package column already says instead of adding an unrelated
+// per-name color that doesn't mean anything.
+const PACKAGE_HEX: Record<string, string> = {
+  A: '#54565f',
+  B: '#14803f',
+  C: '#8a5d08',
+}
+const NO_PACKAGE_HEX = '#54565f'
 
-// Solid fill for the avatar badge — the app's existing *-bright text tokens,
-// reused as backgrounds instead of new one-off hex values.
-const AVATAR_HEX: Record<(typeof AVATAR_COLORS)[number], string> = {
-  jade: '#14803f',
-  brass: '#8a5d08',
-  clay: '#c02329',
-  slate: '#54565f',
+export function avatarHex(pkg?: string | null): string {
+  if (pkg && pkg in PACKAGE_HEX) return PACKAGE_HEX[pkg]
+  return NO_PACKAGE_HEX
 }
 
-// Deterministic per-name color so lists read less like a spreadsheet — same
-// idea as Tekion's avatar photos, minus the photos we don't have.
-export function avatarColor(name: string): (typeof AVATAR_COLORS)[number] {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
-}
-
-export function avatarHex(name: string): string {
-  return AVATAR_HEX[avatarColor(name)]
+// First letter of the first two words — "Jaya Telecom Sdn Bhd" -> "JT".
+export function avatarInitials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join('') || '?'
+  )
 }

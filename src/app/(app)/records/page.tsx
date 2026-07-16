@@ -27,7 +27,10 @@ type TxRow = {
   sim_type: string | null
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
-  dealers: { company_name: string } | { company_name: string }[] | null
+  dealers:
+    | { company_name: string; package: string | null }
+    | { company_name: string; package: string | null }[]
+    | null
 }
 
 type PageProps = {
@@ -47,7 +50,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, dealers(company_name)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, dealers(company_name, package)',
       { count: 'exact' }
     )
     .order('tx_date', { ascending: sortAscending })
@@ -90,6 +93,13 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     const qs = params.toString()
     return `/records${qs ? `?${qs}` : ''}`
   }
+
+  const exportParams = new URLSearchParams()
+  if (status !== 'all') exportParams.set('status', status)
+  if (month) exportParams.set('month', month)
+  if (q) exportParams.set('q', q)
+  if (sort !== 'desc') exportParams.set('sort', sort)
+  const exportHref = `/api/records/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
 
   return (
     <div className="app-card">
@@ -148,9 +158,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               Oldest first
             </Link>
           </div>
-          <button type="button" className="btn-ghost">
+          <a href={exportHref} className="btn-ghost">
             ⤓ Export
-          </button>
+          </a>
         </div>
       </div>
 
@@ -190,7 +200,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </thead>
           <tbody>
             {pageRows.map((tx) => {
-              const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
+              const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
+              const dealerName = dealerRel?.company_name
+              const dealerPackage = dealerRel?.package ?? null
               const statusColor =
                 tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
               const statusLabel = tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'
@@ -201,7 +213,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td text-paper-dim">{tx.tx_date}</td>
                   <td className="td">
                     <div className="flex items-center gap-2.5">
-                      <Avatar name={dealerName ?? '?'} size={24} />
+                      <Avatar name={dealerName ?? '?'} size={24} package={dealerPackage} />
                       <a
                         href={`/dealers/${tx.dealer_id}`}
                         className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"

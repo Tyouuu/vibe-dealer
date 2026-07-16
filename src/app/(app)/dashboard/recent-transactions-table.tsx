@@ -14,6 +14,7 @@ export type RecentTxRow = {
   status: 'pending' | 'verified' | 'flagged'
   dealerName: string
   dealerId: string | null
+  dealerPackage: string | null
 }
 
 // Client-side filter only — this narrows the small already-fetched batch
@@ -61,7 +62,7 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                 <td className="td text-paper-dim">{tx.tx_date}</td>
                 <td className="td">
                   <div className="flex items-center gap-2.5">
-                    <Avatar name={tx.dealerName} size={24} />
+                    <Avatar name={tx.dealerName} size={24} package={tx.dealerPackage} />
                     {tx.dealerId ? (
                       <a
                         href={`/dealers/${tx.dealerId}`}

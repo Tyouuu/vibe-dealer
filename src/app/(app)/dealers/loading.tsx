@@ -9,6 +9,7 @@ export default function DealersLoading() {
         <Bone className="h-5 w-24" />
         <Bone className="h-5 w-20 rounded-full" />
       </div>
+      <Bone className="mb-4 h-9 w-64 rounded-lg" />
       <div className="mb-4 flex gap-3">
         <Bone className="h-9 w-72 rounded-lg" />
         <Bone className="h-9 w-32 rounded-lg" />

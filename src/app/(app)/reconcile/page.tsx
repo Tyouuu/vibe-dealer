@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 import { saveStatement, markReconciled } from './actions'
-import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
+import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument, IconUpload } from '../icons'
 import { avatarColor } from '@/lib/avatar'
 import { StatusDot } from '../status-dot'
 
@@ -214,6 +214,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         <h3 className="mb-3.5 text-sm font-bold text-paper">Enter Vibe Statement</h3>
         <form action={saveStatement} className="flex flex-col gap-3.5">
           <input type="hidden" name="month" value={month} />
+          <label className="upload-box">
+            <IconUpload />
+            <span>Drag Vibe&apos;s statement here, or click to upload — we&apos;ll fill in the numbers below</span>
+            <input type="file" name="statement_file" accept="image/*,.pdf,.csv,.xlsx" className="hidden" />
+          </label>
           <div>
             <label className="field-label">Vibe total top-up (pts)</label>
             <input

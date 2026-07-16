@@ -49,16 +49,12 @@ export async function createDealer(formData: FormData) {
   // (no prior transactions to derive it from, so recomputeDealerRate doesn't
   // apply here) — snapshot that first assignment so dealer_rate_history has
   // a starting point instead of the dealer's package/rate appearing from
-  // nowhere.
+  // nowhere. dealer_rate_history INSERT is RLS-restricted to accountant/
+  // master, so cs (who onboards dealers) goes through this narrow SECURITY
+  // DEFINER function instead of a direct .insert(), which would silently
+  // drop the row for cs.
   if (pkg) {
-    await supabase.from('dealer_rate_history').insert({
-      dealer_id: dealer.id,
-      old_package: null,
-      old_rate: null,
-      new_package: pkg,
-      new_rate: PACKAGES[pkg].rate,
-      changed_by: user.id,
-    })
+    await supabase.rpc('seed_dealer_rate_history', { p_dealer_id: dealer.id, p_package: pkg, p_rate: PACKAGES[pkg].rate })
   }
 
   revalidatePath('/dealers')

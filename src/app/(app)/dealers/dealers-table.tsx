@@ -31,10 +31,12 @@ export function DealersTable({
   dealers,
   groupByRegion,
   canManage,
+  showRate,
 }: {
   dealers: DealerRow[]
   groupByRegion: boolean
   canManage: boolean
+  showRate: boolean
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [pending, startTransition] = useTransition()
@@ -128,7 +130,7 @@ export function DealersTable({
                       <IconTag /> Package
                     </span>
                   </th>
-                  <th className="th">Rate</th>
+                  {showRate && <th className="th">Rate</th>}
                   <th className="th">
                     <span className="inline-flex items-center gap-1.5">
                       <IconCheckCircle className="h-3.5 w-3.5" /> Status
@@ -170,7 +172,7 @@ export function DealersTable({
                         <span className="text-paper-dim/50">—</span>
                       )}
                     </td>
-                    <td className="td figure font-semibold text-paper">{d.rate != null ? `${d.rate}%` : '—'}</td>
+                    {showRate && <td className="td figure font-semibold text-paper">{d.rate != null ? `${d.rate}%` : '—'}</td>}
                     <td className="td">
                       {canManage ? (
                         <button

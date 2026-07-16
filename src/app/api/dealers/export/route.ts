@@ -13,12 +13,14 @@ function csvCell(value: string | number | null) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-const COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'package', 'rate', 'status'] as const
+const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'package', 'rate', 'status'] as const
 
 export async function GET(request: NextRequest) {
   // Same view every role that can see /dealers can already see — export just
-  // packages it into a file, so no role restriction beyond being logged in.
-  await requireUser()
+  // packages it into a file. rate is a commission figure (PROJECT_SPEC.md
+  // section 4: "CS 看不到财务"), so it's excluded for cs same as the page itself.
+  const user = await requireUser()
+  const COLUMNS = user.role === 'cs' ? ALL_COLUMNS.filter((c) => c !== 'rate') : ALL_COLUMNS
 
   const params = request.nextUrl.searchParams
   const q = params.get('q') ?? ''

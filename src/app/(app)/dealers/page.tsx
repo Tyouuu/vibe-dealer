@@ -53,6 +53,9 @@ export default async function DealersPage({ searchParams }: PageProps) {
   } = await searchParams
   const view: View = rawView === 'region' || rawView === 'inactive' ? rawView : 'all'
   const canManage = user.role === 'cs' || user.role === 'master'
+  // rate is a commission figure (PROJECT_SPEC.md section 4: "CS 看不到财务") —
+  // strip it from the data sent to the client, not just hide it in the UI.
+  const showRate = user.role !== 'cs'
 
   const supabase = await createClient()
 
@@ -85,6 +88,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     const activity = activityMap.get(d.id)
     return {
       ...d,
+      rate: showRate ? d.rate : null,
       isInactive: activity?.isInactive ?? false,
       isSeverelyInactive: activity?.isSeverelyInactive ?? false,
       daysSinceLastActivity: activity?.daysSinceLastActivity ?? null,
@@ -169,7 +173,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       </form>
 
       {rows.length ? (
-        <DealersTable dealers={rows} groupByRegion={view === 'region'} canManage={canManage} />
+        <DealersTable dealers={rows} groupByRegion={view === 'region'} canManage={canManage} showRate={showRate} />
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">

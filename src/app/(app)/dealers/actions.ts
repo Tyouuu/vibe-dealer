@@ -16,8 +16,11 @@ export async function setDealerStatus(id: string, status: 'active' | 'inactive')
   const user = await requireUser()
   assertCanManage(user.role)
 
+  // dealers UPDATE is RLS-restricted to accountant/master (0004) — cs (who
+  // this action also serves) goes through this narrow SECURITY DEFINER
+  // function instead of a direct .update(), which would silently no-op for cs.
   const supabase = await createClient()
-  await supabase.from('dealers').update({ status }).eq('id', id)
+  await supabase.rpc('set_dealer_status', { p_dealer_id: id, p_status: status })
 
   revalidatePath('/dealers')
   revalidatePath(`/dealers/${id}`)
@@ -29,7 +32,7 @@ export async function bulkSetDealerStatus(ids: string[], status: 'active' | 'ina
   if (!ids.length) return
 
   const supabase = await createClient()
-  await supabase.from('dealers').update({ status }).in('id', ids)
+  await Promise.all(ids.map((id) => supabase.rpc('set_dealer_status', { p_dealer_id: id, p_status: status })))
 
   revalidatePath('/dealers')
 }
@@ -170,20 +173,15 @@ export async function importDealers(formData: FormData) {
     // Same reasoning as onboard's createDealer: a CSV row with an initial
     // package has no prior transaction to derive it from, so seed the audit
     // trail directly instead of leaving the package/rate looking assigned
-    // from nowhere.
-    const rateHistoryRows = (inserted ?? [])
-      .filter((d) => d.package)
-      .map((d) => ({
-        dealer_id: d.id,
-        old_package: null,
-        old_rate: null,
-        new_package: d.package,
-        new_rate: d.rate,
-        changed_by: user.id,
-      }))
-    if (rateHistoryRows.length) {
-      await supabase.from('dealer_rate_history').insert(rateHistoryRows)
-    }
+    // from nowhere. dealer_rate_history INSERT is RLS-restricted to
+    // accountant/master, so cs (who this action also serves) goes through
+    // the same narrow SECURITY DEFINER function onboarding uses, instead of
+    // a direct .insert() that would silently drop the row for cs.
+    await Promise.all(
+      (inserted ?? [])
+        .filter((d) => d.package)
+        .map((d) => supabase.rpc('seed_dealer_rate_history', { p_dealer_id: d.id, p_package: d.package, p_rate: d.rate }))
+    )
   }
 
   revalidatePath('/dealers')

@@ -68,21 +68,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
         <div className="grid grid-cols-2 divide-x divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 shadow-sm sm:grid-cols-4 sm:divide-y-0">
           <div className="p-4 sm:p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-paper-dim">This Month&apos;s Total Top-up</div>
+            <div className="text-[13px] font-semibold text-paper-dim">This Month&apos;s Total Top-up</div>
             <div className="figure-points mt-2 text-2xl font-semibold">
               {totalPoints.toLocaleString()} <span className="text-xs font-semibold text-paper-dim">pts</span>
             </div>
           </div>
           <div className="p-4 sm:p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-paper-dim">Your 2%</div>
+            <div className="text-[13px] font-semibold text-paper-dim">Your 2%</div>
             <div className="figure-money mt-2 text-2xl font-semibold">RM {totalCommission.toLocaleString()}</div>
           </div>
           <div className="p-4 sm:p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-paper-dim">Transactions</div>
+            <div className="text-[13px] font-semibold text-paper-dim">Transactions</div>
             <div className="mt-2 text-2xl font-semibold text-paper">{rows?.length ?? 0}</div>
           </div>
           <div className="p-4 sm:p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-paper-dim">Active Dealers</div>
+            <div className="text-[13px] font-semibold text-paper-dim">Active Dealers</div>
             <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
           </div>
         </div>

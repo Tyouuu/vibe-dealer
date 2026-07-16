@@ -133,7 +133,7 @@ body {
   }
 
   .field-label {
-    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-paper-dim;
+    @apply mb-1.5 block text-[12.5px] font-bold text-paper;
   }
 
   .field-input {
@@ -237,7 +237,7 @@ body {
   }
 
   .th {
-    @apply border-b border-ink-800 px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-paper-dim;
+    @apply whitespace-nowrap border-b border-ink-800 px-3 py-2.5 text-left text-xs font-bold text-paper-dim;
   }
   .td {
     @apply px-3 py-2.5;
@@ -314,7 +314,7 @@ body {
     @apply flex flex-1 flex-col justify-center px-5 py-6 transition-all duration-200 ease-out sm:px-8;
   }
   .docket-half-label {
-    @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-paper-dim;
+    @apply flex items-center gap-2 text-[13px] font-semibold text-paper-dim;
   }
   .docket-perforation {
     @apply h-px w-full border-t-2 border-dashed border-ink-800 sm:h-auto sm:w-px sm:border-t-0 sm:border-l-2 sm:border-dashed;

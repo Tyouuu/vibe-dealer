@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 import { saveStatement, markReconciled } from './actions'
 import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument, IconUpload } from '../icons'
-import { avatarColor } from '@/lib/avatar'
+import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 
 export const metadata: Metadata = {
@@ -81,16 +81,17 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         {error && <div className="alert alert-bad">{error}</div>}
         {saved && <div className="alert alert-ok">Saved.</div>}
 
+        <h2 className="mb-3 text-sm font-bold text-paper">This Month&apos;s Comparison</h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="app-tile">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-paper-dim">
+          <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-paper-dim">
               <IconBuilding className="h-3.5 w-3.5" />
               Your System (verified)
             </div>
             <div className="figure-points mt-1.5 text-xl font-semibold">{systemPoints.toLocaleString()} pts</div>
           </div>
-          <div className="app-tile">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-paper-dim">
+          <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-paper-dim">
               <IconDocument className="h-3.5 w-3.5" />
               Vibe&apos;s Statement
             </div>
@@ -148,7 +149,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
         <div className="mt-5 border-t border-ink-800 pt-4">
           <div className="mb-2.5 flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-paper-dim">Verified Transactions Behind This Total</h4>
+            <h2 className="text-sm font-bold text-paper">Verified Transactions Behind This Total</h2>
             <span className="pill pill-neutral">Most recent</span>
           </div>
           {breakdownRows.length ? (
@@ -171,11 +172,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                         <td className="td text-paper-dim">{tx.tx_date}</td>
                         <td className="td">
                           <div className="flex items-center gap-2.5">
-                            <span
-                              className={`icon-badge icon-badge-${avatarColor(dealerName ?? '?')} h-6 w-6 shrink-0 text-[10.5px] font-bold`}
-                            >
-                              {(dealerName ?? '?').charAt(0).toUpperCase()}
-                            </span>
+                            <Avatar name={dealerName ?? '?'} size={24} />
                             {tx.dealer_id ? (
                               <a
                                 href={`/dealers/${tx.dealer_id}`}

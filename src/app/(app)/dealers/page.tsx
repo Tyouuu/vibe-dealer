@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
-import { avatarColor } from '@/lib/avatar'
+import { Avatar } from '../avatar'
 import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle, IconSearch } from '../icons'
 
 export const metadata: Metadata = {
@@ -93,6 +93,9 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <button type="submit" className="btn-primary">
           Filter
         </button>
+        <button type="button" className="btn-ghost ml-auto">
+          ⤓ Import/Export
+        </button>
       </form>
 
       <div className="overflow-x-auto">
@@ -127,9 +130,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
                 <tr key={d.id} className="tr-row relative">
                   <td className="td">
                     <div className="flex items-center gap-2.5">
-                      <span className={`icon-badge icon-badge-${avatarColor(d.company_name)} h-7 w-7 shrink-0 text-[11px] font-bold`}>
-                        {d.company_name.charAt(0).toUpperCase()}
-                      </span>
+                      <Avatar name={d.company_name} />
                       <div>
                         <div className="flex items-center gap-2">
                           <Link

@@ -6,7 +6,7 @@ import { monthRange } from '@/lib/month'
 import { verifyTransaction, flagTransaction } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { IconSearch } from '../icons'
-import { avatarColor } from '@/lib/avatar'
+import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 
 export const metadata: Metadata = {
@@ -198,9 +198,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td text-paper-dim">{tx.tx_date}</td>
                   <td className="td">
                     <div className="flex items-center gap-2.5">
-                      <span className={`icon-badge icon-badge-${avatarColor(dealerName ?? '?')} h-6 w-6 shrink-0 text-[10.5px] font-bold`}>
-                        {(dealerName ?? '?').charAt(0).toUpperCase()}
-                      </span>
+                      <Avatar name={dealerName ?? '?'} size={24} />
                       <span className="font-semibold text-paper">{dealerName ?? '—'}</span>
                     </div>
                   </td>

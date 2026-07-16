@@ -13,7 +13,24 @@ type DealerOption = {
   rate: number | null
 }
 
-export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[]; initialDealerId?: string }) {
+export type LastTxInfo = {
+  type: 'package' | 'topup'
+  package: string | null
+  points: number
+  money_rm: number
+}
+
+export function EntryForm({
+  dealers,
+  initialDealerId,
+  recentDealers = [],
+  lastTxByDealer = {},
+}: {
+  dealers: DealerOption[]
+  initialDealerId?: string
+  recentDealers?: { id: string; company_name: string }[]
+  lastTxByDealer?: Record<string, LastTxInfo>
+}) {
   const formRef = useRef<HTMLFormElement>(null)
   const [dealerId, setDealerId] = useState(
     initialDealerId && dealers.some((d) => d.id === initialDealerId) ? initialDealerId : ''
@@ -28,6 +45,20 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
   const [error, setError] = useState<string | null>(null)
 
   const dealer = dealers.find((d) => d.id === dealerId)
+
+  // Same dealer's last transaction, suggested as an editable starting point —
+  // confirming a pre-filled value beats retyping the same points every time.
+  function selectDealer(id: string) {
+    setDealerId(id)
+    const last = lastTxByDealer[id]
+    if (!last) return
+    setType(last.type)
+    if (last.type === 'topup') {
+      setPoints(String(last.points))
+    } else if (last.package) {
+      setPkg(last.package as PackageCode)
+    }
+  }
 
   const preview = useMemo(() => {
     if (type === 'package') {
@@ -91,13 +122,30 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
             <span>Dealer &amp; Type</span>
             <span className="rule" />
           </div>
+
+          {recentDealers.length > 0 && !dealerId && (
+            <div className="-mb-1 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-paper-dim">Recent:</span>
+              {recentDealers.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => selectDealer(d.id)}
+                  className="rounded-full border border-ink-800 bg-ink-900 px-2.5 py-1 text-[11.5px] font-semibold text-paper transition-colors hover:border-primary hover:text-primary"
+                >
+                  {d.company_name}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="form-grid">
             <div>
               <label className="field-label">Dealer</label>
               <select
                 name="dealer_id"
                 value={dealerId}
-                onChange={(e) => setDealerId(e.target.value)}
+                onChange={(e) => selectDealer(e.target.value)}
                 required
                 className="field-input"
               >
@@ -113,15 +161,23 @@ export function EntryForm({ dealers, initialDealerId }: { dealers: DealerOption[
 
             <div>
               <label className="field-label">Type</label>
-              <select
-                name="type"
-                value={type}
-                onChange={(e) => setType(e.target.value as 'topup' | 'package')}
-                className="field-input"
-              >
-                <option value="topup">Regular Top-up</option>
-                <option value="package">Buy Package (updates rate)</option>
-              </select>
+              <input type="hidden" name="type" value={type} />
+              <div className="segmented w-full">
+                <button
+                  type="button"
+                  onClick={() => setType('topup')}
+                  className={`segmented-btn flex-1 ${type === 'topup' ? 'active' : ''}`}
+                >
+                  Regular Top-up
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('package')}
+                  className={`segmented-btn flex-1 ${type === 'package' ? 'active' : ''}`}
+                >
+                  Buy Package
+                </button>
+              </div>
             </div>
           </div>
 

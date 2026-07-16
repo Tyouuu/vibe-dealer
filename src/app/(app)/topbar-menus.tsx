@@ -1,25 +1,44 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
+import { setPreviewRole } from './preview-role-actions'
 import { IconBell, IconHelp, IconChevronDown } from './icons'
+import type { Role } from '@/lib/auth/dal'
 
 export type Notification = { title: string; subtitle: string }
 
 type Panel = 'notif' | 'help' | 'profile' | null
 
+const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
+const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
+
 export function TopbarMenus({
   notifications,
   userName,
   roleLabel,
+  role,
+  actualRole,
 }: {
   notifications: Notification[]
   userName: string
   roleLabel: string
+  role: Role
+  actualRole: Role
 }) {
   const [open, setOpen] = useState<Panel>(null)
+  const [pending, startTransition] = useTransition()
+  const router = useRouter()
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  function pickPreviewRole(r: Role) {
+    startTransition(async () => {
+      await setPreviewRole(r)
+      router.refresh()
+    })
+  }
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -102,15 +121,39 @@ export function TopbarMenus({
           </span>
           <span className="hidden text-left leading-tight sm:block">
             <span className="block max-w-[120px] truncate text-[13.5px] font-bold text-paper">{userName}</span>
-            <span className="block text-[11.5px] text-paper-dim">{roleLabel}</span>
+            <span className="flex items-center gap-1 text-[11.5px] text-paper-dim">
+              {roleLabel}
+              {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9.5px] font-bold text-primary-deep">Preview</span>}
+            </span>
           </span>
           <IconChevronDown className="hidden h-3.5 w-3.5 text-paper-dim sm:block" />
         </button>
         {open === 'profile' && (
-          <div className="dropdown-panel w-52">
+          <div className="dropdown-panel w-56">
             <Link href="/account" className="dropdown-item">
               Account settings
             </Link>
+            {actualRole === 'master' && (
+              <>
+                <div className="my-1 border-t border-ink-800" />
+                <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+                <div className="flex gap-1 px-2.5 pb-2">
+                  {PREVIEW_ROLES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => pickPreviewRole(r)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
+                        role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
+                      }`}
+                    >
+                      {ROLE_LABEL[r]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="my-1 border-t border-ink-800" />
             <div className="px-1 pb-0.5">
               <LogoutButton />

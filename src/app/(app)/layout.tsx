@@ -98,7 +98,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
           </div>
           <div className="flex-1 sm:hidden" />
-          <TopbarMenus notifications={notifications} userName={user.name ?? user.email ?? 'User'} roleLabel={ROLE_LABEL[user.role]} />
+          <TopbarMenus
+            notifications={notifications}
+            userName={user.name ?? user.email ?? 'User'}
+            roleLabel={ROLE_LABEL[user.role]}
+            role={user.role}
+            actualRole={user.actualRole}
+          />
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8">

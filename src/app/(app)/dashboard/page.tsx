@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
+import { GrowthMap } from './growth-map'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, ReconciledStamp } from '../icons'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
@@ -201,14 +202,17 @@ export default async function DashboardPage() {
           <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
           <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
           {regionGrowth.length ? (
-            <div className="flex flex-wrap gap-2.5">
-              {regionGrowth.map((r) => (
-                <span key={r.region} className="region-chip">
-                  <span className="swatch" style={{ background: r.color }} />
-                  {r.region} {r.pct}%
-                </span>
-              ))}
-            </div>
+            <>
+              <div className="flex flex-wrap gap-2.5">
+                {regionGrowth.map((r) => (
+                  <span key={r.region} className="region-chip">
+                    <span className="swatch" style={{ background: r.color }} />
+                    {r.region} {r.pct}%
+                  </span>
+                ))}
+              </div>
+              <GrowthMap regions={regionGrowth} />
+            </>
           ) : (
             <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
           )}

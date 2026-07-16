@@ -104,7 +104,17 @@ export function EntryForm({
       formData.set('receipt_url', path)
     }
 
-    await createTransaction(formData)
+    try {
+      await createTransaction(formData)
+    } finally {
+      // Reached only on a server-side validation failure — createTransaction
+      // redirects back to this same route (/entry?error=...), so the router
+      // reuses this component instance instead of unmounting it. Without this,
+      // submitting stays true forever and the Submit button is stuck disabled.
+      // On success it redirects to /records instead, unmounting this component,
+      // so this call is a harmless no-op in that case.
+      setSubmitting(false)
+    }
   }
 
   return (

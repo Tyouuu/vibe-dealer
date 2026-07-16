@@ -186,15 +186,8 @@ export default async function AuditPage() {
       </div>
 
       <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-paper">Reconciliation Activity</h2>
-          <span className="pill pill-neutral">Last {revisions.length} saves</span>
-        </div>
-        <p className="note-strip">
-          Every save to a month&apos;s Vibe statement is logged here — company_statements only keeps the latest
-          value, this is the history behind it.
-        </p>
-        <div className="mt-4 overflow-x-auto">
+        <h2 className="mb-4 text-base font-bold text-paper">Reconciliation Activity</h2>
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
@@ -234,15 +227,8 @@ export default async function AuditPage() {
       </div>
 
       <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-paper">Dealer Rate Changes</h2>
-          <span className="pill pill-neutral">Last {rateHistory.length} changes</span>
-        </div>
-        <p className="note-strip">
-          Every time recomputeDealerRate changes a dealer&apos;s package/rate, the before/after snapshot is logged
-          here — dealers only keeps the current value, this is the history behind it.
-        </p>
-        <div className="mt-4 overflow-x-auto">
+        <h2 className="mb-4 text-base font-bold text-paper">Dealer Rate Changes</h2>
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>

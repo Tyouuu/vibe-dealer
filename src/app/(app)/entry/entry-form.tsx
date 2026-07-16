@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, type PackageCode } from '@/lib/packages'
 import { createTransaction } from './actions'
-import { IconUsers, IconCoin, IconTag, IconUpload } from '../icons'
+import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
 
 type DealerOption = {
   id: string
@@ -117,9 +117,9 @@ export function EntryForm({
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div className="form-section-head">
             <span className="tile">
-              <IconUsers />
+              <IconDocument />
             </span>
-            <span>Dealer &amp; Type</span>
+            <span>Transaction</span>
             <span className="rule" />
           </div>
 
@@ -153,7 +153,7 @@ export function EntryForm({
                 {dealers.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.company_name}
-                    {d.package ? ` (current ${d.package}·${d.rate}%)` : ' (no package set)'}
+                    {d.package ? ` — Package ${d.package} · ${d.rate}%` : ' — No package'}
                   </option>
                 ))}
               </select>
@@ -185,7 +185,7 @@ export function EntryForm({
             <span className="tile">
               <IconCoin />
             </span>
-            <span>{type === 'package' ? 'Package Details' : 'Top-up Details'}</span>
+            <span>Amount</span>
             <span className="rule" />
           </div>
           {type === 'package' ? (
@@ -235,13 +235,14 @@ export function EntryForm({
                   placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
                   className="field-input"
                 />
+                <span className="hint">Auto-suggested from rate — editable</span>
               </div>
             </div>
           )}
 
           <div className="form-section-head">
             <span className="tile">
-              <IconTag />
+              <IconPaperclip />
             </span>
             <span>Attachments &amp; Notes</span>
             <span className="rule" />
@@ -291,11 +292,7 @@ export function EntryForm({
         <button type="submit" form="entry-form" disabled={uploading || submitting} className="btn-primary mt-4 w-full">
           {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
         </button>
-        <p className="note-strip">
-          Buying a package automatically updates the dealer&apos;s rate (follows the latest package); a regular
-          top-up uses their current rate to calculate your 2%.
-        </p>
-        <p className="note-strip">Money and points are kept separate: In tracks money, Out tracks points — never mixed.</p>
+        <p className="note-strip">Buying a package automatically updates the dealer&apos;s rate for future transactions.</p>
       </div>
     </div>
   )

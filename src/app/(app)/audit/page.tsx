@@ -1,269 +1,181 @@
 import type { Metadata } from 'next'
+import { Fragment } from 'react'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { formatMonthLabel } from '@/lib/month'
+import { getAuditEvents, filterAuditEvents, groupByDay, formatEventTime, type AuditKind } from '@/lib/audit-events'
+import { IconSearch } from '../icons'
+import { Listbox } from '../listbox'
+import { MonthPicker } from '../month-picker'
+import { AuditRow } from './audit-row'
 
 export const metadata: Metadata = {
   title: 'Audit Log — DealerHub',
 }
 
-type TxRow = {
-  id: string
-  tx_date: string
-  created_at: string
-  type: 'package' | 'topup'
-  package: string | null
-  points: number
-  money_rm: number
-  status: 'pending' | 'verified' | 'flagged'
-  recorded_by: string | null
-  verified_by: string | null
-  dealers: { company_name: string } | { company_name: string }[] | null
+type View = 'all' | AuditKind
+
+const VIEW_LABEL: Record<View, string> = {
+  all: 'All',
+  transaction: 'Transactions',
+  reconciliation: 'Reconciliation',
+  rate_change: 'Rate changes',
 }
 
-type RevisionRow = {
-  id: string
-  month: string
-  company_total_points: number | null
-  company_profit_rm: number | null
-  note: string | null
-  recorded_by: string | null
-  created_at: string
+type PageProps = {
+  searchParams: Promise<{ q?: string; view?: string; actor?: string; month?: string }>
 }
 
-type RateHistoryRow = {
-  id: string
-  old_package: string | null
-  old_rate: number | null
-  new_package: string | null
-  new_rate: number | null
-  changed_by: string | null
-  created_at: string
-  dealers: { company_name: string } | { company_name: string }[] | null
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-export default async function AuditPage() {
+export default async function AuditPage({ searchParams }: PageProps) {
   const user = await requireUser()
 
   if (user.role !== 'master') {
     return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view the audit log.</div>
   }
 
+  const { q = '', view: rawView = 'all', actor = 'all', month = '' } = await searchParams
+  const view: View = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
+
   const supabase = await createClient()
+  const allEvents = await getAuditEvents(supabase)
+  const actors = Array.from(new Set(allEvents.map((e) => e.actor))).sort()
 
-  const [{ data: rows }, { data: revisionRows }, { data: rateHistoryRows }] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select(
-        'id, tx_date, created_at, type, package, points, money_rm, status, recorded_by, verified_by, dealers(company_name)'
-      )
-      .order('created_at', { ascending: false })
-      .limit(100),
-    supabase
-      .from('company_statement_revisions')
-      .select('id, month, company_total_points, company_profit_rm, note, recorded_by, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50),
-    supabase
-      .from('dealer_rate_history')
-      .select('id, old_package, old_rate, new_package, new_rate, changed_by, created_at, dealers(company_name)')
-      .order('created_at', { ascending: false })
-      .limit(50),
-  ])
+  const filtered = filterAuditEvents(allEvents, { q, kind: view, actor, month })
+  const groups = groupByDay(filtered)
 
-  const txRows = (rows ?? []) as unknown as TxRow[]
-  const revisions = (revisionRows ?? []) as RevisionRow[]
-  const rateHistory = (rateHistoryRows ?? []) as unknown as RateHistoryRow[]
-
-  // recorded_by / verified_by / changed_by are bare uuid columns with no FK
-  // to profiles (predates the profiles table — see 0001_profiles_and_rls.sql),
-  // so PostgREST nested-select can't join them. Resolve names ourselves.
-  // (dealer_id on dealer_rate_history IS a real FK, so that one nests fine.)
-  const staffIds = new Set<string>()
-  for (const tx of txRows) {
-    if (tx.recorded_by) staffIds.add(tx.recorded_by)
-    if (tx.verified_by) staffIds.add(tx.verified_by)
-  }
-  for (const rev of revisions) {
-    if (rev.recorded_by) staffIds.add(rev.recorded_by)
-  }
-  for (const rh of rateHistory) {
-    if (rh.changed_by) staffIds.add(rh.changed_by)
+  function viewHref(v: View) {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (actor !== 'all') params.set('actor', actor)
+    if (month) params.set('month', month)
+    if (v !== 'all') params.set('view', v)
+    const qs = params.toString()
+    return `/audit${qs ? `?${qs}` : ''}`
   }
 
-  const { data: profiles } = staffIds.size
-    ? await supabase.from('profiles').select('id, name, email').in('id', [...staffIds])
-    : { data: [] }
+  const exportParams = new URLSearchParams()
+  if (q) exportParams.set('q', q)
+  if (actor !== 'all') exportParams.set('actor', actor)
+  if (month) exportParams.set('month', month)
+  if (view !== 'all') exportParams.set('view', view)
+  const exportHref = `/api/audit/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
 
-  const nameById = new Map<string, string>()
-  for (const p of profiles ?? []) {
-    nameById.set(p.id, p.name ?? p.email ?? '—')
-  }
-  const displayName = (id: string | null) => (id ? (nameById.get(id) ?? '—') : '—')
+  const hasFilter = Boolean(q) || actor !== 'all' || Boolean(month) || view !== 'all'
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Audit Log</h1>
-          <span className="pill pill-neutral">Last {txRows.length} transactions</span>
-        </div>
-        <p className="note-strip">A read-only history of who did what — every transaction, reconciliation, and rate change, with who and when.</p>
+    <div className="app-card">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
+          Audit Log
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 px-2.5 py-1 text-[11px] font-bold text-paper-dim">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5">
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            Read-only
+          </span>
+        </h1>
+        <a href={exportHref} className="btn-ghost">
+          ⤓ Export
+        </a>
+      </div>
+      <p className="note-strip">
+        Every transaction, reconciliation save, and rate change — who did it and when. One row per event; click any row for the
+        full detail.
+      </p>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+      <form className="mb-4 flex flex-wrap gap-3" action="/audit" method="GET">
+        {view !== 'all' && <input type="hidden" name="view" value={view} />}
+        <label className="mini-search w-64 max-w-full transition-colors focus-within:border-primary">
+          <IconSearch className="h-4 w-4 shrink-0" />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search dealer, actor…"
+            className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
+          />
+        </label>
+        <div className="w-44">
+          <Listbox name="actor" defaultValue={actor} options={[{ value: 'all', label: 'All actors' }, ...actors.map((a) => ({ value: a, label: a }))]} />
+        </div>
+        <div className="w-44">
+          <MonthPicker name="month" defaultValue={month} placeholder="All months" allowClear />
+        </div>
+        <button type="submit" className="btn-primary">
+          Filter
+        </button>
+        <div className="ml-auto segmented">
+          {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
+            <Link key={v} href={viewHref(v)} className={`segmented-btn ${view === v ? 'active' : ''}`}>
+              {VIEW_LABEL[v]}
+            </Link>
+          ))}
+        </div>
+      </form>
+
+      {filtered.length ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr>
                 <th className="th">Time</th>
+                <th className="th">Actor</th>
+                <th className="th">Event</th>
                 <th className="th">Dealer</th>
-                <th className="th">Type</th>
-                <th className="th text-right">In (RM)</th>
-                <th className="th text-right">Out (pts)</th>
+                <th className="th text-right">Amount / Points</th>
                 <th className="th">Status</th>
-                <th className="th">Activity</th>
+                <th className="th"></th>
               </tr>
             </thead>
             <tbody>
-              {txRows.map((tx) => {
-                const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
-                return (
-                  <tr key={tx.id} className="tr-row">
-                    <td className="td text-paper-dim">{formatDateTime(tx.created_at)}</td>
-                    <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                    <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
-                    <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
-                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                    <td className="td">
-                      <span
-                        className={
-                          tx.status === 'verified' ? 'pill pill-jade' : tx.status === 'flagged' ? 'pill pill-clay' : 'pill pill-brass'
-                        }
-                      >
-                        {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
-                      </span>
-                    </td>
-                    <td className="td">
-                      <div className="flex flex-col gap-0.5 text-xs text-paper-dim">
-                        <span>
-                          Recorded by <span className="font-semibold text-paper">{displayName(tx.recorded_by)}</span>
-                        </span>
-                        {tx.status === 'verified' && (
-                          <span className="text-jade-bright">
-                            Verified by <span className="font-semibold">{displayName(tx.verified_by)}</span>
-                          </span>
-                        )}
-                        {tx.status === 'flagged' && (
-                          <span className="text-clay-bright">
-                            Flagged by <span className="font-semibold">{displayName(tx.verified_by)}</span>
-                          </span>
-                        )}
-                      </div>
+              {groups.map((group, i) => (
+                <Fragment key={`${group.label}-${i}`}>
+                  <tr>
+                    <td colSpan={7} className="border-b border-ink-800 bg-ink-850 px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-paper-dim">
+                      {group.label}
                     </td>
                   </tr>
-                )
-              })}
-              {!txRows.length && (
-                <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
-                    No transactions recorded yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="app-card">
-        <h2 className="mb-4 text-base font-bold text-paper">Reconciliation Activity</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="th">Time</th>
-                <th className="th">Month</th>
-                <th className="th text-right">Vibe Top-up (pts)</th>
-                <th className="th text-right">Vibe Profit (RM)</th>
-                <th className="th">Saved by</th>
-                <th className="th">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {revisions.map((rev) => (
-                <tr key={rev.id} className="tr-row">
-                  <td className="td text-paper-dim">{formatDateTime(rev.created_at)}</td>
-                  <td className="td font-semibold text-paper">{formatMonthLabel(rev.month)}</td>
-                  <td className="td figure-points text-right">
-                    {rev.company_total_points != null ? rev.company_total_points.toLocaleString() : '—'}
-                  </td>
-                  <td className="td figure-money text-right">
-                    {rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—'}
-                  </td>
-                  <td className="td text-paper">{displayName(rev.recorded_by)}</td>
-                  <td className="td text-paper-dim">{rev.note ?? '—'}</td>
-                </tr>
+                  {group.events.map((e) => (
+                    <AuditRow
+                      key={e.id}
+                      row={{
+                        id: e.id,
+                        time: formatEventTime(e.createdAt),
+                        actor: e.actor,
+                        event: e.event,
+                        dealer: e.dealer,
+                        amount: e.amount,
+                        status: e.status,
+                        detail: e.detail,
+                      }}
+                    />
+                  ))}
+                </Fragment>
               ))}
-              {!revisions.length && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
-                    No reconciliation saves logged yet.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">
+            <IconSearch className="h-5 w-5" />
+          </span>
+          <p className="text-sm text-paper-dim">
+            {hasFilter
+              ? 'No events match those filters.'
+              : "Once your team verifies a top-up, saves a reconciliation, or changes a dealer's rate, it'll show up here — permanently, and searchable."}
+          </p>
+          {hasFilter && (
+            <Link href="/audit" className="btn-ghost text-xs">
+              Clear filters
+            </Link>
+          )}
+        </div>
+      )}
 
-      <div className="app-card">
-        <h2 className="mb-4 text-base font-bold text-paper">Dealer Rate Changes</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="th">Time</th>
-                <th className="th">Dealer</th>
-                <th className="th">Before</th>
-                <th className="th">After</th>
-                <th className="th">Changed by</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rateHistory.map((rh) => {
-                const dealerName = Array.isArray(rh.dealers) ? rh.dealers[0]?.company_name : rh.dealers?.company_name
-                const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : 'Not Set'
-                const after = rh.new_package ? `${rh.new_package} · ${rh.new_rate}%` : '—'
-                return (
-                  <tr key={rh.id} className="tr-row">
-                    <td className="td text-paper-dim">{formatDateTime(rh.created_at)}</td>
-                    <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                    <td className="td text-paper-dim">{before}</td>
-                    <td className="td text-paper">{after}</td>
-                    <td className="td text-paper-dim">{displayName(rh.changed_by)}</td>
-                  </tr>
-                )
-              })}
-              {!rateHistory.length && (
-                <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
-                    No rate changes logged yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+        <span className="text-[11.5px] text-paper-dim">{filtered.length} events</span>
       </div>
     </div>
   )

@@ -3,7 +3,9 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 import { saveStatement, markReconciled } from './actions'
-import { ReconciledStamp, IconCheckCircle, IconAlertCircle } from '../icons'
+import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
+import { avatarColor } from '@/lib/avatar'
+import { StatusDot } from '../status-dot'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 
 type BreakdownRow = {
   id: string
+  dealer_id: string
   tx_date: string
   type: 'package' | 'topup'
   package: string | null
@@ -36,7 +39,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const [{ data: verifiedTx }, { data: statement }] = await Promise.all([
     supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, dealers(company_name)')
+      .select('id, dealer_id, tx_date, type, package, points, dealers(company_name)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
@@ -59,8 +62,14 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             <ReconciledStamp sub={month} />
           </div>
         )}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-paper">Reconciliation · {month}</h3>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-paper">Reconciliation · {month}</h1>
+            <p className="mt-1 text-[12.5px] text-paper-dim">
+              Compare what your system recorded against Vibe&apos;s official statement before confirming this month&apos;s
+              commission.
+            </p>
+          </div>
           <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
             <input type="month" name="month" defaultValue={month} className="field-input w-auto py-1.5" />
             <button type="submit" className="btn-ghost py-1.5 text-xs">
@@ -74,11 +83,17 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="app-tile">
-            <div className="text-[11px] font-semibold text-paper-dim">System Total (verified)</div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-paper-dim">
+              <IconBuilding className="h-3.5 w-3.5" />
+              Your System (verified)
+            </div>
             <div className="figure-points mt-1.5 text-xl font-semibold">{systemPoints.toLocaleString()} pts</div>
           </div>
           <div className="app-tile">
-            <div className="text-[11px] font-semibold text-paper-dim">Vibe Company Statement</div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-paper-dim">
+              <IconDocument className="h-3.5 w-3.5" />
+              Vibe&apos;s Statement
+            </div>
             {companyPoints != null ? (
               <div className="figure-points mt-1.5 text-xl font-semibold">{Number(companyPoints).toLocaleString()} pts</div>
             ) : (
@@ -134,7 +149,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         <div className="mt-5 border-t border-ink-800 pt-4">
           <div className="mb-2.5 flex items-center justify-between">
             <h4 className="text-xs font-bold uppercase tracking-wide text-paper-dim">Verified Transactions Behind This Total</h4>
-            <span className="pill pill-neutral">{breakdownRows.length}</span>
+            <span className="pill pill-neutral">Most recent</span>
           </div>
           {breakdownRows.length ? (
             <div className="overflow-x-auto">
@@ -145,17 +160,39 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                     <th className="th">Dealer</th>
                     <th className="th">Type</th>
                     <th className="th text-right">Points</th>
+                    <th className="th">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {breakdownRows.slice(0, 8).map((tx) => {
                     const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
                     return (
-                      <tr key={tx.id} className="tr-row">
+                      <tr key={tx.id} className="tr-row relative">
                         <td className="td text-paper-dim">{tx.tx_date}</td>
-                        <td className="td font-semibold text-paper">{dealerName ?? '—'}</td>
-                        <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                        <td className="td">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`icon-badge icon-badge-${avatarColor(dealerName ?? '?')} h-6 w-6 shrink-0 text-[10.5px] font-bold`}
+                            >
+                              {(dealerName ?? '?').charAt(0).toUpperCase()}
+                            </span>
+                            {tx.dealer_id ? (
+                              <a
+                                href={`/dealers/${tx.dealer_id}`}
+                                className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                              >
+                                {dealerName ?? '—'}
+                              </a>
+                            ) : (
+                              <span className="font-semibold text-paper">{dealerName ?? '—'}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                        <td className="td">
+                          <StatusDot color="jade-bright" label="Verified" />
+                        </td>
                       </tr>
                     )
                   })}
@@ -165,11 +202,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           ) : (
             <p className="text-sm text-paper-dim">No verified transactions in this period yet.</p>
           )}
-          {breakdownRows.length > 8 && (
-            <a href={`/records?month=${month}&status=verified`} className="mt-2 block text-[11.5px] font-semibold text-primary hover:underline">
-              +{breakdownRows.length - 8} more — view all in Transactions →
+          <div className="mt-3 text-center">
+            <a href={`/records?month=${month}&status=verified`} className="text-[11.5px] font-semibold text-primary hover:underline">
+              View all in Transactions →
             </a>
-          )}
+          </div>
         </div>
       </div>
 

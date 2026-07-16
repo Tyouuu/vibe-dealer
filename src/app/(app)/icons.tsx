@@ -164,6 +164,15 @@ export function IconInfo({ className = 'h-[15px] w-[15px]' }: IconProps) {
   )
 }
 
+export function IconDocument({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M11.5 2H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6.5z" />
+      <path d="M11.5 2v4.5H16" />
+    </svg>
+  )
+}
+
 export function IconUpload({ className = th }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>

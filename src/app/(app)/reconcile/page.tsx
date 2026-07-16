@@ -133,9 +133,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           </div>
         </div>
 
-        <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-brass/10 px-3 py-2.5">
+        <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2.5">
           <span className="text-sm font-semibold text-paper">Your 2% Due</span>
-          <b className="figure-money text-lg">RM {systemProfit.toLocaleString()}</b>
+          <b className="figure-money text-lg text-primary-deep">RM {systemProfit.toLocaleString()}</b>
         </div>
 
         <div className="mt-4 flex items-center gap-3">

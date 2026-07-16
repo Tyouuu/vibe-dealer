@@ -262,7 +262,7 @@ function Row({
   return (
     <div className={`docket-row ${highlight ? '-mx-3 rounded-lg bg-primary-soft px-3' : ''}`}>
       <span className={highlight ? 'font-semibold text-paper' : 'text-paper-dim'}>{label}</span>
-      <b className={`${valueStyle} ${bold ? 'text-base' : ''}`}>{value}</b>
+      <b className={`${valueStyle} ${bold ? 'text-base' : ''} ${highlight ? 'text-primary-deep' : ''}`}>{value}</b>
     </div>
   )
 }

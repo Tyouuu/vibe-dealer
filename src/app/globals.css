@@ -18,12 +18,11 @@
    distribution donut) — validated against these values with the dataviz
    skill's validate_palette.js.
 
-   Money stays visually distinct from points (figure-money vs figure-points)
-   even though the reference mockup renders all table numerics in one plain
-   ink color — this app's one hard business rule is that money (RM) and
-   points are never added together, and that distinction predates this
-   palette pass, so it's kept as a deliberate, small departure from the
-   reference rather than dropped. */
+   figure-money / figure-points render as one plain ink color, matching the
+   reference mockup's table numerics exactly (`td.mono{color:var(--ink)}`) —
+   an earlier pass split them into brass/jade to visually separate money from
+   points, but that predated this palette and was dropped once compared
+   directly against the reference. */
 @theme {
   --color-ink-950: #eef0f4;
   --color-ink-900: #ffffff;
@@ -249,20 +248,11 @@ body {
   .figure {
     @apply font-mono tracking-tight tabular-nums;
   }
-  /* Money vs points stay visually distinct (see file header) — a deliberate
-     small departure from the reference's single plain-ink `.mono` cells. */
   .figure-money {
-    @apply font-mono font-bold tracking-tight tabular-nums text-brass-bright;
+    @apply font-mono font-bold tracking-tight tabular-nums text-paper;
   }
   .figure-points {
-    @apply font-mono font-bold tracking-tight tabular-nums text-jade-bright;
-  }
-
-  .money-chip {
-    @apply inline-block rounded-xl bg-brass-bright px-4 py-2 font-mono font-bold tracking-tight tabular-nums text-white;
-    box-shadow:
-      0 1px 2px rgba(122, 86, 15, 0.15),
-      0 10px 22px -8px rgba(122, 86, 15, 0.45);
+    @apply font-mono font-bold tracking-tight tabular-nums text-paper;
   }
 
   .alert {

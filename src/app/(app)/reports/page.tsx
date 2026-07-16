@@ -49,7 +49,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="app-card border-t-[3px] border-t-primary">
-        <h1 className="text-2xl font-bold text-paper">Monthly Report</h1>
+        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Monthly Report</h1>
         <p className="mt-1 text-[11.5px] font-bold uppercase tracking-wide text-paper-dim">
           Generated {formatDateLabel(todayInMalaysia())} · Period: {formatMonthLabel(month)}
         </p>

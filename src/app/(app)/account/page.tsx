@@ -18,7 +18,7 @@ export default async function AccountPage() {
 
   return (
     <div className="flex max-w-xl flex-col gap-5">
-      <h1 className="text-base font-bold text-paper">Account Settings</h1>
+      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
 
       <div className="app-card">
         <div className="form-section-head">

@@ -90,7 +90,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     <div className="app-card">
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-paper">Dealers</h1>
+        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dealers</h1>
         <span className="pill pill-neutral">{count ?? 0} dealers</span>
       </div>
 

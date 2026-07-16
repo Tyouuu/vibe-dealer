@@ -98,7 +98,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-bold text-paper">Transactions</h1>
+        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Transactions</h1>
         <span className="pill pill-neutral">
           {count != null && count > 200
             ? `Showing 200 of ${count} transactions — narrow with a filter to see more`

@@ -154,6 +154,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconTrendUp className="h-4 w-4" />}

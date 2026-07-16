@@ -6,7 +6,7 @@ export default function DealersLoading() {
   return (
     <div className="app-card">
       <div className="mb-4 flex items-center justify-between">
-        <Bone className="h-5 w-24" />
+        <Bone className="h-8 w-28" />
         <Bone className="h-5 w-20 rounded-full" />
       </div>
       <Bone className="mb-4 h-9 w-64 rounded-lg" />

@@ -116,7 +116,7 @@ export default async function AuditPage() {
     <div className="flex flex-col gap-5">
       <div className="app-card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-base font-bold text-paper">Audit Log</h1>
+          <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Audit Log</h1>
           <span className="pill pill-neutral">Last {txRows.length} transactions</span>
         </div>
         <p className="note-strip">A read-only history of who did what — every transaction, reconciliation, and rate change, with who and when.</p>

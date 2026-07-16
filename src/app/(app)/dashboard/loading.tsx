@@ -7,6 +7,7 @@ function Bone({ className = '' }: { className?: string }) {
 export default function DashboardLoading() {
   return (
     <div className="flex flex-col gap-5">
+      <Bone className="h-8 w-40" />
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="app-tile flex flex-col gap-3">

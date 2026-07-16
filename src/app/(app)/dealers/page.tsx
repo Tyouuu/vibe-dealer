@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
+import { ImportDealersButton } from './import-dealers-button'
+import { Listbox } from '../listbox'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -25,12 +27,30 @@ type Dealer = {
 type View = 'all' | 'region' | 'inactive'
 
 type PageProps = {
-  searchParams: Promise<{ q?: string; region?: string; onboarded?: string; view?: string }>
+  searchParams: Promise<{
+    q?: string
+    region?: string
+    onboarded?: string
+    view?: string
+    imported?: string
+    skipped_dup?: string
+    skipped_invalid?: string
+    import_error?: string
+  }>
 }
 
 export default async function DealersPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { q = '', region = 'all', onboarded, view: rawView = 'all' } = await searchParams
+  const {
+    q = '',
+    region = 'all',
+    onboarded,
+    view: rawView = 'all',
+    imported,
+    skipped_dup: skippedDup,
+    skipped_invalid: skippedInvalid,
+    import_error: importError,
+  } = await searchParams
   const view: View = rawView === 'region' || rawView === 'inactive' ? rawView : 'all'
   const canManage = user.role === 'cs' || user.role === 'master'
 
@@ -86,9 +106,25 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
   const hasFilter = Boolean(q) || region !== 'all'
 
+  const exportParams = new URLSearchParams()
+  if (q) exportParams.set('q', q)
+  if (region !== 'all') exportParams.set('region', region)
+  if (view !== 'all') exportParams.set('view', view)
+  const exportHref = `/api/dealers/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
+
   return (
     <div className="app-card">
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
+      {imported && (
+        <div className="alert alert-ok">
+          Imported {imported} dealer{imported === '1' ? '' : 's'}.
+          {skippedDup && Number(skippedDup) > 0 ? ` Skipped ${skippedDup} duplicate${skippedDup === '1' ? '' : 's'}.` : ''}
+          {skippedInvalid && Number(skippedInvalid) > 0
+            ? ` Skipped ${skippedInvalid} row${skippedInvalid === '1' ? '' : 's'} with no company name.`
+            : ''}
+        </div>
+      )}
+      {importError && <div className="alert alert-bad">{importError}</div>}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dealers</h1>
         <span className="pill pill-neutral">{count ?? 0} dealers</span>
@@ -118,20 +154,18 @@ export default async function DealersPage({ searchParams }: PageProps) {
             className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
           />
         </label>
-        <select name="region" defaultValue={region} className="field-input w-auto">
-          <option value="all">All Regions</option>
-          {regions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        <div className="w-44">
+          <Listbox name="region" defaultValue={region} options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]} />
+        </div>
         <button type="submit" className="btn-primary">
           Filter
         </button>
-        <button type="button" className="btn-ghost ml-auto">
-          ⤓ Import/Export
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <a href={exportHref} className="btn-ghost">
+            ⤓ Export
+          </a>
+          {canManage && <ImportDealersButton />}
+        </div>
       </form>
 
       {rows.length ? (

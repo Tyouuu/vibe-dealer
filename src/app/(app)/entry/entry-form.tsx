@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, type PackageCode } from '@/lib/packages'
 import { createTransaction } from './actions'
 import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
+import { Combobox } from '../combobox'
+import { Listbox } from '../listbox'
 
 type DealerOption = {
   id: string
@@ -152,21 +154,20 @@ export function EntryForm({
           <div className="form-grid">
             <div>
               <label className="field-label">Dealer</label>
-              <select
+              <Combobox
                 name="dealer_id"
                 value={dealerId}
-                onChange={(e) => selectDealer(e.target.value)}
-                required
-                className="field-input"
-              >
-                <option value="">Select a dealer…</option>
-                {dealers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.company_name}
-                    {d.package ? ` — Package ${d.package} · ${d.rate}%` : ' — No package'}
-                  </option>
-                ))}
-              </select>
+                onChange={selectDealer}
+                placeholder="Select a dealer…"
+                searchPlaceholder="Search dealer…"
+                options={dealers.map((d) => ({
+                  value: d.id,
+                  label: d.company_name,
+                  sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'No package',
+                  avatarName: d.company_name,
+                  avatarPackage: d.package,
+                }))}
+              />
             </div>
 
             <div>
@@ -202,20 +203,26 @@ export function EntryForm({
             <div className="form-grid">
               <div>
                 <label className="field-label">Package</label>
-                <select name="package" value={pkg} onChange={(e) => setPkg(e.target.value as PackageCode)} className="field-input">
-                  {(Object.keys(PACKAGES) as PackageCode[]).map((code) => (
-                    <option key={code} value={code}>
-                      {PACKAGES[code].name} · RM{PACKAGES[code].price} · {PACKAGES[code].rate}%
-                    </option>
-                  ))}
-                </select>
+                <Listbox
+                  name="package"
+                  value={pkg}
+                  onChange={(v) => setPkg(v as PackageCode)}
+                  options={(Object.keys(PACKAGES) as PackageCode[]).map((code) => ({
+                    value: code,
+                    label: `${PACKAGES[code].name} · RM${PACKAGES[code].price} · ${PACKAGES[code].rate}%`,
+                  }))}
+                />
               </div>
               <div>
                 <label className="field-label">SIM Type</label>
-                <select name="sim_type" defaultValue="esim" className="field-input">
-                  <option value="esim">eSIM (instant)</option>
-                  <option value="physical">Physical SIM (needs delivery)</option>
-                </select>
+                <Listbox
+                  name="sim_type"
+                  defaultValue="esim"
+                  options={[
+                    { value: 'esim', label: 'eSIM (instant)' },
+                    { value: 'physical', label: 'Physical SIM (needs delivery)' },
+                  ]}
+                />
               </div>
             </div>
           ) : (

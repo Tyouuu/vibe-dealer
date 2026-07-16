@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
+import { MonthPicker } from '../month-picker'
 
 export const metadata: Metadata = {
   title: 'Monthly Report — DealerHub',
@@ -56,7 +57,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
         <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
           <form className="flex items-center gap-3" action="/reports" method="GET">
-            <input type="month" name="month" defaultValue={month} className="field-input w-auto" />
+            <div className="w-44">
+              <MonthPicker name="month" defaultValue={month} />
+            </div>
             <button type="submit" className="btn-primary">
               View
             </button>

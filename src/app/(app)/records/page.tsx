@@ -9,6 +9,8 @@ import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
+import { Listbox } from '../listbox'
+import { MonthPicker } from '../month-picker'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -128,13 +130,21 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
             />
           </label>
-          <select name="status" defaultValue={status} className="field-input w-auto">
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="verified">Verified</option>
-            <option value="flagged">Flagged</option>
-          </select>
-          <input type="month" name="month" defaultValue={month ?? ''} className="field-input w-auto" />
+          <div className="w-44">
+            <Listbox
+              name="status"
+              defaultValue={status}
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'pending', label: 'Pending', dotColor: 'var(--color-brass-bright)' },
+                { value: 'verified', label: 'Verified', dotColor: 'var(--color-jade-bright)' },
+                { value: 'flagged', label: 'Flagged', dotColor: 'var(--color-clay-bright)' },
+              ]}
+            />
+          </div>
+          <div className="w-44">
+            <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear />
+          </div>
           <input type="hidden" name="sort" value={sort} />
           <button type="submit" className="btn-primary">
             Filter

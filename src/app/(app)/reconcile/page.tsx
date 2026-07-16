@@ -7,6 +7,7 @@ import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDo
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
+import { MonthPicker } from '../month-picker'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -75,7 +76,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             </p>
           </div>
           <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
-            <input type="month" name="month" defaultValue={month} className="field-input w-auto py-1.5" />
+            <div className="w-40">
+              <MonthPicker name="month" defaultValue={month} />
+            </div>
             <button type="submit" className="btn-ghost py-1.5 text-xs">
               View
             </button>

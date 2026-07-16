@@ -143,6 +143,21 @@ body {
     box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
   }
 
+  /* Trigger button for the custom Combobox/Listbox/MonthPicker components —
+     visually identical to .field-input but a real <button>, since none of
+     those render a native form control. */
+  .trigger-btn {
+    @apply flex w-full items-center gap-2.5 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 text-left text-sm font-semibold text-paper outline-none transition-all;
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+  }
+  .trigger-btn:hover {
+    @apply border-ink-700;
+  }
+  .trigger-btn.open {
+    @apply border-primary;
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
+  }
+
   .req {
     @apply text-clay-bright;
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Listbox } from '../listbox'
 
 export type TrendRow = { month: string; label: string; region: string; points: number }
 
@@ -56,18 +57,13 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
   return (
     <div>
       {regions.length > 0 && (
-        <select
-          value={region}
-          onChange={(e) => setRegion(e.target.value)}
-          className="select-pill mb-4"
-        >
-          <option value="all">All Regions</option>
-          {regions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        <div className="mb-4 w-40">
+          <Listbox
+            value={region}
+            onChange={setRegion}
+            options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]}
+          />
+        </div>
       )}
 
       <svg

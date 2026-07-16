@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { PACKAGES } from '@/lib/packages'
 import { createDealer } from './actions'
 import { IconBuilding, IconPhone, IconMapPin } from '../icons'
+import { Listbox } from '../listbox'
 
 export const metadata: Metadata = {
   title: 'Onboard Dealer — DealerHub',
@@ -89,14 +90,17 @@ export default async function OnboardPage({ searchParams }: PageProps) {
             </div>
             <div>
               <label className="field-label">Initial Package (optional, can change later)</label>
-              <select name="package" defaultValue="" className="field-input">
-                <option value="">Not set yet</option>
-                {(Object.keys(PACKAGES) as (keyof typeof PACKAGES)[]).map((code) => (
-                  <option key={code} value={code}>
-                    {PACKAGES[code].name} · RM{PACKAGES[code].price} · {PACKAGES[code].reload} pts · {PACKAGES[code].rate}%
-                  </option>
-                ))}
-              </select>
+              <Listbox
+                name="package"
+                defaultValue=""
+                options={[
+                  { value: '', label: 'Not set yet' },
+                  ...(Object.keys(PACKAGES) as (keyof typeof PACKAGES)[]).map((code) => ({
+                    value: code,
+                    label: `${PACKAGES[code].name} · RM${PACKAGES[code].price} · ${PACKAGES[code].reload} pts · ${PACKAGES[code].rate}%`,
+                  })),
+                ]}
+              />
             </div>
           </div>
           <button type="submit" className="btn-primary mt-2">

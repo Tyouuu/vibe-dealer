@@ -1,32 +1,36 @@
-// Real positions, not guesses: derived from each town's actual lat/long,
-// projected onto the same 0-100 viewBox as PENINSULA_PATH below (both use
-// lon 99.0-105.0 -> x 0-100, lat 6.8-0.8 -> y 0-100), so pins land on the
-// coastline where they should. PENINSULA_PATH itself is a simplified real
-// boundary — extracted from geoBoundaries' Malaysia ADM0 GeoJSON
-// (github.com/wmgeolab/geoBoundaries), not hand-drawn.
+// The dealer network is Northern Malaysia only — Perak/Penang/Kedah, from
+// Tanjung Malim (the network's actual southern edge) up to the Thai border —
+// so the map is cropped to that real coverage box rather than showing the
+// whole (mostly irrelevant) peninsula. Both the coastline and the town pins
+// below are derived from real lon/lat, projected onto the same viewBox
+// (lon 99.55-101.55 -> x 0-200, lat 6.85-3.45 -> y 0-340), extracted from
+// geoBoundaries' Malaysia ADM0 GeoJSON (github.com/wmgeolab/geoBoundaries)
+// and clipped/simplified with a Sutherland-Hodgman + Douglas-Peucker pass —
+// not hand-drawn. Penang Island is its own polygon in the source data, so it
+// renders as a real separate landmass rather than a blob on the coast.
 const REGION_COORDS: Record<string, { x: number; y: number }> = {
-  Penang: { x: 22.2, y: 23.2 },
-  Taiping: { x: 29.0, y: 32.5 },
-  Ipoh: { x: 34.7, y: 36.7 },
-  Kampar: { x: 35.8, y: 41.7 },
-  Sitiawan: { x: 28.3, y: 43.2 },
-  'Teluk Intan': { x: 33.7, y: 46.3 },
-  Kuantan: { x: 72.2, y: 49.7 },
-  Klang: { x: 40.8, y: 62.7 },
-  KL: { x: 44.8, y: 61.0 },
-  Seremban: { x: 49.0, y: 67.8 },
-  Melaka: { x: 54.2, y: 76.8 },
-  Johor: { x: 79.3, y: 88.5 },
+  Penang: { x: 38.9, y: 42.2 },
+  Taiping: { x: 59.4, y: 58.8 },
+  Ipoh: { x: 77.0, y: 66.3 },
+  Kampar: { x: 79.8, y: 74.7 },
+  Sitiawan: { x: 57.5, y: 77.5 },
+  'Teluk Intan': { x: 73.5, y: 83.2 },
 }
 
-const PENINSULA_PATH =
-  'M 20.08,1.24 L 18.67,6.29 L 22.5,13.77 L 23.83,26.51 L 22.68,28.54 L 27.63,35.45 L 25.97,41.52 L 29.37,45.25 L 28.78,49 L 30.51,49.06 L 30.24,50.26 L 38.32,59.11 L 39.91,63.55 L 38.22,66.04 L 46.31,70.13 L 47.56,73.29 L 49.53,73.36 L 52.57,76.39 L 58.49,78.55 L 61.8,82.44 L 72.03,87.2 L 75.14,92.22 L 75.66,88.74 L 75.96,91.16 L 78.52,88.64 L 83.3,89.42 L 82.79,86.27 L 84.8,90.52 L 88.05,90.5 L 87.46,85.77 L 80.39,70.28 L 77.24,68.93 L 74.02,65.06 L 74.58,54.63 L 72.09,51.01 L 74,47.29 L 73.09,44.82 L 74.86,41.49 L 74.59,37.87 L 73.99,33.64 L 68.6,23.42 L 58.45,15.47 L 55.76,10.52 L 51.52,9.26 L 47.08,17.78 L 44.86,17.42 L 43.02,14.43 L 37.94,16.47 L 35.57,19.78 L 33.07,16.55 L 35.41,13.72 L 34.31,10.96 L 35.21,9.14 L 30.89,9.47 L 28.98,4.83 L 27.53,5.96 L 23.64,4.69 L 20.08,1.24 Z'
+const MAP_VIEWBOX = '0 0 200 340'
+
+const MAINLAND_PATH =
+  'M 65.5,12.43 L 63.58,13.32 L 62.15,15.66 L 63.07,19.57 L 61.83,20.24 L 61.61,21.84 L 63.36,27.72 L 62.57,28.34 L 60.68,27.07 L 60.91,36.93 L 59.56,38.13 L 59.8,39.76 L 58.36,42.08 L 57.04,42.73 L 62,55.9 L 64.67,60.17 L 69.08,63.59 L 71.37,67.51 L 73.61,75.54 L 77.69,80.45 L 80.02,87.65 L 80.41,97.12 L 81.86,103.63 L 80.12,114.72 L 82.36,117.92 L 80.71,118.59 L 79.35,117.65 L 78.23,118.83 L 79.08,121.41 L 78.83,127.66 L 82.33,132.84 L 83.05,139.71 L 81.34,145.67 L 82.67,148.59 L 85.54,151.13 L 85.3,153.11 L 86.91,156.86 L 85.61,158.52 L 87.96,164.08 L 86.86,165.77 L 87.93,168.46 L 84.6,170.88 L 81.08,176.22 L 82.99,177.3 L 85.24,185.39 L 86.83,185.25 L 87.34,190.18 L 89.24,193.37 L 91.84,191.93 L 95.33,193.45 L 93.2,194.91 L 93.57,198.36 L 96.68,198.91 L 99.68,196.7 L 99.93,198.68 L 102.26,198.69 L 99.95,200.35 L 101.6,206 L 104.8,206.81 L 107.71,205.53 L 106.18,206.94 L 106.89,208.57 L 103.61,208.44 L 102.7,210.05 L 104.51,218.04 L 110.59,216.9 L 108.51,219.62 L 105.54,220.87 L 103.61,224.58 L 103.31,228.44 L 106.91,229.54 L 110.75,228.52 L 109.32,231.18 L 107.45,231.95 L 106.79,240.46 L 105.57,242.69 L 103.55,242.58 L 104.47,245.12 L 103.66,245.28 L 100.81,254.11 L 102.35,253.81 L 103.62,255.54 L 104.17,261.56 L 106,263.62 L 105.27,265.95 L 106.62,268.54 L 107.71,269.31 L 109.81,267.83 L 113.79,268.66 L 121.25,276.48 L 121.21,284.5 L 120.23,285.8 L 116.46,284.61 L 115.42,286.15 L 115.68,295.52 L 117.68,298.97 L 119.29,299.79 L 122.4,300.33 L 125.39,298.92 L 128.03,299.34 L 128.1,300.52 L 126.93,300.38 L 126.63,301.33 L 126.42,306.58 L 132.06,308.09 L 136.7,312.45 L 138.96,317.44 L 142.74,318.02 L 146.94,321.14 L 150.59,325.7 L 157.37,340 L 200,340 L 200,92.98 L 193.71,96.65 L 193.59,98.02 L 184.14,97.43 L 182.54,101.65 L 180.01,102.31 L 179.61,104.16 L 177.56,103.63 L 176.35,104.81 L 175.47,103.65 L 172.63,103.82 L 169.96,108.76 L 171.12,113.24 L 170.12,115.13 L 166.85,116.25 L 166.5,118.86 L 162.23,120.24 L 161.43,121.95 L 158.39,123.65 L 157.35,118.85 L 154.55,114.67 L 153.08,114.02 L 153.29,112.96 L 151.22,112.33 L 151.02,110.57 L 148.39,111.2 L 146.77,108.27 L 143.95,106.61 L 143.4,104.28 L 146.19,101.25 L 145.9,97.63 L 147.94,94.82 L 147.58,93.7 L 150.31,93.97 L 151.34,93.03 L 153.5,94.08 L 154.51,89.95 L 157.44,87.3 L 155.7,85.96 L 156.44,81.09 L 155.03,79.98 L 157.66,74.31 L 155.59,73.66 L 153.94,71.55 L 150.87,70.77 L 153.58,67.13 L 157.67,65.74 L 155.52,61.2 L 156.24,59.84 L 151.4,59.06 L 146.53,60.33 L 141.9,56.69 L 139.7,58.6 L 139.47,60.67 L 136.74,60.18 L 134.89,61.53 L 132.23,58.54 L 132.04,60.96 L 130.37,61.81 L 128.47,56.12 L 129.91,53.54 L 127.18,49.35 L 127.39,44.31 L 126.26,40.78 L 122.65,38.7 L 120.32,39.22 L 118.86,33.96 L 115.94,37.91 L 110.21,40.74 L 109.63,39.16 L 106.78,39.02 L 101.25,35.4 L 99.83,36.55 L 96.88,36.14 L 94.38,34.14 L 94.02,32.45 L 92.05,32.96 L 90.68,31.82 L 86.82,33.13 L 85.21,31.36 L 81.59,30.99 L 80.15,27.71 L 75.52,24.48 L 77.6,22.86 L 76.62,21.34 L 77.75,18.59 L 74.43,17.02 L 74.3,14.22 L 71.5,15.11 L 70.75,13.86 L 69.37,15.66 L 67.88,15.66 L 65.43,12.64 Z'
+
+const PENANG_ISLAND_PATH =
+  'M 70.7,136.85 L 68.8,138.46 L 67.26,138.46 L 66.08,139.13 L 64.56,137.72 L 63.66,137.86 L 63.56,137.17 L 62.53,137.67 L 63.4,139.58 L 62.69,141.63 L 63.81,141.96 L 63.97,143.35 L 64.57,143.54 L 63.9,143.64 L 63.48,146.72 L 64.6,151.15 L 64.72,153.93 L 63.2,154.49 L 63.39,155.53 L 62.77,156.83 L 63.5,158.36 L 63.9,156.93 L 67.18,157.01 L 67.35,156.37 L 67.84,156.29 L 68.89,156.73 L 69.47,157.67 L 69.8,157.11 L 71.01,157.17 L 71.78,157.72 L 72.5,159.28 L 73.26,159.21 L 73.22,158.14 L 74.09,157.01 L 73.85,156.4 L 74.45,155.75 L 76.16,151.11 L 76.76,148.75 L 76.7,146.63 L 78.35,144.93 L 77.99,144.65 L 78.44,144.89 L 78.87,144.44 L 78.76,143.93 L 79.44,143.7 L 79.62,142.9 L 77.78,142.43 L 76.04,141.12 L 75.77,140.62 L 76.36,139.91 L 76.38,138.8 L 74.24,138.11 L 72.85,138.26 L 72.49,137.23 L 70.95,136.79 Z'
 
 export function GrowthMap({ regions }: { regions: { region: string; pct: number; color: string }[] }) {
   return (
-    <div className="relative mx-auto mt-1 aspect-[5/6] w-full max-w-[220px]">
-      <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden="true">
-        <path d={PENINSULA_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.2" strokeLinejoin="round" />
+    <div className="relative mx-auto mt-1 aspect-[10/17] w-full max-w-[220px]">
+      <svg viewBox={MAP_VIEWBOX} className="h-full w-full" aria-hidden="true">
+        <path d={MAINLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d={PENANG_ISLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
       {regions.map((r) => {
         const coord = REGION_COORDS[r.region]

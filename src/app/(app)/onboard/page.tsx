@@ -108,9 +108,9 @@ export default async function OnboardPage({ searchParams }: PageProps) {
       <div className="app-card">
         <h3 className="mb-2 text-sm font-bold text-paper">Why onboarding happens here</h3>
         <p className="note-strip mt-0">
-          Every dealer is onboarded by your team directly. Making &quot;onboarding = added to the system&quot; guarantees no
-          dealer is ever missed. The details you fill in here carry over to every transaction automatically, no
-          re-typing needed.
+          New dealers are added directly by CS or Master so the ledger has a single source of truth for company
+          details, region, and starting package — no separate spreadsheet to keep in sync. Once onboarded, the
+          dealer immediately appears in the Dealers list and can be selected in New Transaction.
         </p>
       </div>
     </div>

@@ -68,7 +68,7 @@ export default async function DashboardPage() {
     supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
+      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
       .order('created_at', { ascending: false })
       .limit(10),
   ])
@@ -148,6 +148,7 @@ export default async function DashboardPage() {
       money_rm: Number(t.money_rm),
       status: t.status as 'pending' | 'verified' | 'flagged',
       dealerName,
+      dealerId: t.dealer_id as string | null,
     }
   })
 

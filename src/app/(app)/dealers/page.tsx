@@ -114,7 +114,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             type="text"
             name="q"
             defaultValue={q}
-            placeholder="Search company / region / contact"
+            placeholder="Search company, region, contact…"
             className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
           />
         </label>

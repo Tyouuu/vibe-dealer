@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { IconSearch } from '../icons'
+import { Avatar } from '../avatar'
 
 export type RecentTxRow = {
   id: string
@@ -12,6 +13,7 @@ export type RecentTxRow = {
   money_rm: number
   status: 'pending' | 'verified' | 'flagged'
   dealerName: string
+  dealerId: string | null
 }
 
 // Client-side filter only — this narrows the small already-fetched batch
@@ -43,20 +45,36 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
+              <th className="th">Txn Id</th>
               <th className="th">Date</th>
               <th className="th">Dealer</th>
               <th className="th">Type</th>
-              <th className="th text-right">Points</th>
               <th className="th">Status</th>
+              <th className="th text-right">Points</th>
+              <th className="th text-right">Amount</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((tx) => (
-              <tr key={tx.id} className="tr-row">
+              <tr key={tx.id} className="tr-row relative">
+                <td className="td figure text-paper-dim">#{tx.id.slice(0, 6).toUpperCase()}</td>
                 <td className="td text-paper-dim">{tx.tx_date}</td>
-                <td className="td font-semibold text-paper">{tx.dealerName}</td>
-                <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package ?? '—'}` : 'Top-up'}</td>
-                <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                <td className="td">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={tx.dealerName} size={24} />
+                    {tx.dealerId ? (
+                      <a
+                        href={`/dealers/${tx.dealerId}`}
+                        className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                      >
+                        {tx.dealerName}
+                      </a>
+                    ) : (
+                      <span className="font-semibold text-paper">{tx.dealerName}</span>
+                    )}
+                  </div>
+                </td>
+                <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package ?? '—'}` : 'Regular Top-up'}</td>
                 <td className="td">
                   <span
                     className={
@@ -66,11 +84,13 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                     {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
                   </span>
                 </td>
+                <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
               </tr>
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
+                <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
                   {rows.length ? 'No transactions match that dealer name.' : 'No transactions recorded yet.'}
                 </td>
               </tr>

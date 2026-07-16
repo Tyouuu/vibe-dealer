@@ -5,8 +5,9 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
 import { markDelivered } from '../../delivery/actions'
-import { IconTrendUp, IconCoin } from '../../icons'
+import { IconMapPin, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
+import { Avatar } from '../../avatar'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -68,12 +69,6 @@ function formatDateTime(iso: string) {
   })
 }
 
-const PACKAGE_STYLE: Record<string, string> = {
-  A: 'pill-neutral',
-  B: 'pill-jade',
-  C: 'pill-brass',
-}
-
 const DELIVERY_LABEL: Record<string, string> = {
   na: '—',
   pending: 'Pending',
@@ -95,6 +90,74 @@ function DeliveryPill({ status }: { status: 'na' | 'pending' | 'sent' }) {
   if (status === 'sent') return <span className="pill pill-jade">Sent</span>
   if (status === 'pending') return <span className="pill pill-brass">Pending</span>
   return <span className="pill pill-slate">Instant</span>
+}
+
+function AttrChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 px-3 py-1.5 text-xs font-semibold text-paper">
+      <span className="text-paper-dim">{icon}</span>
+      {label} · <b>{value}</b>
+    </span>
+  )
+}
+
+function RailField({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div className={`flex items-start justify-between gap-2.5 py-2 text-[12.5px] ${last ? '' : 'border-b border-ink-800'}`}>
+      <span className="whitespace-nowrap font-semibold text-paper-dim">{label}</span>
+      <span className="text-right font-bold text-paper">{value}</span>
+    </div>
+  )
+}
+
+const TIMELINE_TONE = {
+  jade: 'border-jade-bright text-jade-bright',
+  clay: 'border-clay-bright text-clay-bright',
+  brass: 'border-brass-bright text-brass-bright',
+  primary: 'border-primary text-primary',
+} as const
+
+function Timeline({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative flex flex-col pl-0.5">
+      <div className="absolute bottom-1.5 left-[14.25px] top-1.5 w-px bg-ink-800" />
+      {children}
+    </div>
+  )
+}
+
+function TimelineItem({
+  tone,
+  icon,
+  title,
+  subtitle,
+}: {
+  tone: keyof typeof TIMELINE_TONE
+  icon: 'check' | 'x' | 'tag'
+  title: string
+  subtitle: string
+}) {
+  return (
+    <div className="relative flex gap-3.5 py-2.5">
+      <span className={`z-10 grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full border-[1.5px] bg-ink-900 ${TIMELINE_TONE[tone]}`}>
+        {icon === 'check' && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        )}
+        {icon === 'x' && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        )}
+        {icon === 'tag' && <IconTag className="h-3.5 w-3.5" />}
+      </span>
+      <div className="flex-1 pt-0.5">
+        <div className="text-[12.5px] font-bold text-paper">{title}</div>
+        <div className="mt-0.5 text-[11.5px] text-paper-dim">{subtitle}</div>
+      </div>
+    </div>
+  )
 }
 
 type PageProps = {
@@ -177,258 +240,232 @@ export default async function DealerDetailPage({ params }: PageProps) {
         <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr]">
-        <div className="app-card">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="app-card">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Avatar name={typedDealer.company_name} size={44} />
             <div>
-              <h1 className="text-base font-bold text-paper">{typedDealer.company_name}</h1>
-              {typedDealer.company_no && <div className="text-[11px] text-paper-dim">{typedDealer.company_no}</div>}
-            </div>
-            <div className="flex items-center gap-3.5">
-              {isFinance && (
-                <a href={`/entry?dealer=${id}`} className="text-xs font-semibold text-jade-bright hover:text-jade">
-                  + Record Transaction
-                </a>
-              )}
-              <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
-                {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
-              </span>
+              <h2 className="text-lg font-extrabold text-paper">{typedDealer.company_name}</h2>
+              {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}
             </div>
           </div>
-
-          <div className="profile-grid text-sm">
-            <div className="profile-field">
-              <label>Contact Person</label>
-              <div>{typedDealer.contact_person ?? '—'}</div>
-            </div>
-            <div className="profile-field">
-              <label>Phone</label>
-              <div>{typedDealer.phone ?? '—'}</div>
-            </div>
-            <div className="profile-field">
-              <label>Email</label>
-              <div>{typedDealer.email ?? '—'}</div>
-            </div>
-            <div className="profile-field">
-              <label>Region</label>
-              <div>{typedDealer.region ?? '—'}</div>
-            </div>
-            <div className="profile-field sm:col-span-2">
-              <label>Address</label>
-              <div>{typedDealer.address ?? '—'}</div>
-            </div>
-            <div className="profile-field">
-              <label>Package / Rate</label>
-              <div>
-                {typedDealer.package ? (
-                  <span className={`pill ${PACKAGE_STYLE[typedDealer.package]}`}>
-                    {typedDealer.package} · {typedDealer.rate}%
-                  </span>
-                ) : (
-                  <span className="text-paper-dim/50">—</span>
-                )}
-              </div>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
+              {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+            {isFinance && (
+              <a href={`/entry?dealer=${id}`} className="btn-primary py-1.5 text-xs">
+                + Record Transaction
+              </a>
+            )}
           </div>
         </div>
+        <div className="mt-3.5 flex flex-wrap gap-2">
+          <AttrChip icon={<IconMapPin className="h-3 w-3" />} label="Region" value={typedDealer.region ?? '—'} />
+          <AttrChip
+            icon={<IconTag className="h-3 w-3" />}
+            label="Package"
+            value={typedDealer.package ? `${typedDealer.package} · ${typedDealer.rate}%` : '—'}
+          />
+          <AttrChip icon={<IconUsers className="h-3 w-3" />} label="Contact" value={typedDealer.contact_person ?? '—'} />
+        </div>
+      </div>
 
-        {isFinance ? (
-          (() => {
-            const verified = txRows.filter((t) => t.status === 'verified')
-            const lifetimePoints = verified.reduce((s, t) => s + Number(t.points), 0)
-            const lifetimeCommission = verified.reduce((s, t) => s + Number(t.commission_rm), 0)
-            return (
-              <div className="flex flex-col gap-5">
+      <div className="grid gap-5 lg:grid-cols-[1fr_296px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
+          {isFinance && txRows.length > 0 && (
+            <div className="app-card">
+              <h3 className="mb-1 text-sm font-bold text-paper">Recent Activity</h3>
+              <Timeline>
+                {txRows.slice(0, 6).map((tx) => (
+                  <TimelineItem
+                    key={tx.id}
+                    tone={tx.status === 'flagged' ? 'clay' : tx.status === 'pending' ? 'brass' : tx.type === 'package' ? 'primary' : 'jade'}
+                    icon={tx.status === 'flagged' ? 'x' : tx.type === 'package' ? 'tag' : 'check'}
+                    title={
+                      tx.status === 'flagged'
+                        ? 'Flagged — suspicious amount'
+                        : tx.type === 'package'
+                          ? `Package ${tx.package} assigned`
+                          : `Top-up recorded — ${tx.points.toLocaleString()} pts`
+                    }
+                    subtitle={tx.tx_date}
+                  />
+                ))}
+              </Timeline>
+            </div>
+          )}
+
+          <div className="app-card">
+            <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
+
+            {isFinance ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="th">Date</th>
+                      <th className="th">Type</th>
+                      <th className="th text-right">In (RM)</th>
+                      <th className="th text-right">Out (pts)</th>
+                      <th className="th text-right">Rate</th>
+                      <th className="th text-right">Your 2%</th>
+                      <th className="th">Delivery</th>
+                      <th className="th">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {txRows.map((tx) => (
+                      <tr key={tx.id} className="tr-row">
+                        <td className="td text-paper-dim">{tx.tx_date}</td>
+                        <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                        <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                        <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                        <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
+                        <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
+                        <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
+                        <td className="td">
+                          <StatusPill status={tx.status} />
+                        </td>
+                      </tr>
+                    ))}
+                    {!txRows.length && (
+                      <tr>
+                        <td colSpan={8} className="px-3 py-8 text-center text-paper-dim">
+                          No transactions yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="th">Date</th>
+                      <th className="th">Package</th>
+                      <th className="th">SIM Type</th>
+                      <th className="th">Status</th>
+                      <th className="th">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deliveryRows.map((row) => (
+                      <tr key={row.id} className="tr-row">
+                        <td className="td text-paper-dim">{row.tx_date}</td>
+                        <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
+                        <td className="td">
+                          <SimPill simType={row.sim_type} />
+                        </td>
+                        <td className="td">
+                          <DeliveryPill status={row.delivery_status} />
+                        </td>
+                        <td className="td">
+                          {row.delivery_status === 'pending' ? (
+                            <form action={markDelivered}>
+                              <input type="hidden" name="id" value={row.id} />
+                              <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
+                                Mark as Sent
+                              </ConfirmSubmitButton>
+                            </form>
+                          ) : (
+                            <span className="text-paper-dim/50">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {!deliveryRows.length && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
+                          No delivery items yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {isFinance && (
+            <div className="app-card">
+              <h3 className="mb-3.5 text-sm font-bold text-paper">Rate History</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="th">Time</th>
+                      <th className="th">Before</th>
+                      <th className="th">After</th>
+                      <th className="th">Changed By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rateHistoryRows.map((row) => {
+                      const before = row.old_package ? `${row.old_package} · ${row.old_rate}%` : '—'
+                      const after = row.new_package ? `${row.new_package} · ${row.new_rate}%` : '—'
+                      return (
+                        <tr key={row.id} className="tr-row">
+                          <td className="td text-paper-dim">{formatDateTime(row.created_at)}</td>
+                          <td className="td text-paper-dim">{before}</td>
+                          <td className="td text-paper">{after}</td>
+                          <td className="td text-paper-dim">{rateHistoryDisplayName(row.changed_by)}</td>
+                        </tr>
+                      )
+                    })}
+                    {!rateHistoryRows.length && (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-8 text-center text-paper-dim">
+                          No rate changes yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-5">
+          <div className="app-card">
+            <h3 className="mb-1 text-sm font-bold text-paper">Contact</h3>
+            <div className="mt-2.5">
+              <RailField label="Contact Person" value={typedDealer.contact_person ?? '—'} />
+              <RailField label="Phone" value={typedDealer.phone ?? '—'} />
+              <RailField label="Email" value={typedDealer.email ?? '—'} />
+              <RailField label="Address" value={typedDealer.address ?? '—'} last />
+            </div>
+          </div>
+
+          {isFinance ? (
+            (() => {
+              const verified = txRows.filter((t) => t.status === 'verified')
+              const lifetimePoints = verified.reduce((s, t) => s + Number(t.points), 0)
+              const lifetimeCommission = verified.reduce((s, t) => s + Number(t.commission_rm), 0)
+              return (
                 <div className="rounded-2xl bg-paper p-5 shadow-sm">
-                  <h3 className="mb-4 text-sm font-bold text-white">Lifetime</h3>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-jade-bright">
-                        <IconTrendUp className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <div className="text-xs font-semibold text-white/60">Lifetime Top-up</div>
-                        <div className="mt-0.5 text-2xl font-bold text-white">
-                          {lifetimePoints.toLocaleString()} <span className="text-sm font-semibold text-white/60">pts</span>
-                        </div>
-                      </div>
+                  <h3 className="mb-3.5 text-sm font-bold text-white">Lifetime</h3>
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <div className="text-xs font-semibold text-white/50">Lifetime Top-up</div>
+                      <div className="mt-0.5 text-xl font-extrabold text-white">{lifetimePoints.toLocaleString()} pts</div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-brass-bright">
-                        <IconCoin className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <div className="text-xs font-semibold text-white/60">Commission Earned</div>
-                        <div className="mt-0.5 text-2xl font-bold text-primary">RM {lifetimeCommission.toLocaleString()}</div>
-                      </div>
+                    <div>
+                      <div className="text-xs font-semibold text-white/50">Commission Earned</div>
+                      <div className="mt-0.5 text-xl font-extrabold text-primary">RM {lifetimeCommission.toLocaleString()}</div>
                     </div>
                   </div>
                 </div>
-
-                {txRows.length > 0 && (
-                  <div className="app-card">
-                    <h3 className="mb-1 text-sm font-bold text-paper">Recent Activity</h3>
-                    <div className="flex flex-col">
-                      {txRows.slice(0, 6).map((tx) => (
-                        <div key={tx.id} className="docket-row">
-                          <div className="flex items-center gap-2.5">
-                            <span
-                              className={`timeline-dot ${
-                                tx.status === 'verified' ? 'timeline-dot-jade' : tx.status === 'flagged' ? 'timeline-dot-clay' : 'timeline-dot-brass'
-                              }`}
-                            />
-                            <span className="text-sm text-paper">
-                              {tx.type === 'package' ? `Package ${tx.package} assigned` : 'Top-up recorded'} ·{' '}
-                              <span className="figure-points">{tx.points.toLocaleString()} pts</span>
-                            </span>
-                          </div>
-                          <span className="text-xs text-paper-dim">{tx.tx_date}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })()
-        ) : (
-          <div className="app-card flex flex-col items-center justify-center gap-2 text-center text-sm text-paper-dim">
-            <span>Financial summary is only visible to accountant and master roles.</span>
-          </div>
-        )}
+              )
+            })()
+          ) : (
+            <div className="app-card text-center text-sm text-paper-dim">Financial summary is only visible to accountant and master roles.</div>
+          )}
+        </aside>
       </div>
-
-      <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
-
-        {isFinance ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="th">Date</th>
-                  <th className="th">Type</th>
-                  <th className="th text-right">In (RM)</th>
-                  <th className="th text-right">Out (pts)</th>
-                  <th className="th text-right">Rate</th>
-                  <th className="th text-right">Your 2%</th>
-                  <th className="th">Delivery</th>
-                  <th className="th">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {txRows.map((tx) => (
-                  <tr key={tx.id} className="tr-row">
-                    <td className="td text-paper-dim">{tx.tx_date}</td>
-                    <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
-                    <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
-                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                    <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                    <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
-                    <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
-                    <td className="td">
-                      <StatusPill status={tx.status} />
-                    </td>
-                  </tr>
-                ))}
-                {!txRows.length && (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-paper-dim">
-                      No transactions yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="th">Date</th>
-                  <th className="th">Package</th>
-                  <th className="th">SIM Type</th>
-                  <th className="th">Status</th>
-                  <th className="th">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deliveryRows.map((row) => (
-                  <tr key={row.id} className="tr-row">
-                    <td className="td text-paper-dim">{row.tx_date}</td>
-                    <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
-                    <td className="td">
-                      <SimPill simType={row.sim_type} />
-                    </td>
-                    <td className="td">
-                      <DeliveryPill status={row.delivery_status} />
-                    </td>
-                    <td className="td">
-                      {row.delivery_status === 'pending' ? (
-                        <form action={markDelivered}>
-                          <input type="hidden" name="id" value={row.id} />
-                          <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
-                            Mark as Sent
-                          </ConfirmSubmitButton>
-                        </form>
-                      ) : (
-                        <span className="text-paper-dim/50">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {!deliveryRows.length && (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
-                      No delivery items yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {isFinance && (
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Rate History</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="th">Time</th>
-                  <th className="th">Before</th>
-                  <th className="th">After</th>
-                  <th className="th">Changed By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rateHistoryRows.map((row) => {
-                  const before = row.old_package ? `${row.old_package} · ${row.old_rate}%` : '—'
-                  const after = row.new_package ? `${row.new_package} · ${row.new_rate}%` : '—'
-                  return (
-                    <tr key={row.id} className="tr-row">
-                      <td className="td text-paper-dim">{formatDateTime(row.created_at)}</td>
-                      <td className="td text-paper-dim">{before}</td>
-                      <td className="td text-paper">{after}</td>
-                      <td className="td text-paper-dim">{rateHistoryDisplayName(row.changed_by)}</td>
-                    </tr>
-                  )
-                })}
-                {!rateHistoryRows.length && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-paper-dim">
-                      No rate changes yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

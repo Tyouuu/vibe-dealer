@@ -17,6 +17,14 @@ export const LOW_BALANCE_THRESHOLD = Math.max(...Object.values(PACKAGES).map((p)
 // both to hard-block New Transaction when there isn't enough stock, and to
 // display the running balance on /purchases — deliberately the same number
 // in both places rather than two subtly different "balance" figures.
+//
+// Split from the data fetch below so this arithmetic — the actual thing that
+// decides whether a sale gets blocked — can be unit tested without a live
+// database. See credit-balance.test.ts.
+export function computeAvailableBalance(totalPurchased: number, totalCommitted: number): number {
+  return totalPurchased - totalCommitted
+}
+
 export async function getAvailablePointsBalance(supabase: SupabaseClient): Promise<CreditBalance> {
   const [{ data: purchases }, { data: committed }] = await Promise.all([
     supabase.from('credit_purchases').select('points'),
@@ -26,5 +34,5 @@ export async function getAvailablePointsBalance(supabase: SupabaseClient): Promi
   const totalPurchased = (purchases ?? []).reduce((s, p) => s + Number(p.points), 0)
   const totalCommitted = (committed ?? []).reduce((s, t) => s + Number(t.points), 0)
 
-  return { available: totalPurchased - totalCommitted, totalPurchased, totalCommitted }
+  return { available: computeAvailableBalance(totalPurchased, totalCommitted), totalPurchased, totalCommitted }
 }

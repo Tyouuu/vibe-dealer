@@ -7,7 +7,7 @@ import { Avatar } from '../avatar'
 export type RecentTxRow = {
   id: string
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   money_rm: number
@@ -75,7 +75,13 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                     )}
                   </div>
                 </td>
-                <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package ?? '—'}` : 'Regular Top-up'}</td>
+                <td className="td text-paper-dim">
+                  {tx.type === 'package'
+                    ? `Buy Package ${tx.package ?? '—'}`
+                    : tx.type === 'adjustment'
+                      ? 'Adjustment'
+                      : 'Regular Top-up'}
+                </td>
                 <td className="td">
                   <span
                     className={

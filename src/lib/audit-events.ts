@@ -20,7 +20,7 @@ export type AuditEvent = {
 type TxRow = {
   id: string
   created_at: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   money_rm: number
@@ -28,6 +28,8 @@ type TxRow = {
   recorded_by: string | null
   verified_by: string | null
   flag_reason: string | null
+  note: string | null
+  adjusts_id: string | null
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
@@ -60,7 +62,7 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
     supabase
       .from('transactions')
       .select(
-        'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, flag_reason, dealers(company_name)'
+        'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, flag_reason, note, adjusts_id, dealers(company_name)'
       )
       .order('created_at', { ascending: false })
       .limit(100),
@@ -106,8 +108,19 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
 
   for (const tx of txRows) {
     const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
-    const typeLabel = tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'
-    const eventLabel = tx.status === 'verified' ? 'Verified top-up' : tx.status === 'flagged' ? 'Flagged top-up' : 'Recorded top-up'
+    const typeLabel = tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'
+    const eventLabel =
+      tx.type === 'adjustment'
+        ? tx.status === 'verified'
+          ? 'Verified adjustment'
+          : tx.status === 'flagged'
+            ? 'Flagged adjustment'
+            : 'Recorded adjustment'
+        : tx.status === 'verified'
+          ? 'Verified top-up'
+          : tx.status === 'flagged'
+            ? 'Flagged top-up'
+            : 'Recorded top-up'
     events.push({
       id: `tx-${tx.id}`,
       createdAt: tx.created_at,
@@ -126,6 +139,8 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
           ? [{ label: tx.status === 'verified' ? 'Verified by' : 'Flagged by', value: displayName(tx.verified_by) }]
           : []),
         ...(tx.status === 'flagged' && tx.flag_reason ? [{ label: 'Reason', value: tx.flag_reason }] : []),
+        ...(tx.type === 'adjustment' && tx.note ? [{ label: 'Reason', value: tx.note }] : []),
+        ...(tx.type === 'adjustment' && tx.adjusts_id ? [{ label: 'Corrects', value: `Transaction #${tx.adjusts_id.slice(0, 8).toUpperCase()}` }] : []),
       ],
     })
   }

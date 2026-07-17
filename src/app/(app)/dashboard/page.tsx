@@ -158,7 +158,7 @@ export default async function DashboardPage() {
     return {
       id: t.id,
       tx_date: t.tx_date,
-      type: t.type as 'package' | 'topup',
+      type: t.type as 'package' | 'topup' | 'adjustment',
       package: t.package as string | null,
       points: Number(t.points),
       money_rm: Number(t.money_rm),
@@ -292,7 +292,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
     return {
       id: t.id,
       tx_date: t.tx_date,
-      type: t.type as 'package' | 'topup',
+      type: t.type as 'package' | 'topup' | 'adjustment',
       package: t.package as string | null,
       points: Number(t.points),
       money_rm: Number(t.money_rm),

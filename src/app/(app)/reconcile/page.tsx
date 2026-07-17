@@ -17,7 +17,7 @@ type BreakdownRow = {
   id: string
   dealer_id: string
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   dealers:
@@ -194,7 +194,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                             )}
                           </div>
                         </td>
-                        <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
+                        <td className="td text-paper-dim">
+                          {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                        </td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                         <td className="td">
                           <StatusDot color="jade-bright" label="Verified" />

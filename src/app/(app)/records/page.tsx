@@ -6,6 +6,7 @@ import { monthRange } from '@/lib/month'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { verifyTransaction } from './actions'
 import { FlagButton } from './flag-button'
+import { AdjustButton } from './adjust-button'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
@@ -20,7 +21,7 @@ type TxRow = {
   id: string
   dealer_id: string
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   money_rm: number
@@ -36,12 +37,20 @@ type TxRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ status?: string; submitted?: string; month?: string; q?: string; sort?: string }>
+  searchParams: Promise<{
+    status?: string
+    submitted?: string
+    adjusted?: string
+    error?: string
+    month?: string
+    q?: string
+    sort?: string
+  }>
 }
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted, month, q = '', sort = 'desc' } = await searchParams
+  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc' } = await searchParams
   const sortAscending = sort === 'asc'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -108,6 +117,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       {submitted && (
         <div className="alert alert-ok">Recorded! Status = pending — counts toward reconciliation/reports once verified.</div>
       )}
+      {adjusted && (
+        <div className="alert alert-ok">Correction posted as a new pending transaction — the original is untouched. Verify it to apply.</div>
+      )}
+      {error && <div className="alert alert-bad">{error}</div>}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Transactions</h1>
@@ -232,7 +245,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                       </a>
                     </div>
                   </td>
-                  <td className="td text-paper-dim">{tx.type === 'package' ? `Buy Package ${tx.package}` : 'Regular Top-up'}</td>
+                  <td className="td text-paper-dim">
+                    {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                  </td>
                   <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                   <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                   <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
@@ -260,6 +275,8 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </form>
                         <FlagButton transactionId={tx.id} />
                       </div>
+                    ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
+                      <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} />
                     ) : (
                       <span className="text-paper-dim/50">—</span>
                     )}

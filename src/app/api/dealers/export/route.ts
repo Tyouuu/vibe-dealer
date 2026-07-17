@@ -1,17 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-
-function csvCell(value: string | number | null) {
-  if (value == null) return ''
-  // Prevent CSV/Excel formula injection: several of these columns are free
-  // text (entered by CS on onboarding) and get opened directly in Excel/Sheets.
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
-    value = `'${value}`
-  }
-  const s = String(value)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
+import { csvCell } from '@/lib/csv'
 
 const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'package', 'rate', 'status'] as const
 

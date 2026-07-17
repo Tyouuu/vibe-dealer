@@ -2,23 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
-
-function csvCell(value: string | number | null) {
-  if (value == null) return ''
-  // Prevent CSV/Excel formula injection: dealer company names and notes are
-  // free text and get opened directly in Excel/Sheets.
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
-    value = `'${value}`
-  }
-  const s = String(value)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
+import { csvCell } from '@/lib/csv'
 
 const DELIVERY_LABEL: Record<string, string> = { na: '—', pending: 'Pending', sent: 'Sent' }
 
 type TxRow = {
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   money_rm: number
@@ -75,7 +65,7 @@ export async function GET(request: NextRequest) {
       [
         csvCell(tx.tx_date),
         csvCell(dealerName),
-        csvCell(tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'),
+        csvCell(tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'),
         csvCell(tx.money_rm),
         csvCell(tx.points),
         csvCell(tx.rate != null ? `${tx.rate}%` : ''),

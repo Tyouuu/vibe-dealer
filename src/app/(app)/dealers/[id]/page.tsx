@@ -31,7 +31,7 @@ type Dealer = {
 type TxRow = {
   id: string
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
   money_rm: number
@@ -40,6 +40,7 @@ type TxRow = {
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
+  note: string | null
 }
 
 type DeliveryRow = {
@@ -135,7 +136,7 @@ function TimelineItem({
   subtitle,
 }: {
   tone: keyof typeof TIMELINE_TONE
-  icon: 'check' | 'x' | 'tag'
+  icon: 'check' | 'x' | 'tag' | 'edit'
   title: string
   subtitle: string
 }) {
@@ -153,6 +154,12 @@ function TimelineItem({
           </svg>
         )}
         {icon === 'tag' && <IconTag className="h-3.5 w-3.5" />}
+        {icon === 'edit' && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+        )}
       </span>
       <div className="flex-1 pt-0.5">
         <div className="text-[12.5px] font-bold text-paper">{title}</div>
@@ -195,7 +202,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   if (isFinance) {
     const { data } = await supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, flag_reason')
+      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, flag_reason, note')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -297,16 +304,28 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                 {txRows.slice(0, 6).map((tx) => (
                   <TimelineItem
                     key={tx.id}
-                    tone={tx.status === 'flagged' ? 'clay' : tx.status === 'pending' ? 'brass' : tx.type === 'package' ? 'primary' : 'jade'}
-                    icon={tx.status === 'flagged' ? 'x' : tx.type === 'package' ? 'tag' : 'check'}
+                    tone={
+                      tx.status === 'flagged'
+                        ? 'clay'
+                        : tx.status === 'pending'
+                          ? 'brass'
+                          : tx.type === 'adjustment'
+                            ? 'brass'
+                            : tx.type === 'package'
+                              ? 'primary'
+                              : 'jade'
+                    }
+                    icon={tx.status === 'flagged' ? 'x' : tx.type === 'adjustment' ? 'edit' : tx.type === 'package' ? 'tag' : 'check'}
                     title={
                       tx.status === 'flagged'
                         ? 'Flagged'
-                        : tx.type === 'package'
-                          ? `Package ${tx.package} assigned`
-                          : `Top-up recorded — ${tx.points.toLocaleString()} pts`
+                        : tx.type === 'adjustment'
+                          ? `Adjustment — ${tx.points >= 0 ? '+' : ''}${tx.points.toLocaleString()} pts`
+                          : tx.type === 'package'
+                            ? `Package ${tx.package} assigned`
+                            : `Top-up recorded — ${tx.points.toLocaleString()} pts`
                     }
-                    subtitle={tx.status === 'flagged' ? (tx.flag_reason ?? tx.tx_date) : tx.tx_date}
+                    subtitle={tx.status === 'flagged' ? (tx.flag_reason ?? tx.tx_date) : tx.type === 'adjustment' ? (tx.note ?? tx.tx_date) : tx.tx_date}
                   />
                 ))}
               </Timeline>
@@ -335,7 +354,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     {txRows.map((tx) => (
                       <tr key={tx.id} className="tr-row">
                         <td className="td text-paper-dim">{tx.tx_date}</td>
-                        <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : 'Top-up'}</td>
+                        <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}</td>
                         <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                         <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>

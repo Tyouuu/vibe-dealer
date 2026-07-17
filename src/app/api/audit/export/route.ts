@@ -2,18 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getAuditEvents, filterAuditEvents, type AuditKind } from '@/lib/audit-events'
-
-function csvCell(value: string | number | null) {
-  if (value == null) return ''
-  // Prevent CSV/Excel formula injection: actor/dealer/note text ultimately
-  // comes from free-text fields entered elsewhere and gets opened directly
-  // in Excel/Sheets.
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
-    value = `'${value}`
-  }
-  const s = String(value)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
+import { csvCell } from '@/lib/csv'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()

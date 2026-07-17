@@ -3,11 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
-import { daysSince, getDealerActivityMap } from '@/lib/dealer-activity'
+import { daysSince, getDealerActivityMap, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { GrowthMap } from './growth-map'
+import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconTruck, ReconciledStamp } from '../icons'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
@@ -34,15 +35,59 @@ function monthsBack(n: number): { key: string; label: string }[] {
   return out
 }
 
+type DealerRegionRel = { region: string | null } | { region: string | null }[] | null
+
+function regionOf(rel: DealerRegionRel): string {
+  return (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
+}
+
+// Shared by master + accountant (both chart the same 6-month top-up trend,
+// split by dealer region) so the bucketing logic lives in one place.
+function buildTrendRows(
+  trendTx: { tx_date: string; points: number | string; dealers: DealerRegionRel }[],
+  trendMonths: { key: string; label: string }[],
+  regions: string[]
+): TrendRow[] {
+  const map = new Map<string, number>()
+  for (const t of trendTx) {
+    const monthKey = t.tx_date.slice(0, 7)
+    const k = `${monthKey}|${regionOf(t.dealers)}`
+    map.set(k, (map.get(k) ?? 0) + Number(t.points))
+  }
+  const rows: TrendRow[] = []
+  for (const { key: monthKey, label } of trendMonths) {
+    for (const region of regions) {
+      rows.push({ month: monthKey, label, region, points: map.get(`${monthKey}|${region}`) ?? 0 })
+    }
+  }
+  return rows
+}
+
+// Shared by master + cs — both show "Growth by Region" as this month's
+// verified top-up points, top 4 regions, each with its own categorical color.
+const REGION_GROWTH_COLORS = ['var(--color-info)', 'var(--color-jade)', 'var(--color-clay)', 'var(--color-brass)']
+
+function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRegionRel }[], totalPoints: number) {
+  const map = new Map<string, number>()
+  for (const t of monthTx) {
+    const region = regionOf(t.dealers)
+    map.set(region, (map.get(region) ?? 0) + Number(t.points))
+  }
+  return [...map.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([region, points], i) => ({
+      region,
+      points,
+      pct: totalPoints ? Math.round((points / totalPoints) * 100) : 0,
+      color: REGION_GROWTH_COLORS[i],
+    }))
+}
+
 export default async function DashboardPage() {
   const user = await requireUser()
   const supabase = await createClient()
 
-  // Accountant/cs get a lightweight landing page — a few KpiCards built from
-  // data already queried elsewhere (the same numbers the notification bell
-  // uses), not a scaled-down copy of master's chart-and-map dashboard. They
-  // used to land straight on a blank New Transaction / Onboard Dealer form
-  // with no "is there anything I should look at first" step at all.
   if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} />
   if (user.role === 'cs') return <CsDashboard supabase={supabase} />
 
@@ -100,45 +145,9 @@ export default async function DashboardPage() {
   const commissionChg = pctChange(totalCommission, prevMonthCommission)
   const dealerChg = pctChange(dealerCount ?? 0, dealerCountLastMonth ?? 0)
 
-  // Monthly trend, split by region — bucket every verified tx into its month
-  // + dealer region, defaulting every (month, region) pair to 0 so the chart
-  // still draws a continuous 6-month axis even where a region had no activity.
   const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
-  const trendMap = new Map<string, number>() // `${month}|${region}` -> points
-  for (const t of trendTx ?? []) {
-    const monthKey = t.tx_date.slice(0, 7)
-    const rel = t.dealers as { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null
-    const region = (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
-    const k = `${monthKey}|${region}`
-    trendMap.set(k, (trendMap.get(k) ?? 0) + Number(t.points))
-  }
-  const trendRows: TrendRow[] = []
-  for (const { key: monthKey, label } of trendMonths) {
-    for (const region of regions) {
-      trendRows.push({ month: monthKey, label, region, points: trendMap.get(`${monthKey}|${region}`) ?? 0 })
-    }
-  }
-
-  // Growth by Region — this month's verified points, grouped by dealer
-  // region, as a share of the month total. Reuses monthTx (already fetched
-  // above) instead of firing another query. Top 4 by points, each ranked
-  // slot gets its own categorical (not status) color.
-  const REGION_GROWTH_COLORS = ['var(--color-info)', 'var(--color-jade)', 'var(--color-clay)', 'var(--color-brass)']
-  const regionPointsMap = new Map<string, number>()
-  for (const t of monthTx) {
-    const rel = t.dealers as { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null
-    const region = (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
-    regionPointsMap.set(region, (regionPointsMap.get(region) ?? 0) + Number(t.points))
-  }
-  const regionGrowth = [...regionPointsMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([region, points], i) => ({
-      region,
-      points,
-      pct: totalPoints ? Math.round((points / totalPoints) * 100) : 0,
-      color: REGION_GROWTH_COLORS[i],
-    }))
+  const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
+  const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
 
   // Recent Transactions — last 10 by created_at, any status. The dealer-name
   // filter below is client-side (see recent-transactions-table.tsx) since
@@ -232,23 +241,72 @@ export default async function DashboardPage() {
   )
 }
 
+// Same shape as master's dashboard (KPI row + trend chart / region map +
+// table) — an accountant enters and reviews the same transactions master
+// oversees, so the same overview is relevant, just re-pointed at the cards
+// an accountant actually acts on (Pending Review, Credit Balance) instead of
+// the ones that are master's business-owner concern (Total Dealers,
+// Commission earned).
 async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
+  const currentMonthStr = today.slice(0, 7)
+  const trendMonths = monthsBack(6)
+  const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ data: pendingRows }, creditBalance, { data: statement }] = await Promise.all([
-    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
-    getAvailablePointsBalance(supabase),
-    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
-  ])
+  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: dealerRows }, { data: trendTx }, { data: recentTxRows }] =
+    await Promise.all([
+      supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
+      getAvailablePointsBalance(supabase),
+      supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
+      supabase.from('dealers').select('id, region'),
+      supabase
+        .from('transactions')
+        .select('tx_date, points, dealers(region)')
+        .eq('status', 'verified')
+        .gte('tx_date', trendStart)
+        .lte('tx_date', today),
+      supabase
+        .from('transactions')
+        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name, package)')
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ])
 
   const pendingCount = pendingRows?.length ?? 0
   const oldestPendingDays = pendingCount ? Math.max(...pendingRows!.map((t) => daysSince(t.tx_date))) : 0
 
+  const monthTx = (trendTx ?? []).filter((t) => t.tx_date >= monthStart)
+  const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
+  const prevMonthKey = trendMonths[trendMonths.length - 2].key
+  const prevMonthPoints = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey).reduce((sum, t) => sum + Number(t.points), 0)
+  const pointsChg = pctChange(totalPoints, prevMonthPoints)
+
+  const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
+  const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
+  const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
+
+  const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
+    const rel = t.dealers as { company_name: string; package: string | null } | { company_name: string; package: string | null }[] | null
+    const dealerRel = Array.isArray(rel) ? rel[0] : rel
+    return {
+      id: t.id,
+      tx_date: t.tx_date,
+      type: t.type as 'package' | 'topup',
+      package: t.package as string | null,
+      points: Number(t.points),
+      money_rm: Number(t.money_rm),
+      status: t.status as 'pending' | 'verified' | 'flagged',
+      dealerName: dealerRel?.company_name ?? '—',
+      dealerId: t.dealer_id as string | null,
+      dealerPackage: dealerRel?.package ?? null,
+    }
+  })
+
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconCheckCircle className="h-4 w-4" />}
           label="Pending Review"
@@ -267,28 +325,106 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
           href="/purchases"
         />
         <KpiCard
+          icon={<IconTrendUp className="h-4 w-4" />}
+          label="Top-up This Month"
+          value={`${totalPoints.toLocaleString()} pts`}
+          chg={pointsChg}
+          footer={`Last month: ${prevMonthPoints.toLocaleString()} pts`}
+          href={`/records?status=verified&month=${currentMonthStr}`}
+        />
+        <KpiCard
           icon={<IconCheckCircle className="h-4 w-4" />}
           label="Reconciliation"
           value={statement?.reconciled ? 'Reconciled' : 'Not yet'}
           statusPill={statement?.reconciled ? undefined : 'Action needed'}
-          footer={`For ${today.slice(0, 7)}`}
+          footer={`For ${currentMonthStr}`}
           href="/reconcile"
         />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
+        <div className="app-card">
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
+          <MonthlyTrendChart rows={trendRows} regions={regions} />
+        </div>
+
+        <div className="app-card">
+          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
+          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
+          {regionGrowth.length ? (
+            <div className="flex flex-wrap gap-2.5">
+              {regionGrowth.map((r) => (
+                <span key={r.region} className="region-chip">
+                  <span className="swatch" style={{ background: r.color }} />
+                  {r.region} {r.pct}%
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
+          )}
+          <GrowthMap regions={regionGrowth} />
+        </div>
+      </div>
+
+      <div className="app-card">
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
+        <RecentTransactionsTable rows={recentTransactions} />
       </div>
     </div>
   )
 }
 
-async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
-  const [{ data: pendingDeliveryRows }, { count: dealerCount }, activityMap] = await Promise.all([
-    supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending'),
-    supabase.from('dealers').select('id', { count: 'exact', head: true }),
-    getDealerActivityMap(supabase),
-  ])
+const DELIVERY_TABLE_LIMIT = 8
 
-  const pendingDeliveryCount = pendingDeliveryRows?.length ?? 0
-  const oldestDeliveryDays = pendingDeliveryCount ? Math.max(...pendingDeliveryRows!.map((r) => daysSince(r.tx_date))) : 0
+// Same overall shape as master's dashboard, re-pointed at CS's actual job:
+// the pending-delivery queue (with the real Mark as Sent action, not a
+// read-only count) and the regional dealer-network map, instead of the
+// finance-facing trend chart.
+async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
+  const today = todayInMalaysia()
+  const monthStart = `${today.slice(0, 7)}-01`
+
+  const [{ data: deliveryListRows, count: pendingDeliveryCount }, { count: dealerCount }, { count: dealerCountLastMonth }, activityMap, { data: monthTx }] =
+    await Promise.all([
+      supabase
+        .from('delivery_queue')
+        .select('id, tx_date, company_name, package, sim_type, delivery_status', { count: 'exact' })
+        .eq('delivery_status', 'pending')
+        .order('tx_date', { ascending: true })
+        .limit(DELIVERY_TABLE_LIMIT),
+      supabase.from('dealers').select('id', { count: 'exact', head: true }),
+      supabase.from('dealers').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
+      getDealerActivityMap(supabase),
+      supabase
+        .from('transactions')
+        .select('points, dealers(region)')
+        .eq('status', 'verified')
+        .gte('tx_date', monthStart)
+        .lte('tx_date', today),
+    ])
+
+  const oldestDeliveryDays = deliveryListRows?.length ? daysSince(deliveryListRows[0].tx_date) : 0
   const inactiveCount = [...activityMap.values()].filter((a) => a.isInactive).length
+  const dealerChg = pctChange(dealerCount ?? 0, dealerCountLastMonth ?? 0)
+
+  const deliveryRows: DeliveryRow[] = (deliveryListRows ?? []).map((row) => {
+    const days = daysSince(row.tx_date)
+    return {
+      id: row.id,
+      tx_date: row.tx_date,
+      company_name: row.company_name,
+      package: row.package,
+      sim_type: row.sim_type as 'physical' | 'esim' | null,
+      delivery_status: row.delivery_status as 'na' | 'pending' | 'sent',
+      days,
+      warn: days >= DELIVERY_WARN_DAYS_THRESHOLD,
+      urgent: days >= DELIVERY_STALLED_DAYS_THRESHOLD,
+    }
+  })
+
+  const totalPoints = (monthTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
+  const regionGrowth = buildRegionGrowth(monthTx ?? [], totalPoints)
 
   return (
     <div className="flex flex-col gap-5">
@@ -297,7 +433,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
         <KpiCard
           icon={<IconTruck className="h-4 w-4" />}
           label="Pending Deliveries"
-          value={String(pendingDeliveryCount)}
+          value={String(pendingDeliveryCount ?? 0)}
           footer={pendingDeliveryCount ? `Oldest is ${oldestDeliveryDays}d old` : 'Nothing waiting on you'}
           href="/delivery"
         />
@@ -312,9 +448,46 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
           icon={<IconUsers className="h-4 w-4" />}
           label="Total Dealers"
           value={String(dealerCount ?? 0)}
-          footer="Across all regions"
+          chg={dealerChg}
+          footer={`Last month: ${dealerCountLastMonth ?? 0}`}
           href="/dealers"
         />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
+        <div className="app-card">
+          <div className="mb-3.5 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-paper">Pending Deliveries</h3>
+            {(pendingDeliveryCount ?? 0) > DELIVERY_TABLE_LIMIT && (
+              <a href="/delivery" className="text-xs font-semibold text-primary hover:underline">
+                View all {pendingDeliveryCount}
+              </a>
+            )}
+          </div>
+          {deliveryRows.length ? (
+            <DeliveryTable rows={deliveryRows} />
+          ) : (
+            <p className="text-sm text-paper-dim">No pending SIM deliveries right now.</p>
+          )}
+        </div>
+
+        <div className="app-card">
+          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
+          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
+          {regionGrowth.length ? (
+            <div className="flex flex-wrap gap-2.5">
+              {regionGrowth.map((r) => (
+                <span key={r.region} className="region-chip">
+                  <span className="swatch" style={{ background: r.color }} />
+                  {r.region} {r.pct}%
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
+          )}
+          <GrowthMap regions={regionGrowth} />
+        </div>
       </div>
     </div>
   )

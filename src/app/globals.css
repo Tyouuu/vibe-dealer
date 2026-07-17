@@ -375,6 +375,15 @@ body {
   .rail {
     @apply sticky top-0 flex h-full w-[76px] shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 p-3.5 transition-[width] duration-200 ease-out;
   }
+  /* overflow-hidden above clips more than intended: the Notifications/Help/
+     Account dropdown-panel-rail popovers are descendants of .rail (even
+     though they're positioned relative to their own nearer wrapper), so
+     .rail's own overflow was clipping them to invisible — clicking looked
+     "dead" because the panel really was opening, just painted outside .rail's
+     box and thrown away. Relaxed only while a panel is actually open. */
+  .rail.menu-open {
+    overflow: visible;
+  }
   .rail:hover {
     @apply w-[248px];
   }

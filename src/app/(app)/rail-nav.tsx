@@ -98,7 +98,7 @@ export function RailNav({
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?'
 
   return (
-    <aside className="rail group" ref={wrapRef}>
+    <aside className={`rail group${open ? ' menu-open' : ''}`} ref={wrapRef}>
       <div className="mb-1.5 flex items-center gap-2.5 px-1.5 pb-4 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
         <span className="overflow-hidden whitespace-nowrap text-base font-extrabold tracking-tight text-paper opacity-0 transition-opacity group-hover:opacity-100">

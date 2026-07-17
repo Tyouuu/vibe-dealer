@@ -87,6 +87,16 @@ export function MobileNav({
                 </a>
               )
             })}
+            <a
+              href="/account"
+              className={
+                pathname === '/account'
+                  ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
+                  : 'rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
+              }
+            >
+              Account Settings
+            </a>
           </nav>
 
           {notifications.length > 0 && (

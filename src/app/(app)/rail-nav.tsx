@@ -19,8 +19,9 @@ import {
   IconReconcile,
   IconShoppingBag,
   IconShield,
+  IconSettings,
 } from './rail-icons'
-import { IconBell, IconHelp } from './icons'
+import { IconBell } from './icons'
 
 export type RailItem = { href: string; label: string; group: string; badge?: number }
 
@@ -40,7 +41,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
 const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
-type Panel = 'notif' | 'help' | 'profile' | null
+type Panel = 'notif' | 'profile' | null
 
 export function RailNav({
   items,
@@ -149,72 +150,62 @@ export function RailNav({
           )}
         </div>
 
-        <div className="relative">
-          <button type="button" className="rail-item" onClick={() => setOpen((p) => (p === 'help' ? null : 'help'))} aria-expanded={open === 'help'}>
-            <IconHelp className="h-[18px] w-[18px]" />
-            <span className="lbl">Help</span>
-          </button>
-          {open === 'help' && (
-            <div className="dropdown-panel-rail w-56">
-              <div className="hd">Help</div>
-              <Link href="/help" className="dropdown-item">
-                Getting started guide
-              </Link>
-              <a href="mailto:support@creatiqai.com" className="dropdown-item">
-                Contact support
-              </a>
-              <div className="px-2.5 py-2 text-xs text-paper-dim">DealerHub v1.0</div>
-            </div>
-          )}
-        </div>
+        <Link href="/account" className="rail-item">
+          <IconSettings className="h-[18px] w-[18px]" />
+          <span className="lbl">Account Settings</span>
+        </Link>
 
-        <div className="relative">
-          <button
-            type="button"
-            className="rail-item"
-            onClick={() => setOpen((p) => (p === 'profile' ? null : 'profile'))}
-            aria-expanded={open === 'profile'}
-          >
+        {actualRole === 'master' ? (
+          <div className="relative">
+            <button
+              type="button"
+              className="rail-item"
+              onClick={() => setOpen((p) => (p === 'profile' ? null : 'profile'))}
+              aria-expanded={open === 'profile'}
+            >
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
+                {initials}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="block truncate">{userName}</span>
+                <span className="flex items-center gap-1 text-[10.5px] font-medium normal-case text-paper-dim">
+                  {roleLabel}
+                  {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9px] font-bold text-primary-deep">Preview</span>}
+                </span>
+              </span>
+            </button>
+            {open === 'profile' && (
+              <div className="dropdown-panel-rail w-56">
+                <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+                <div className="flex gap-1 px-2.5 pb-2">
+                  {PREVIEW_ROLES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => pickPreviewRole(r)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
+                        role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
+                      }`}
+                    >
+                      {ROLE_LABEL[r]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rail-item cursor-default hover:bg-transparent hover:text-paper-dim">
             <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
               {initials}
             </span>
             <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight opacity-0 transition-opacity group-hover:opacity-100">
               <span className="block truncate">{userName}</span>
-              <span className="flex items-center gap-1 text-[10.5px] font-medium normal-case text-paper-dim">
-                {roleLabel}
-                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9px] font-bold text-primary-deep">Preview</span>}
-              </span>
+              <span className="block text-[10.5px] font-medium normal-case text-paper-dim">{roleLabel}</span>
             </span>
-          </button>
-          {open === 'profile' && (
-            <div className="dropdown-panel-rail w-56">
-              <Link href="/account" className="dropdown-item">
-                Account settings
-              </Link>
-              {actualRole === 'master' && (
-                <>
-                  <div className="my-1 border-t border-ink-800" />
-                  <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
-                  <div className="flex gap-1 px-2.5 pb-2">
-                    {PREVIEW_ROLES.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        disabled={pending}
-                        onClick={() => pickPreviewRole(r)}
-                        className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
-                          role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
-                        }`}
-                      >
-                        {ROLE_LABEL[r]}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <LogoutButton variant="rail" />
       </div>

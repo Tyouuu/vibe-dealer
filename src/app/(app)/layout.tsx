@@ -54,10 +54,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Notification bell content — every item here is derived from the same
   // real queries the dashboard itself uses (pending review, inactive
   // dealers, reconciliation status), just reshaped into a short "needs
-  // attention" list. Only master sees the reconciliation nudge here since
-  // only master/accountant can act on it and cs has no /reconcile access.
+  // attention" list. Pending-review and reconciliation are gated to
+  // accountant/master — only they can act on either (cs has no /records or
+  // /reconcile access). Inactive-dealer stays visible to all three roles:
+  // any of them might be the one to follow up with that dealer.
+  const isFinance = user.role === 'master' || user.role === 'accountant'
   const notifications: Notification[] = []
-  if (pendingRows?.length) {
+  if (isFinance && pendingRows?.length) {
     const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
     notifications.push({
       title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
@@ -74,13 +77,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       subtitle: `No activity in ${mostInactive[1].daysSinceLastActivity} days`,
     })
   }
-  if ((user.role === 'master' || user.role === 'accountant') && !statement?.reconciled) {
+  if (isFinance && !statement?.reconciled) {
     notifications.push({
       title: `${today.slice(0, 7)} statement not reconciled`,
       subtitle: 'Enter the Vibe statement and mark it reconciled',
     })
   }
-  const isFinance = user.role === 'master' || user.role === 'accountant'
   if (isFinance && creditBalance.available < LOW_BALANCE_THRESHOLD) {
     notifications.push({
       title: creditBalance.available <= 0 ? 'Out of credit — buy from Vibe Mobile' : 'Credit balance running low',

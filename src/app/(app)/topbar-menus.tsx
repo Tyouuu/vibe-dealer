@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { LogoutButton } from './logout-button'
 import { setPreviewRole } from './preview-role-actions'
-import { IconBell, IconHelp, IconChevronDown } from './icons'
+import { IconBell, IconChevronDown } from './icons'
 import type { Role } from '@/lib/auth/dal'
 
 export type Notification = { title: string; subtitle: string }
 
-type Panel = 'notif' | 'help' | 'profile' | null
+type Panel = 'notif' | 'profile' | null
 
 const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
@@ -88,30 +87,6 @@ export function TopbarMenus({
       <div className="relative">
         <button
           type="button"
-          className="icon-btn"
-          onClick={() => setOpen((p) => (p === 'help' ? null : 'help'))}
-          aria-label="Help"
-          aria-expanded={open === 'help'}
-        >
-          <IconHelp />
-        </button>
-        {open === 'help' && (
-          <div className="dropdown-panel w-56">
-            <div className="hd">Help</div>
-            <Link href="/help" className="dropdown-item">
-              Getting started guide
-            </Link>
-            <a href="mailto:support@creatiqai.com" className="dropdown-item">
-              Contact support
-            </a>
-            <div className="px-2.5 py-2 text-xs text-paper-dim">DealerHub v1.0</div>
-          </div>
-        )}
-      </div>
-
-      <div className="relative">
-        <button
-          type="button"
           onClick={() => setOpen((p) => (p === 'profile' ? null : 'profile'))}
           aria-expanded={open === 'profile'}
           className="flex items-center gap-2.5 rounded-lg border border-ink-800 bg-ink-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-ink-850"
@@ -130,12 +105,8 @@ export function TopbarMenus({
         </button>
         {open === 'profile' && (
           <div className="dropdown-panel w-56">
-            <Link href="/account" className="dropdown-item">
-              Account settings
-            </Link>
             {actualRole === 'master' && (
               <>
-                <div className="my-1 border-t border-ink-800" />
                 <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
                 <div className="flex gap-1 px-2.5 pb-2">
                   {PREVIEW_ROLES.map((r) => (
@@ -152,9 +123,9 @@ export function TopbarMenus({
                     </button>
                   ))}
                 </div>
+                <div className="my-1 border-t border-ink-800" />
               </>
             )}
-            <div className="my-1 border-t border-ink-800" />
             <div className="px-1 pb-0.5">
               <LogoutButton />
             </div>

@@ -2,25 +2,17 @@ type IconProps = { className?: string }
 
 const base = 'h-5 w-5'
 
-// The brand mark — a circle split by the same dashed tear-perforation used
-// everywhere money faces points (`.docket-row`, `.docket-hero`). One motif,
-// every scale: the logo IS the business rule, not a stamped-on initial.
+// The reference's brand mark exactly: rounded-square purple gradient tile
+// with a white lightning-bolt glyph — not a custom redesign.
 export function LogoMark({ className = 'h-8 w-8' }: IconProps) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" className={className}>
-      <circle cx="16" cy="16" r="16" fill="var(--color-primary)" />
-      <line
-        x1="16"
-        y1="7.5"
-        x2="16"
-        y2="24.5"
-        stroke="white"
-        strokeOpacity="0.55"
-        strokeWidth="1.6"
-        strokeDasharray="2.4 2.6"
-        strokeLinecap="round"
-      />
-    </svg>
+    <span
+      className={`${className} inline-flex shrink-0 items-center justify-center rounded-[28%] bg-gradient-to-br from-primary to-primary-deep shadow-[0_4px_10px_-2px_rgba(108,92,231,0.5)]`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[55%] w-[55%]">
+        <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
+      </svg>
+    </span>
   )
 }
 

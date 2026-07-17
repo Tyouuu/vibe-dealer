@@ -6,7 +6,7 @@ import { todayInMalaysia } from '@/lib/month'
 import { RailNav, type RailItem } from './rail-nav'
 import { TopbarMenus, type Notification } from './topbar-menus'
 import { MobileNav } from './mobile-nav'
-import { LogoMark, IconCoin } from './icons'
+import { LogoMark } from './icons'
 
 const ROLE_LABEL = {
   master: 'Master',
@@ -129,17 +129,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {isFinance && (
               <a
                 href="/purchases"
-                className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-extrabold transition-colors ${
-                  creditBalance.available <= 0
-                    ? 'border-clay/25 bg-clay/10 text-clay-bright hover:bg-clay/15'
-                    : creditBalance.available < LOW_BALANCE_THRESHOLD
-                      ? 'border-brass/25 bg-brass/10 text-brass-bright hover:bg-brass/15'
-                      : 'border-ink-800 bg-ink-900 text-paper hover:bg-ink-850'
-                }`}
+                className="flex w-40 shrink-0 flex-col gap-1.5 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 transition-colors hover:bg-ink-850"
                 title="Credit balance — points bought from Vibe Mobile, not yet resold"
               >
-                <IconCoin className="h-4 w-4" />
-                {creditBalance.available.toLocaleString()} pts
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-paper-dim">Credit Balance</span>
+                  <span className="text-sm font-extrabold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
+                  <div
+                    className={`h-full rounded-full ${
+                      creditBalance.available <= 0 ? 'bg-clay-bright' : creditBalance.available < LOW_BALANCE_THRESHOLD ? 'bg-brass-bright' : 'bg-jade-bright'
+                    }`}
+                    // "Full" is pinned at 3x the low-balance threshold (itself the
+                    // biggest package's point cost) rather than some real ceiling —
+                    // points has no natural max, it just goes up on the next
+                    // purchase. This bar isn't "% of quota used" like a real usage
+                    // meter, it's "how far from the danger zone", so 3x reads as a
+                    // comfortable reserve without needing an actual cap to measure
+                    // against.
+                    style={{ width: `${Math.max(0, Math.min(100, (creditBalance.available / (LOW_BALANCE_THRESHOLD * 3)) * 100))}%` }}
+                  />
+                </div>
               </a>
             )}
             {/* Search/notifications/help/account live in the rail on md+; below

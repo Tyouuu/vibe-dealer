@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient()
 
   const [{ data: masters }, summary] = await Promise.all([
-    supabase.from('profiles').select('id, email').eq('role', 'master'),
+    supabase.from('profiles').select('id, email, report_sender_name').eq('role', 'master'),
     getYesterdaySummary(supabase),
   ])
 
@@ -79,6 +79,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: 'skipped', reason: 'no master recipients' })
   }
 
+  // The report goes to every master in one email, so there's only room for
+  // one "from" name — the first master who's set one wins. Falls back to a
+  // fixed default when nobody has customized it.
+  const senderName = masters?.find((m) => m.report_sender_name)?.report_sender_name ?? 'DealerHub Daily Report'
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -86,7 +91,7 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'DealerHub <onboarding@resend.dev>',
+      from: `${senderName} <onboarding@resend.dev>`,
       to: recipients,
       subject: `DealerHub Daily Report — ${summary.date}`,
       html: reportHtml(summary),

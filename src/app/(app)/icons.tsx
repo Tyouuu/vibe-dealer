@@ -191,6 +191,17 @@ export function IconUpload({ className = th }: IconProps) {
   )
 }
 
+export function IconDevices({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2.5" y="3.5" width="12.5" height="9" rx="1.2" />
+      <path d="M6.5 15.5h4.5" />
+      <path d="M8.75 12.5v3" />
+      <rect x="13.5" y="9" width="4" height="6.5" rx="0.8" />
+    </svg>
+  )
+}
+
 export function IconBell({ className = 'h-[17px] w-[17px]' }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>

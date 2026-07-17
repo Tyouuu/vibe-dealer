@@ -143,6 +143,13 @@ body {
     box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
   }
 
+  /* Read-only field that can never be edited by the signed-in user (e.g.
+     Name/Email/Role on Account Settings, managed by Master) — flat grey
+     fill, no border, so it never looks like a clickable input. */
+  .field-disabled {
+    @apply w-full rounded-lg bg-ink-850 px-3.5 py-2.5 text-sm font-medium text-paper-dim;
+  }
+
   /* Trigger button for the custom Combobox/Listbox/MonthPicker components —
      visually identical to .field-input but a real <button>, since none of
      those render a native form control. */

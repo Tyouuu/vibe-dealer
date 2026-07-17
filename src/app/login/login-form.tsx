@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { logSignIn } from './actions'
 
 export function LoginForm() {
   const router = useRouter()
@@ -24,6 +25,8 @@ export function LoginForm() {
       setPending(false)
       return
     }
+
+    await logSignIn()
 
     router.push('/')
     router.refresh()

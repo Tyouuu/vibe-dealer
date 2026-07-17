@@ -1,7 +1,8 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
+import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
+import { getNotificationPrefs } from '@/lib/notifications/preferences'
 import { todayInMalaysia } from '@/lib/month'
 import { RailNav, type RailItem } from './rail-nav'
 import { TopbarMenus, type Notification } from './topbar-menus'
@@ -34,14 +35,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
 
-  const [{ data: dealerRows, count: dealerCount }, { data: pendingRows, count: pendingCount }, { data: statement }, activityMap, creditBalance] =
-    await Promise.all([
-      supabase.from('dealers').select('id, company_name', { count: 'exact' }).order('company_name'),
-      supabase.from('transactions').select('id, tx_date', { count: 'exact' }).eq('status', 'pending'),
-      supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
-      getDealerActivityMap(supabase),
-      getAvailablePointsBalance(supabase),
-    ])
+  const isFinance = user.role === 'master' || user.role === 'accountant'
+  const isOps = user.role === 'cs' || user.role === 'master'
+
+  const [
+    { data: dealerRows, count: dealerCount },
+    { data: pendingRows, count: pendingCount },
+    { data: statement },
+    activityMap,
+    creditBalance,
+    prefs,
+    { data: pendingDeliveryRows },
+  ] = await Promise.all([
+    supabase.from('dealers').select('id, company_name', { count: 'exact' }).order('company_name'),
+    supabase.from('transactions').select('id, tx_date', { count: 'exact' }).eq('status', 'pending'),
+    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
+    getDealerActivityMap(supabase),
+    getAvailablePointsBalance(supabase),
+    getNotificationPrefs(supabase, user.id),
+    isOps
+      ? supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending')
+      : Promise.resolve({ data: null }),
+  ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
   const railItems: RailItem[] = navItems.map((item) => ({
@@ -53,41 +68,53 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Notification bell content — every item here is derived from the same
   // real queries the dashboard itself uses (pending review, inactive
-  // dealers, reconciliation status), just reshaped into a short "needs
-  // attention" list. Pending-review and reconciliation are gated to
-  // accountant/master — only they can act on either (cs has no /records or
-  // /reconcile access). Inactive-dealer stays visible to all three roles:
-  // any of them might be the one to follow up with that dealer.
-  const isFinance = user.role === 'master' || user.role === 'accountant'
+  // dealers, reconciliation status, delivery queue), just reshaped into a
+  // short "needs attention" list. Pending-review/reconciliation are gated to
+  // accountant/master (only they can act on either), deliveries to cs/master
+  // (only they have /delivery access); inactive-dealer stays visible to all
+  // three roles. On top of the role gate, each category also respects the
+  // signed-in user's own on/off preference from Account Settings — and the
+  // whole list is skipped if they've muted notifications entirely.
   const notifications: Notification[] = []
-  if (isFinance && pendingRows?.length) {
-    const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
-    notifications.push({
-      title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
-      subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
-    })
-  }
-  const mostInactive = [...activityMap.entries()]
-    .filter(([, a]) => a.isInactive)
-    .sort((a, b) => b[1].daysSinceLastActivity - a[1].daysSinceLastActivity)[0]
-  if (mostInactive) {
-    const dealerName = dealerRows?.find((d) => d.id === mostInactive[0])?.company_name ?? 'A dealer'
-    notifications.push({
-      title: `${dealerName} is inactive`,
-      subtitle: `No activity in ${mostInactive[1].daysSinceLastActivity} days`,
-    })
-  }
-  if (isFinance && !statement?.reconciled) {
-    notifications.push({
-      title: `${today.slice(0, 7)} statement not reconciled`,
-      subtitle: 'Enter the Vibe statement and mark it reconciled',
-    })
-  }
-  if (isFinance && creditBalance.available < LOW_BALANCE_THRESHOLD) {
-    notifications.push({
-      title: creditBalance.available <= 0 ? 'Out of credit — buy from Vibe Mobile' : 'Credit balance running low',
-      subtitle: `${creditBalance.available.toLocaleString()} pts left — log a Credit Purchase before it blocks a sale`,
-    })
+  if (prefs.masterEnabled) {
+    if (isFinance && prefs.categories.pending_review && pendingRows?.length) {
+      const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
+      notifications.push({
+        title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
+        subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
+      })
+    }
+    if (prefs.categories.dealer_activity) {
+      const mostInactive = [...activityMap.entries()]
+        .filter(([, a]) => a.isInactive)
+        .sort((a, b) => b[1].daysSinceLastActivity - a[1].daysSinceLastActivity)[0]
+      if (mostInactive) {
+        const dealerName = dealerRows?.find((d) => d.id === mostInactive[0])?.company_name ?? 'A dealer'
+        notifications.push({
+          title: `${dealerName} is inactive`,
+          subtitle: `No activity in ${mostInactive[1].daysSinceLastActivity} days`,
+        })
+      }
+    }
+    if (isFinance && prefs.categories.credit_reconciliation && !statement?.reconciled) {
+      notifications.push({
+        title: `${today.slice(0, 7)} statement not reconciled`,
+        subtitle: 'Enter the Vibe statement and mark it reconciled',
+      })
+    }
+    if (isFinance && prefs.categories.credit_reconciliation && creditBalance.available < LOW_BALANCE_THRESHOLD) {
+      notifications.push({
+        title: creditBalance.available <= 0 ? 'Out of credit — buy from Vibe Mobile' : 'Credit balance running low',
+        subtitle: `${creditBalance.available.toLocaleString()} pts left — log a Credit Purchase before it blocks a sale`,
+      })
+    }
+    if (isOps && prefs.categories.deliveries && pendingDeliveryRows?.length) {
+      const oldest = Math.max(...pendingDeliveryRows.map((r) => daysSince(r.tx_date)))
+      notifications.push({
+        title: `${pendingDeliveryRows.length} SIM ${pendingDeliveryRows.length === 1 ? 'delivery' : 'deliveries'} pending`,
+        subtitle: oldest >= DELIVERY_WARN_DAYS_THRESHOLD ? `Oldest is ${oldest}d old` : 'All recently queued',
+      })
+    }
   }
 
   return (

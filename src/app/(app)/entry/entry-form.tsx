@@ -41,8 +41,8 @@ export function EntryForm({
   )
   const [type, setType] = useState<'topup' | 'package'>('topup')
   const [pkg, setPkg] = useState<PackageCode>('A')
-  const [points, setPoints] = useState('')
-  const [moneyOverride, setMoneyOverride] = useState('')
+  const [moneyCollected, setMoneyCollected] = useState('')
+  const [pointsOverride, setPointsOverride] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -51,31 +51,35 @@ export function EntryForm({
   const dealer = dealers.find((d) => d.id === dealerId)
 
   // Same dealer's last transaction, suggested as an editable starting point —
-  // confirming a pre-filled value beats retyping the same points every time.
+  // confirming a pre-filled value beats retyping the same amount every time.
   function selectDealer(id: string) {
     setDealerId(id)
     const last = lastTxByDealer[id]
     if (!last) return
     setType(last.type)
     if (last.type === 'topup') {
-      setPoints(String(last.points))
+      setMoneyCollected(String(last.money_rm))
     } else if (last.package) {
       setPkg(last.package as PackageCode)
     }
   }
 
+  // Dealers hand over real money, not a points figure — RM collected is the
+  // number CS actually has in hand, so it drives the calculation. Points is
+  // derived from it (still editable, for the rare case the dealer and CS
+  // agree on a specific points figure directly).
   const preview = useMemo(() => {
     if (type === 'package') {
       const def = PACKAGES[pkg]
       return { points: def.reload, rate: def.rate, money: def.price, commission: Math.round(def.reload * COMMISSION_RATE * 100) / 100 }
     }
     const rate = dealer?.rate ?? null
-    const pts = Number(points) || 0
+    const collected = Number(moneyCollected) || 0
     if (rate == null) return null
-    const suggestedMoney = Math.round(pts * (1 - rate / 100) * 100) / 100
-    const money = moneyOverride ? Number(moneyOverride) : suggestedMoney
-    return { points: pts, rate, money, commission: Math.round(pts * COMMISSION_RATE * 100) / 100 }
-  }, [type, pkg, dealer, points, moneyOverride])
+    const suggestedPoints = Math.round(collected / (1 - rate / 100))
+    const pts = pointsOverride ? Number(pointsOverride) : suggestedPoints
+    return { points: pts, rate, money: collected, commission: Math.round(pts * COMMISSION_RATE * 100) / 100 }
+  }, [type, pkg, dealer, moneyCollected, pointsOverride])
 
   const insufficientBalance = preview != null && preview.points > availableBalance
 
@@ -236,31 +240,31 @@ export function EntryForm({
           ) : (
             <div className="form-grid">
               <div>
-                <label className="field-label">Top-up Value (points)</label>
-                <input
-                  name="points"
-                  type="number"
-                  min="1"
-                  value={points}
-                  onChange={(e) => setPoints(e.target.value)}
-                  placeholder="e.g. 850"
-                  required
-                  className="field-input"
-                />
-              </div>
-              <div>
                 <label className="field-label">Amount Collected (RM)</label>
                 <input
                   name="money_rm"
                   type="number"
                   step="0.01"
-                  min="0"
-                  value={moneyOverride}
-                  onChange={(e) => setMoneyOverride(e.target.value)}
-                  placeholder={preview ? String(preview.money) : 'Auto-calculated from rate, editable'}
+                  min="0.01"
+                  value={moneyCollected}
+                  onChange={(e) => setMoneyCollected(e.target.value)}
+                  placeholder="e.g. 799"
+                  required
                   className="field-input"
                 />
-                <span className="hint">Auto-suggested from rate — editable</span>
+              </div>
+              <div>
+                <label className="field-label">Top-up Value (points)</label>
+                <input
+                  name="points"
+                  type="number"
+                  min="1"
+                  value={pointsOverride}
+                  onChange={(e) => setPointsOverride(e.target.value)}
+                  placeholder={preview ? String(preview.points) : 'Auto-calculated from rate, editable'}
+                  className="field-input"
+                />
+                <span className="hint">Auto-calculated from rate — editable</span>
               </div>
             </div>
           )}
@@ -304,9 +308,9 @@ export function EntryForm({
         </div>
         {preview ? (
           <div className="flex flex-col text-sm">
-            <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
-            <Row label="Rate" value={`${preview.rate}%`} />
             <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
+            <Row label="Rate" value={`${preview.rate}%`} />
+            <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
             <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
             <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
           </div>

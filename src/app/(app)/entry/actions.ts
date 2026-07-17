@@ -51,14 +51,18 @@ export async function createTransaction(formData: FormData) {
     rate = def.rate
   } else {
     if (dealer.rate == null) fail('This dealer has no package/rate yet — buy them a package first.')
-    points = Number(formData.get('points'))
-    if (!points || points <= 0) fail('Please enter a valid top-up amount.')
     rate = dealer.rate
-    const money = formData.get('money_rm')
-    moneyRm = money ? Number(money) : Math.round(points * (1 - rate / 100) * 100) / 100
+    // RM collected is the primary figure — that's the real money CS has in
+    // hand — points is derived from it unless explicitly overridden, mirror
+    // of the client-side calculation in entry-form.tsx.
+    moneyRm = Number(formData.get('money_rm'))
+    if (!moneyRm || moneyRm <= 0) fail('Please enter the amount collected.')
+    const pointsOverride = formData.get('points')
+    points = pointsOverride ? Number(pointsOverride) : Math.round(moneyRm / (1 - rate / 100))
   }
 
   if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('Please enter a valid amount.')
+  if (!Number.isFinite(points) || points <= 0) fail('Please enter a valid top-up amount.')
 
   // Every point given to a dealer (package or top-up alike) has to come from
   // stock master dealer already bought from Vibe Mobile — block the entry

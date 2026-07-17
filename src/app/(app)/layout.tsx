@@ -1,12 +1,11 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { getNotificationPrefs } from '@/lib/notifications/preferences'
-import { todayInMalaysia } from '@/lib/month'
+import { buildNotifications } from '@/lib/notifications/build'
 import { RailNav, type RailItem } from './rail-nav'
 import { TopbarMenus, type Notification } from './topbar-menus'
 import { MobileNav } from './mobile-nav'
+import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
 
 const ROLE_LABEL = {
@@ -32,30 +31,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser()
   const supabase = await createClient()
 
-  const today = todayInMalaysia()
-  const monthStart = `${today.slice(0, 7)}-01`
-
   const isFinance = user.role === 'master' || user.role === 'accountant'
-  const isOps = user.role === 'cs' || user.role === 'master'
 
-  const [
-    { data: dealerRows, count: dealerCount },
-    { data: pendingRows, count: pendingCount },
-    { data: statement },
-    activityMap,
-    creditBalance,
-    prefs,
-    { data: pendingDeliveryRows },
-  ] = await Promise.all([
-    supabase.from('dealers').select('id, company_name', { count: 'exact' }).order('company_name'),
-    supabase.from('transactions').select('id, tx_date', { count: 'exact' }).eq('status', 'pending'),
-    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
-    getDealerActivityMap(supabase),
+  const [{ count: dealerCount }, { count: pendingCount }, creditBalance, builtNotifications] = await Promise.all([
+    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     getAvailablePointsBalance(supabase),
-    getNotificationPrefs(supabase, user.id),
-    isOps
-      ? supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending')
-      : Promise.resolve({ data: null }),
+    buildNotifications(supabase, user.id, user.role),
   ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
@@ -66,56 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     badge: item.href === '/dealers' ? (dealerCount ?? undefined) : item.href === '/records' ? (pendingCount ?? undefined) : undefined,
   }))
 
-  // Notification bell content — every item here is derived from the same
-  // real queries the dashboard itself uses (pending review, inactive
-  // dealers, reconciliation status, delivery queue), just reshaped into a
-  // short "needs attention" list. Pending-review/reconciliation are gated to
-  // accountant/master (only they can act on either), deliveries to cs/master
-  // (only they have /delivery access); inactive-dealer stays visible to all
-  // three roles. On top of the role gate, each category also respects the
-  // signed-in user's own on/off preference from Account Settings — and the
-  // whole list is skipped if they've muted notifications entirely.
-  const notifications: Notification[] = []
-  if (prefs.masterEnabled) {
-    if (isFinance && prefs.categories.pending_review && pendingRows?.length) {
-      const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
-      notifications.push({
-        title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
-        subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
-      })
-    }
-    if (prefs.categories.dealer_activity) {
-      const mostInactive = [...activityMap.entries()]
-        .filter(([, a]) => a.isInactive)
-        .sort((a, b) => b[1].daysSinceLastActivity - a[1].daysSinceLastActivity)[0]
-      if (mostInactive) {
-        const dealerName = dealerRows?.find((d) => d.id === mostInactive[0])?.company_name ?? 'A dealer'
-        notifications.push({
-          title: `${dealerName} is inactive`,
-          subtitle: `No activity in ${mostInactive[1].daysSinceLastActivity} days`,
-        })
-      }
-    }
-    if (isFinance && prefs.categories.credit_reconciliation && !statement?.reconciled) {
-      notifications.push({
-        title: `${today.slice(0, 7)} statement not reconciled`,
-        subtitle: 'Enter the Vibe statement and mark it reconciled',
-      })
-    }
-    if (isFinance && prefs.categories.credit_reconciliation && creditBalance.available < LOW_BALANCE_THRESHOLD) {
-      notifications.push({
-        title: creditBalance.available <= 0 ? 'Out of credit — buy from Vibe Mobile' : 'Credit balance running low',
-        subtitle: `${creditBalance.available.toLocaleString()} pts left — log a Credit Purchase before it blocks a sale`,
-      })
-    }
-    if (isOps && prefs.categories.deliveries && pendingDeliveryRows?.length) {
-      const oldest = Math.max(...pendingDeliveryRows.map((r) => daysSince(r.tx_date)))
-      notifications.push({
-        title: `${pendingDeliveryRows.length} SIM ${pendingDeliveryRows.length === 1 ? 'delivery' : 'deliveries'} pending`,
-        subtitle: oldest >= DELIVERY_WARN_DAYS_THRESHOLD ? `Oldest is ${oldest}d old` : 'All recently queued',
-      })
-    }
-  }
+  // The bell dropdown is a short preview (capped at 4) of the same list the
+  // full /notifications page shows in full — see lib/notifications/build.ts
+  // for the single source of truth both pull from.
+  const notifications: Notification[] = builtNotifications.slice(0, 4).map((n) => ({ title: n.title, subtitle: n.subtitle }))
 
   return (
     // Floating "app shell" card on md+ (matches the design reference exactly:
@@ -124,6 +60,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // reference never accounted for phone widths and a floating card with a
     // page margin would just waste screen space there.
     <div className="min-h-screen bg-ink-950 text-paper md:p-7">
+      <NotificationToast notifications={builtNotifications.map((n) => ({ id: n.id, title: n.title, subtitle: n.subtitle, variant: n.variant }))} />
       <div className="flex min-h-screen flex-col md:mx-auto md:h-[calc(100vh-3.5rem)] md:max-w-[1440px] md:flex-row md:overflow-hidden md:rounded-[28px] md:border md:border-ink-800 md:bg-ink-900 md:shadow-[0_20px_60px_-30px_rgba(20,20,43,0.25)]">
         <div className="hidden md:block">
           <RailNav

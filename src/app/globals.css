@@ -238,6 +238,9 @@ body {
   .pill-slate {
     @apply bg-slate/12 text-slate-bright;
   }
+  .pill-info {
+    @apply bg-info/12 text-info-bright;
+  }
   .pill-neutral {
     @apply bg-ink-800 text-paper-dim;
   }
@@ -527,6 +530,12 @@ body {
   }
   .tr-urgent {
     box-shadow: inset 3px 0 0 0 var(--color-clay-bright);
+  }
+  .tr-info {
+    box-shadow: inset 3px 0 0 0 var(--color-info);
+  }
+  .tr-slate {
+    box-shadow: inset 3px 0 0 0 var(--color-slate-bright);
   }
 
   .profile-grid {

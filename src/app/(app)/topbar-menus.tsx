@@ -80,6 +80,9 @@ export function TopbarMenus({
                 </div>
               ))
             )}
+            <a href="/notifications" className="mt-1 block border-t border-ink-800 px-2.5 py-2 text-center text-xs font-bold text-primary-deep hover:underline">
+              View all in Notifications →
+            </a>
           </div>
         )}
       </div>

@@ -455,10 +455,6 @@ body {
   .dropdown-item {
     @apply block w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
   }
-  .dropdown-notif-item {
-    @apply rounded-lg px-2.5 py-2 transition-colors hover:bg-ink-850;
-  }
-
   .range-pill {
     @apply inline-flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
   }

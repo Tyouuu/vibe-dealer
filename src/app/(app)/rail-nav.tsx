@@ -41,7 +41,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
 const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
-type Panel = 'notif' | 'profile' | null
+type Panel = 'profile' | null
 
 export function RailNav({
   items,
@@ -125,33 +125,13 @@ export function RailNav({
       ))}
 
       <div className="mt-auto border-t border-ink-800 pt-2">
-        <div className="relative">
-          <button type="button" className="rail-item" onClick={() => setOpen((p) => (p === 'notif' ? null : 'notif'))} aria-expanded={open === 'notif'}>
-            <span className="relative">
-              <IconBell className="h-[18px] w-[18px]" />
-              {notifications.length > 0 && <span className="absolute -right-0.5 -top-0.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-ink-900 bg-clay" />}
-            </span>
-            <span className="lbl">Notifications</span>
-          </button>
-          {open === 'notif' && (
-            <div className="dropdown-panel-rail w-64">
-              <div className="hd">Notifications</div>
-              {notifications.length === 0 ? (
-                <p className="px-2.5 py-4 text-center text-sm text-paper-dim">All clear — nothing needs attention.</p>
-              ) : (
-                notifications.map((n, i) => (
-                  <div key={i} className="dropdown-notif-item">
-                    <div className="text-[12.5px] font-bold text-paper">{n.title}</div>
-                    <div className="mt-0.5 text-[11.5px] text-paper-dim">{n.subtitle}</div>
-                  </div>
-                ))
-              )}
-              <Link href="/notifications" className="mt-1 block border-t border-ink-800 px-2.5 py-2 text-center text-xs font-bold text-primary-deep hover:underline">
-                View all in Notifications →
-              </Link>
-            </div>
-          )}
-        </div>
+        <Link href="/notifications" className={`rail-item${pathname === '/notifications' ? ' active' : ''}`}>
+          <span className="relative">
+            <IconBell className="h-[18px] w-[18px]" />
+            {notifications.length > 0 && <span className="absolute -right-0.5 -top-0.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-ink-900 bg-clay" />}
+          </span>
+          <span className="lbl">Notifications</span>
+        </Link>
 
         <Link href="/account" className="rail-item">
           <IconSettings className="h-[18px] w-[18px]" />

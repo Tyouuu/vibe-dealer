@@ -9,7 +9,7 @@ import type { Role } from '@/lib/auth/dal'
 
 export type Notification = { title: string; subtitle: string }
 
-type Panel = 'notif' | 'profile' | null
+type Panel = 'profile' | null
 
 const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
@@ -56,36 +56,10 @@ export function TopbarMenus({
 
   return (
     <div ref={wrapRef} className="flex items-center gap-2.5">
-      <div className="relative">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setOpen((p) => (p === 'notif' ? null : 'notif'))}
-          aria-label="Notifications"
-          aria-expanded={open === 'notif'}
-        >
-          <IconBell />
-          {notifications.length > 0 && <span className="dot" />}
-        </button>
-        {open === 'notif' && (
-          <div className="dropdown-panel w-64">
-            <div className="hd">Notifications</div>
-            {notifications.length === 0 ? (
-              <p className="px-2.5 py-4 text-center text-sm text-paper-dim">All clear — nothing needs attention.</p>
-            ) : (
-              notifications.map((n, i) => (
-                <div key={i} className="dropdown-notif-item">
-                  <div className="text-[12.5px] font-bold text-paper">{n.title}</div>
-                  <div className="mt-0.5 text-[11.5px] text-paper-dim">{n.subtitle}</div>
-                </div>
-              ))
-            )}
-            <a href="/notifications" className="mt-1 block border-t border-ink-800 px-2.5 py-2 text-center text-xs font-bold text-primary-deep hover:underline">
-              View all in Notifications →
-            </a>
-          </div>
-        )}
-      </div>
+      <a href="/notifications" className="icon-btn" aria-label="Notifications">
+        <IconBell />
+        {notifications.length > 0 && <span className="dot" />}
+      </a>
 
       <div className="relative">
         <button

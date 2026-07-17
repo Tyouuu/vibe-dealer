@@ -58,14 +58,20 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1.5">
           {filtered.map((n) => (
-            <div key={n.id} className={`app-tile flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between ${VARIANT_TR[n.variant]}`}>
-              <div>
-                <div className="text-sm font-bold text-paper">{n.title}</div>
-                <div className="mt-0.5 text-[12.5px] text-paper-dim">{n.subtitle}</div>
+            <div
+              key={n.id}
+              className={`flex flex-col gap-2 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${VARIANT_TR[n.variant]}`}
+            >
+              <div className="min-w-0">
+                <div className="text-[12.5px] font-bold text-paper">{n.title}</div>
+                <div className="mt-0.5 text-[11.5px] text-paper-dim">{n.subtitle}</div>
               </div>
-              <a href={n.href} className={`btn-primary shrink-0 self-start sm:self-auto ${VARIANT_BTN[n.variant]}`}>
+              <a
+                href={n.href}
+                className={`shrink-0 self-start rounded-md px-3 py-1.5 text-xs font-bold text-white transition-colors sm:self-auto ${VARIANT_BTN[n.variant]}`}
+              >
                 {n.actionLabel}
               </a>
             </div>

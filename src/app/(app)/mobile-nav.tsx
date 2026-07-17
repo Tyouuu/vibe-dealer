@@ -91,11 +91,12 @@ export function MobileNav({
               href="/notifications"
               className={
                 pathname === '/notifications'
-                  ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
-                  : 'rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
+                  ? 'flex items-center gap-2 rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
+                  : 'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
               }
             >
               Notifications
+              {notifications.length > 0 && <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-clay" />}
             </a>
             <a
               href="/account"
@@ -108,18 +109,6 @@ export function MobileNav({
               Account Settings
             </a>
           </nav>
-
-          {notifications.length > 0 && (
-            <div className="mt-3 border-t border-ink-800 pt-3">
-              <div className="px-1 pb-1 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Notifications</div>
-              {notifications.map((n, i) => (
-                <div key={i} className="rounded-lg px-3 py-2">
-                  <div className="text-[12.5px] font-bold text-paper">{n.title}</div>
-                  <div className="mt-0.5 text-[11.5px] text-paper-dim">{n.subtitle}</div>
-                </div>
-              ))}
-            </div>
-          )}
 
           <div className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3">
             <div className="flex flex-col gap-1">

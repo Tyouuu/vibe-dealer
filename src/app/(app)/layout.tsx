@@ -80,36 +80,43 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 text-paper md:flex">
-      <div className="hidden md:block">
-        <RailNav items={railItems} />
-      </div>
-
-      <div className="flex min-h-screen flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
-          <LogoMark className="h-8 w-8 shrink-0" />
-          <span className="text-sm font-bold text-paper">DealerHub</span>
-          <div className="flex-1" />
-          <MobileNav items={navItems} roleLabel={ROLE_LABEL[user.role]} email={user.email} notifications={notifications} />
+    // Floating "app shell" card on md+ (matches the design reference exactly:
+    // 28px page margin, 1440px max-width, rounded 28px, bordered, shadowed) —
+    // below md it collapses back to a plain edge-to-edge page, since the
+    // reference never accounted for phone widths and a floating card with a
+    // page margin would just waste screen space there.
+    <div className="min-h-screen bg-ink-950 text-paper md:p-7">
+      <div className="flex min-h-screen flex-col md:mx-auto md:h-[calc(100vh-3.5rem)] md:max-w-[1440px] md:flex-row md:overflow-hidden md:rounded-[28px] md:border md:border-ink-800 md:bg-ink-900 md:shadow-[0_20px_60px_-30px_rgba(20,20,43,0.25)]">
+        <div className="hidden md:block">
+          <RailNav items={railItems} />
         </div>
 
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
-          <div className="hidden flex-1 sm:block">
-            <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
+        <div className="flex min-h-screen flex-1 flex-col md:min-h-0">
+          <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
+            <LogoMark className="h-8 w-8 shrink-0" />
+            <span className="text-sm font-bold text-paper">DealerHub</span>
+            <div className="flex-1" />
+            <MobileNav items={navItems} roleLabel={ROLE_LABEL[user.role]} email={user.email} notifications={notifications} />
           </div>
-          <div className="flex-1 sm:hidden" />
-          <TopbarMenus
-            notifications={notifications}
-            userName={user.name ?? user.email ?? 'User'}
-            roleLabel={ROLE_LABEL[user.role]}
-            role={user.role}
-            actualRole={user.actualRole}
-          />
-        </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
-        </main>
+          <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
+            <div className="hidden flex-1 sm:block">
+              <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
+            </div>
+            <div className="flex-1 sm:hidden" />
+            <TopbarMenus
+              notifications={notifications}
+              userName={user.name ?? user.email ?? 'User'}
+              roleLabel={ROLE_LABEL[user.role]}
+              role={user.role}
+              actualRole={user.actualRole}
+            />
+          </header>
+
+          <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 md:overflow-y-auto">
+            <div className="mx-auto w-full max-w-6xl">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   )

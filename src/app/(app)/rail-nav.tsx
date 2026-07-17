@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
-import { CommandPalette } from './command-palette'
 import { setPreviewRole } from './preview-role-actions'
 import type { Notification } from './topbar-menus'
 import type { Role } from '@/lib/auth/dal'
@@ -24,8 +23,6 @@ import {
 import { IconBell, IconHelp } from './icons'
 
 export type RailItem = { href: string; label: string; group: string; badge?: number }
-type NavItemLite = { href: string; label: string }
-type DealerItem = { id: string; company_name: string }
 
 const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element> = {
   '/dashboard': IconGrid,
@@ -47,7 +44,6 @@ type Panel = 'notif' | 'help' | 'profile' | null
 
 export function RailNav({
   items,
-  dealers,
   notifications,
   userName,
   roleLabel,
@@ -55,7 +51,6 @@ export function RailNav({
   actualRole,
 }: {
   items: RailItem[]
-  dealers: DealerItem[]
   notifications: Notification[]
   userName: string
   roleLabel: string
@@ -100,7 +95,6 @@ export function RailNav({
     groups.set(item.group, list)
   }
 
-  const navItemsLite: NavItemLite[] = items.map((i) => ({ href: i.href, label: i.label }))
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?'
 
   return (
@@ -111,8 +105,6 @@ export function RailNav({
           DealerHub
         </span>
       </div>
-
-      <CommandPalette navItems={navItemsLite} dealers={dealers} variant="rail" />
 
       {[...groups.entries()].map(([group, groupItems]) => (
         <div key={group}>

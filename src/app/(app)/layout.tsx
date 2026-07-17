@@ -99,7 +99,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="hidden md:block">
           <RailNav
             items={railItems}
-            dealers={dealerRows ?? []}
             notifications={notifications}
             userName={user.name ?? user.email ?? 'User'}
             roleLabel={ROLE_LABEL[user.role]}

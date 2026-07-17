@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { IconSearchRail } from './rail-icons'
 
 type NavItem = { href: string; label: string }
 type DealerItem = { id: string; company_name: string }
@@ -9,8 +10,18 @@ type Result = { type: 'page' | 'dealer'; href: string; label: string }
 
 // The one thing a legacy DMS and a marketing screenshot both fail to give
 // you: real keyboard-first navigation. Cmd/Ctrl+K jumps straight to a page
-// or a dealer by name, no menu-diving required.
-export function CommandPalette({ navItems, dealers }: { navItems: NavItem[]; dealers: DealerItem[] }) {
+// or a dealer by name, no menu-diving required. `variant="rail"` renders
+// the trigger as a sidebar item instead of a topbar pill — the Cmd/Ctrl+K
+// listener and modal are unaffected either way.
+export function CommandPalette({
+  navItems,
+  dealers,
+  variant = 'pill',
+}: {
+  navItems: NavItem[]
+  dealers: DealerItem[]
+  variant?: 'pill' | 'rail'
+}) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -74,18 +85,28 @@ export function CommandPalette({ navItems, dealers }: { navItems: NavItem[]; dea
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-full border border-ink-700 bg-ink-900 px-3 py-1.5 text-xs font-medium text-paper-dim transition-colors hover:bg-ink-850"
-      >
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="h-3.5 w-3.5">
-          <circle cx="8.5" cy="8.5" r="5.5" />
-          <path d="M16 16l-3.2-3.2" />
-        </svg>
-        Search
-        <span className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 font-mono text-[10px] text-paper-dim">⌘K</span>
-      </button>
+      {variant === 'rail' ? (
+        <button type="button" onClick={() => setOpen(true)} className="rail-item">
+          <IconSearchRail />
+          <span className="lbl">Search</span>
+          <span className="ml-auto shrink-0 rounded border border-ink-700 bg-ink-850 px-1 py-0.5 font-mono text-[10px] text-paper-dim opacity-0 transition-opacity group-hover:opacity-100">
+            ⌘K
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 rounded-full border border-ink-700 bg-ink-900 px-3 py-1.5 text-xs font-medium text-paper-dim transition-colors hover:bg-ink-850"
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="h-3.5 w-3.5">
+            <circle cx="8.5" cy="8.5" r="5.5" />
+            <path d="M16 16l-3.2-3.2" />
+          </svg>
+          Search
+          <span className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 font-mono text-[10px] text-paper-dim">⌘K</span>
+        </button>
+      )}
 
       {open && (
         <div

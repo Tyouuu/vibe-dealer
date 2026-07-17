@@ -427,6 +427,12 @@ body {
   .dropdown-panel .hd {
     @apply px-2.5 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim;
   }
+  /* Same popover, opening rightward from a rail item instead of downward
+     from a topbar icon — bottom-anchored since these live near the bottom
+     of a tall sidebar, so they never run off the bottom of the screen. */
+  .dropdown-panel-rail {
+    @apply absolute bottom-0 left-full z-50 ml-2 min-w-[220px] rounded-xl border border-ink-800 bg-ink-900 p-1.5 shadow-2xl;
+  }
   .dropdown-item {
     @apply block w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
   }

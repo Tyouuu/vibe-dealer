@@ -4,7 +4,6 @@ import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS } from '@/li
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { RailNav, type RailItem } from './rail-nav'
-import { CommandPalette } from './command-palette'
 import { TopbarMenus, type Notification } from './topbar-menus'
 import { MobileNav } from './mobile-nav'
 import { LogoMark, IconCoin } from './icons'
@@ -98,7 +97,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-ink-950 text-paper md:p-7">
       <div className="flex min-h-screen flex-col md:mx-auto md:h-[calc(100vh-3.5rem)] md:max-w-[1440px] md:flex-row md:overflow-hidden md:rounded-[28px] md:border md:border-ink-800 md:bg-ink-900 md:shadow-[0_20px_60px_-30px_rgba(20,20,43,0.25)]">
         <div className="hidden md:block">
-          <RailNav items={railItems} />
+          <RailNav
+            items={railItems}
+            dealers={dealerRows ?? []}
+            notifications={notifications}
+            userName={user.name ?? user.email ?? 'User'}
+            roleLabel={ROLE_LABEL[user.role]}
+            role={user.role}
+            actualRole={user.actualRole}
+          />
         </div>
 
         <div className="flex min-h-screen flex-1 flex-col md:min-h-0">
@@ -117,34 +124,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
-            <div className="hidden flex-1 sm:block">
-              <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
-            </div>
-            <div className="flex-1 sm:hidden" />
+          <header className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
             {isFinance && (
               <a
                 href="/purchases"
-                className={`hidden shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors sm:flex ${
+                className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-extrabold transition-colors ${
                   creditBalance.available <= 0
                     ? 'border-clay/25 bg-clay/10 text-clay-bright hover:bg-clay/15'
                     : creditBalance.available < LOW_BALANCE_THRESHOLD
                       ? 'border-brass/25 bg-brass/10 text-brass-bright hover:bg-brass/15'
-                      : 'border-ink-800 bg-ink-900 text-paper-dim hover:bg-ink-850 hover:text-paper'
+                      : 'border-ink-800 bg-ink-900 text-paper hover:bg-ink-850'
                 }`}
                 title="Credit balance — points bought from Vibe Mobile, not yet resold"
               >
-                <IconCoin className="h-3.5 w-3.5" />
+                <IconCoin className="h-4 w-4" />
                 {creditBalance.available.toLocaleString()} pts
               </a>
             )}
-            <TopbarMenus
-              notifications={notifications}
-              userName={user.name ?? user.email ?? 'User'}
-              roleLabel={ROLE_LABEL[user.role]}
-              role={user.role}
-              actualRole={user.actualRole}
-            />
+            {/* Search/notifications/help/account live in the rail on md+; below
+                md there's no rail, so this is the only place they can go. */}
+            <div className="md:hidden">
+              <TopbarMenus
+                notifications={notifications}
+                userName={user.name ?? user.email ?? 'User'}
+                roleLabel={ROLE_LABEL[user.role]}
+                role={user.role}
+                actualRole={user.actualRole}
+              />
+            </div>
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 md:overflow-y-auto">

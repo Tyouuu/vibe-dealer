@@ -99,12 +99,10 @@ export function RailNav({
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?'
 
   return (
-    <aside className={`rail group${open ? ' menu-open' : ''}`} ref={wrapRef}>
+    <aside className="rail" ref={wrapRef}>
       <div className="mb-1.5 flex items-center gap-2.5 px-1.5 pb-4 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
-        <span className="overflow-hidden whitespace-nowrap text-base font-extrabold tracking-tight text-paper opacity-0 transition-opacity group-hover:opacity-100">
-          DealerHub
-        </span>
+        <span className="overflow-hidden whitespace-nowrap text-base font-extrabold tracking-tight text-paper">DealerHub</span>
       </div>
 
       {[...groups.entries()].map(([group, groupItems]) => (
@@ -149,7 +147,7 @@ export function RailNav({
               <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
                 {initials}
               </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
                 <span className="block truncate">{userName}</span>
                 <span className="flex items-center gap-1 text-[10.5px] font-medium normal-case text-paper-dim">
                   {roleLabel}
@@ -183,7 +181,7 @@ export function RailNav({
             <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
               {initials}
             </span>
-            <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
               <span className="block truncate">{userName}</span>
               <span className="block text-[10.5px] font-medium normal-case text-paper-dim">{roleLabel}</span>
             </span>

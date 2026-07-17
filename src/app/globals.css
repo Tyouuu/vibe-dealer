@@ -377,34 +377,17 @@ body {
 
   /* ---------- new primitives for the rail + topbar shell ---------- */
 
-  /* Collapsed icon rail that expands to show labels on hover — the
-     reference's left-side nav, replacing the old top nav row entirely on
-     md+ screens. Below md, RailNav isn't rendered at all; MobileNav (the
-     existing hamburger panel) covers phones instead, since a hover-expand
-     rail has no equivalent on a touch device. */
+  /* Fixed-width sidebar, icon + label always visible — replaces the old
+     top nav row entirely on md+ screens. Below md, RailNav isn't rendered
+     at all; MobileNav (the existing hamburger panel) covers phones instead. */
   .rail {
-    @apply sticky top-0 flex h-full w-[76px] shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 p-3.5 transition-[width] duration-200 ease-out;
-  }
-  /* overflow-hidden above clips more than intended: the Notifications/Help/
-     Account dropdown-panel-rail popovers are descendants of .rail (even
-     though they're positioned relative to their own nearer wrapper), so
-     .rail's own overflow was clipping them to invisible — clicking looked
-     "dead" because the panel really was opening, just painted outside .rail's
-     box and thrown away. Relaxed only while a panel is actually open. */
-  .rail.menu-open {
-    overflow: visible;
-  }
-  .rail:hover {
-    @apply w-[248px];
+    @apply sticky top-0 flex h-full w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
   .rail-group-label {
-    @apply overflow-hidden px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim/70 opacity-0 transition-opacity first:pt-1;
-  }
-  .rail:hover .rail-group-label {
-    @apply opacity-100;
+    @apply px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim/70 first:pt-1;
   }
   .rail-item {
-    @apply mb-0.5 flex w-full items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
+    @apply mb-0.5 flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
   }
   .rail-item.active {
     @apply bg-paper text-white hover:bg-paper hover:text-white;
@@ -413,16 +396,10 @@ body {
     @apply h-[18px] w-[18px] shrink-0;
   }
   .rail-item .lbl {
-    @apply overflow-hidden whitespace-nowrap opacity-0 transition-opacity;
-  }
-  .rail:hover .rail-item .lbl {
-    @apply opacity-100;
+    @apply overflow-hidden whitespace-nowrap;
   }
   .rail-item .badge {
-    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary opacity-0 transition-opacity;
-  }
-  .rail:hover .rail-item .badge {
-    @apply opacity-100;
+    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary;
   }
   .rail-item.active .badge {
     @apply bg-white/15 text-white;

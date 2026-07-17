@@ -308,7 +308,7 @@ export function EntryForm({
             <Row label="Rate" value={`${preview.rate}%`} />
             <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
             <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
-            <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" />
+            <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
           </div>
         ) : (
           <p className="text-sm text-paper-dim">
@@ -341,18 +341,24 @@ function Row({
   unit,
   bold,
   highlight,
+  warn,
 }: {
   label: string
   value: string
   unit?: 'money' | 'points'
   bold?: boolean
   highlight?: boolean
+  warn?: boolean
 }) {
   const valueStyle = unit === 'money' ? 'figure-money' : unit === 'points' ? 'figure-points' : 'text-paper'
   return (
-    <div className={`docket-row ${highlight ? '-mx-3 rounded-lg bg-primary-soft px-3' : ''}`}>
-      <span className={highlight ? 'font-semibold text-paper' : 'text-paper-dim'}>{label}</span>
-      <b className={`${valueStyle} ${bold ? 'text-base' : ''} ${highlight ? 'text-primary-deep' : ''}`}>{value}</b>
+    <div className={`docket-row ${highlight ? '-mx-3 rounded-lg bg-primary-soft px-3' : ''} ${warn ? '-mx-3 rounded-lg bg-clay/10 px-3' : ''}`}>
+      <span className={`${highlight ? 'font-semibold text-paper' : 'text-paper-dim'} ${warn ? 'font-semibold text-clay-bright' : ''}`}>
+        {label}
+      </span>
+      <b className={`${valueStyle} ${bold ? 'text-base' : ''} ${highlight ? 'text-primary-deep' : ''} ${warn ? 'text-clay-bright' : ''}`}>
+        {value}
+      </b>
     </div>
   )
 }

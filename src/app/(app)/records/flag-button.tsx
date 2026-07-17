@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { flagTransaction } from './actions'
 
 export function FlagButton({ transactionId }: { transactionId: string }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [])
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" ref={ref}>
       <button type="button" className="btn-clay" onClick={() => setOpen((o) => !o)}>
         Flag ✕
       </button>

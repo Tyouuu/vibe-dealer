@@ -2,7 +2,19 @@
 
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from './logout-button'
-import { LogoMark, IconGrid, IconUsersRail, IconUserPlus, IconReceipt, IconList, IconTruckRail, IconChart, IconReconcile, IconShield } from './rail-icons'
+import {
+  LogoMark,
+  IconGrid,
+  IconUsersRail,
+  IconUserPlus,
+  IconReceipt,
+  IconList,
+  IconTruckRail,
+  IconChart,
+  IconReconcile,
+  IconShoppingBag,
+  IconShield,
+} from './rail-icons'
 
 export type RailItem = { href: string; label: string; group: string; badge?: number }
 
@@ -15,6 +27,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/delivery': IconTruckRail,
   '/reports': IconChart,
   '/reconcile': IconReconcile,
+  '/purchases': IconShoppingBag,
   '/audit': IconShield,
 }
 

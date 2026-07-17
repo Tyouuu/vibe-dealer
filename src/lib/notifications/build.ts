@@ -14,6 +14,11 @@ export type BuiltNotification = {
   subtitle: string
   href: string
   actionLabel: string
+  // How many days this has been sitting unresolved — the closest thing to a
+  // "date" these have, since notifications are recomputed live rather than
+  // stored with a real created-at. Used to sort Oldest/Newest. 0 for
+  // conditions that don't age (e.g. balance is either low or it isn't).
+  staleDays: number
 }
 
 // The single source of truth for "what needs this user's attention" — used
@@ -53,6 +58,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
       subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
       href: '/records?status=pending',
       actionLabel: 'Review transactions',
+      staleDays: oldest,
     })
   }
 
@@ -70,6 +76,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
         subtitle: `No activity in ${a.daysSinceLastActivity} days`,
         href: `/dealers/${dealerId}`,
         actionLabel: 'View dealer',
+        staleDays: a.daysSinceLastActivity,
       })
     }
   }
@@ -83,6 +90,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
       subtitle: 'Enter the Vibe statement and mark it reconciled',
       href: '/reconcile',
       actionLabel: 'Go to Reconciliation',
+      staleDays: daysSince(monthStart),
     })
   }
 
@@ -95,6 +103,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
       subtitle: `${creditBalance.available.toLocaleString()} pts left — log a Credit Purchase before it blocks a sale`,
       href: '/purchases',
       actionLabel: 'Log Credit Purchase',
+      staleDays: 0,
     })
   }
 
@@ -108,6 +117,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
       subtitle: oldest >= DELIVERY_WARN_DAYS_THRESHOLD ? `Oldest is ${oldest}d old` : 'All recently queued',
       href: '/delivery',
       actionLabel: 'View delivery queue',
+      staleDays: oldest,
     })
   }
 

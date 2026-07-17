@@ -1,6 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { PACKAGES } from './packages'
 
 export type CreditBalance = { available: number; totalPurchased: number; totalCommitted: number }
+
+// Below this, the balance can't even cover one more sale of the biggest
+// package — pts stops being "fine" and starts being "you will get blocked on
+// the next big sale." Derived from PACKAGES rather than a round number so it
+// stays correct if package sizes ever change.
+export const LOW_BALANCE_THRESHOLD = Math.max(...Object.values(PACKAGES).map((p) => p.reload))
 
 // "Available" = total points ever bought from Vibe Mobile (credit_purchases)
 // minus everything already committed to a dealer. A *pending* transaction

@@ -15,11 +15,13 @@ export function MobileNav({
   roleLabel,
   email,
   notifications,
+  creditBalance,
 }: {
   items: NavItem[]
   roleLabel: string
   email: string | null
   notifications: Notification[]
+  creditBalance?: { available: number; low: boolean }
 }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -52,6 +54,21 @@ export function MobileNav({
 
       {open && (
         <div className="fixed inset-x-0 top-[57px] z-40 max-h-[calc(100vh-57px)] overflow-y-auto border-b border-ink-800 bg-ink-900 px-4 py-3 shadow-2xl">
+          {creditBalance && (
+            <a
+              href="/purchases"
+              className={`mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold ${
+                creditBalance.available <= 0
+                  ? 'bg-clay/10 text-clay-bright'
+                  : creditBalance.low
+                    ? 'bg-brass/10 text-brass-bright'
+                    : 'bg-ink-850 text-paper-dim'
+              }`}
+            >
+              Credit balance
+              <span>{creditBalance.available.toLocaleString()} pts</span>
+            </a>
+          )}
           <nav className="flex flex-col gap-0.5">
             {items.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`)

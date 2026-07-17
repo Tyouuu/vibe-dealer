@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { COMMISSION_RATE } from '@/lib/packages'
-import { getAvailablePointsBalance } from '@/lib/credit-balance'
+import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { recordCreditPurchase } from './actions'
 
 export const metadata: Metadata = {
@@ -69,9 +69,16 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="app-tile">
             <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
-            <div className={`figure-points mt-1.5 text-xl font-semibold ${balance < 0 ? 'text-clay-bright' : ''}`}>
+            <div
+              className={`figure-points mt-1.5 text-xl font-semibold ${
+                balance <= 0 ? 'text-clay-bright' : balance < LOW_BALANCE_THRESHOLD ? 'text-brass-bright' : ''
+              }`}
+            >
               {balance.toLocaleString()} pts
             </div>
+            {balance > 0 && balance < LOW_BALANCE_THRESHOLD && (
+              <div className="mt-0.5 text-[11px] text-brass-bright">Running low — log a purchase soon</div>
+            )}
           </div>
           <div className="app-tile">
             <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>

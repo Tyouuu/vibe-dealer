@@ -1,12 +1,13 @@
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
+import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { RailNav, type RailItem } from './rail-nav'
 import { CommandPalette } from './command-palette'
 import { TopbarMenus, type Notification } from './topbar-menus'
 import { MobileNav } from './mobile-nav'
-import { LogoMark } from './icons'
+import { LogoMark, IconCoin } from './icons'
 
 const ROLE_LABEL = {
   master: 'Master',
@@ -34,12 +35,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
 
-  const [{ data: dealerRows, count: dealerCount }, { data: pendingRows, count: pendingCount }, { data: statement }, activityMap] =
+  const [{ data: dealerRows, count: dealerCount }, { data: pendingRows, count: pendingCount }, { data: statement }, activityMap, creditBalance] =
     await Promise.all([
       supabase.from('dealers').select('id, company_name', { count: 'exact' }).order('company_name'),
       supabase.from('transactions').select('id, tx_date', { count: 'exact' }).eq('status', 'pending'),
       supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
       getDealerActivityMap(supabase),
+      getAvailablePointsBalance(supabase),
     ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
@@ -79,6 +81,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       subtitle: 'Enter the Vibe statement and mark it reconciled',
     })
   }
+  const isFinance = user.role === 'master' || user.role === 'accountant'
+  if (isFinance && creditBalance.available < LOW_BALANCE_THRESHOLD) {
+    notifications.push({
+      title: creditBalance.available <= 0 ? 'Out of credit — buy from Vibe Mobile' : 'Credit balance running low',
+      subtitle: `${creditBalance.available.toLocaleString()} pts left — log a Credit Purchase before it blocks a sale`,
+    })
+  }
 
   return (
     // Floating "app shell" card on md+ (matches the design reference exactly:
@@ -97,7 +106,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <LogoMark className="h-8 w-8 shrink-0" />
             <span className="text-sm font-bold text-paper">DealerHub</span>
             <div className="flex-1" />
-            <MobileNav items={navItems} roleLabel={ROLE_LABEL[user.role]} email={user.email} notifications={notifications} />
+            <MobileNav
+              items={navItems}
+              roleLabel={ROLE_LABEL[user.role]}
+              email={user.email}
+              notifications={notifications}
+              creditBalance={
+                isFinance ? { available: creditBalance.available, low: creditBalance.available < LOW_BALANCE_THRESHOLD } : undefined
+              }
+            />
           </div>
 
           <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
@@ -105,6 +122,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <CommandPalette navItems={navItems} dealers={dealerRows ?? []} />
             </div>
             <div className="flex-1 sm:hidden" />
+            {isFinance && (
+              <a
+                href="/purchases"
+                className={`hidden shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors sm:flex ${
+                  creditBalance.available <= 0
+                    ? 'border-clay/25 bg-clay/10 text-clay-bright hover:bg-clay/15'
+                    : creditBalance.available < LOW_BALANCE_THRESHOLD
+                      ? 'border-brass/25 bg-brass/10 text-brass-bright hover:bg-brass/15'
+                      : 'border-ink-800 bg-ink-900 text-paper-dim hover:bg-ink-850 hover:text-paper'
+                }`}
+                title="Credit balance — points bought from Vibe Mobile, not yet resold"
+              >
+                <IconCoin className="h-3.5 w-3.5" />
+                {creditBalance.available.toLocaleString()} pts
+              </a>
+            )}
             <TopbarMenus
               notifications={notifications}
               userName={user.name ?? user.email ?? 'User'}

@@ -15,7 +15,7 @@ const ROLE_LABEL = {
 } as const
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
-  { href: '/dashboard', label: 'Dashboard', roles: ['master'], group: 'Overview' },
+  { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
   { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Dealers' },
   { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Dealers' },
   { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Transactions' },

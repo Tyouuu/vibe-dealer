@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
+import { daysSince, getDealerActivityMap } from '@/lib/dealer-activity'
+import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { GrowthMap } from './growth-map'
-import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, ReconciledStamp } from '../icons'
+import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconTruck, ReconciledStamp } from '../icons'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
 // skip rendering the chg badge rather than show a divide-by-zero NaN/Infinity.
@@ -15,7 +18,7 @@ function pctChange(curr: number, prev: number): number | null {
 }
 
 export const metadata: Metadata = {
-  title: 'Master Dashboard — DealerHub',
+  title: 'Dashboard — DealerHub',
 }
 
 function monthsBack(n: number): { key: string; label: string }[] {
@@ -33,12 +36,15 @@ function monthsBack(n: number): { key: string; label: string }[] {
 
 export default async function DashboardPage() {
   const user = await requireUser()
-
-  if (user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view the dashboard.</div>
-  }
-
   const supabase = await createClient()
+
+  // Accountant/cs get a lightweight landing page — a few KpiCards built from
+  // data already queried elsewhere (the same numbers the notification bell
+  // uses), not a scaled-down copy of master's chart-and-map dashboard. They
+  // used to land straight on a blank New Transaction / Onboard Dealer form
+  // with no "is there anything I should look at first" step at all.
+  if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} />
+  if (user.role === 'cs') return <CsDashboard supabase={supabase} />
 
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
@@ -221,6 +227,94 @@ export default async function DashboardPage() {
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
+      </div>
+    </div>
+  )
+}
+
+async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
+  const today = todayInMalaysia()
+  const monthStart = `${today.slice(0, 7)}-01`
+
+  const [{ data: pendingRows }, creditBalance, { data: statement }] = await Promise.all([
+    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
+    getAvailablePointsBalance(supabase),
+    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
+  ])
+
+  const pendingCount = pendingRows?.length ?? 0
+  const oldestPendingDays = pendingCount ? Math.max(...pendingRows!.map((t) => daysSince(t.tx_date))) : 0
+
+  return (
+    <div className="flex flex-col gap-5">
+      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <KpiCard
+          icon={<IconCheckCircle className="h-4 w-4" />}
+          label="Pending Review"
+          value={String(pendingCount)}
+          footer={pendingCount ? `Oldest is ${oldestPendingDays}d old` : 'Nothing waiting on you'}
+          href="/records?status=pending"
+        />
+        <KpiCard
+          icon={<IconCoin className="h-4 w-4" />}
+          label="Credit Balance"
+          value={`${creditBalance.available.toLocaleString()} pts`}
+          statusPill={
+            creditBalance.available <= 0 ? 'Out of credit' : creditBalance.available < LOW_BALANCE_THRESHOLD ? 'Running low' : undefined
+          }
+          footer="Points bought from Vibe Mobile"
+          href="/purchases"
+        />
+        <KpiCard
+          icon={<IconCheckCircle className="h-4 w-4" />}
+          label="Reconciliation"
+          value={statement?.reconciled ? 'Reconciled' : 'Not yet'}
+          statusPill={statement?.reconciled ? undefined : 'Action needed'}
+          footer={`For ${today.slice(0, 7)}`}
+          href="/reconcile"
+        />
+      </div>
+    </div>
+  )
+}
+
+async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
+  const [{ data: pendingDeliveryRows }, { count: dealerCount }, activityMap] = await Promise.all([
+    supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending'),
+    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    getDealerActivityMap(supabase),
+  ])
+
+  const pendingDeliveryCount = pendingDeliveryRows?.length ?? 0
+  const oldestDeliveryDays = pendingDeliveryCount ? Math.max(...pendingDeliveryRows!.map((r) => daysSince(r.tx_date))) : 0
+  const inactiveCount = [...activityMap.values()].filter((a) => a.isInactive).length
+
+  return (
+    <div className="flex flex-col gap-5">
+      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <KpiCard
+          icon={<IconTruck className="h-4 w-4" />}
+          label="Pending Deliveries"
+          value={String(pendingDeliveryCount)}
+          footer={pendingDeliveryCount ? `Oldest is ${oldestDeliveryDays}d old` : 'Nothing waiting on you'}
+          href="/delivery"
+        />
+        <KpiCard
+          icon={<IconUsers className="h-4 w-4" />}
+          label="Inactive Dealers"
+          value={String(inactiveCount)}
+          footer={inactiveCount ? 'Might be worth a follow-up' : 'Everyone active'}
+          href="/dealers?view=inactive"
+        />
+        <KpiCard
+          icon={<IconUsers className="h-4 w-4" />}
+          label="Total Dealers"
+          value={String(dealerCount ?? 0)}
+          footer="Across all regions"
+          href="/dealers"
+        />
       </div>
     </div>
   )

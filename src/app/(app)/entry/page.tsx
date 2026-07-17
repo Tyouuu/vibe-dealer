@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { EntryForm, type LastTxInfo } from './entry-form'
 
 export const metadata: Metadata = {
@@ -20,9 +21,10 @@ export default async function EntryPage({ searchParams }: PageProps) {
   }
 
   const supabase = await createClient()
-  const [{ data: dealers }, { data: recentTxRows }] = await Promise.all([
+  const [{ data: dealers }, { data: recentTxRows }, balance] = await Promise.all([
     supabase.from('dealers').select('id, company_name, package, rate').order('company_name', { ascending: true }),
     supabase.from('transactions').select('dealer_id, type, package, points, money_rm').order('created_at', { ascending: false }).limit(500),
+    getAvailablePointsBalance(supabase),
   ])
 
   // Staff record for the same handful of dealers day to day — surface the
@@ -45,7 +47,13 @@ export default async function EntryPage({ searchParams }: PageProps) {
   return (
     <>
       {error && <div className="alert alert-bad">{error}</div>}
-      <EntryForm dealers={dealers ?? []} initialDealerId={dealer} recentDealers={recentDealers} lastTxByDealer={lastTxByDealer} />
+      <EntryForm
+        dealers={dealers ?? []}
+        initialDealerId={dealer}
+        recentDealers={recentDealers}
+        lastTxByDealer={lastTxByDealer}
+        availableBalance={balance.available}
+      />
     </>
   )
 }

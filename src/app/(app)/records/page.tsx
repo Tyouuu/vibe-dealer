@@ -4,8 +4,8 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
-import { verifyTransaction, flagTransaction } from './actions'
-import { ConfirmSubmitButton } from '../confirm-submit-button'
+import { verifyTransaction } from './actions'
+import { FlagButton } from './flag-button'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
@@ -258,15 +258,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                             Verify ✓
                           </button>
                         </form>
-                        <form action={flagTransaction}>
-                          <input type="hidden" name="id" value={tx.id} />
-                          <ConfirmSubmitButton
-                            className="btn-clay"
-                            confirmMessage="Flag this transaction as void? It will be excluded from reports and reconciliation and cannot be undone."
-                          >
-                            Flag ✕
-                          </ConfirmSubmitButton>
-                        </form>
+                        <FlagButton transactionId={tx.id} />
                       </div>
                     ) : (
                       <span className="text-paper-dim/50">—</span>

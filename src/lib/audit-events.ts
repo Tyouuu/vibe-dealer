@@ -27,6 +27,7 @@ type TxRow = {
   status: 'pending' | 'verified' | 'flagged'
   recorded_by: string | null
   verified_by: string | null
+  flag_reason: string | null
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
@@ -59,7 +60,7 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
     supabase
       .from('transactions')
       .select(
-        'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, dealers(company_name)'
+        'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, flag_reason, dealers(company_name)'
       )
       .order('created_at', { ascending: false })
       .limit(100),
@@ -124,6 +125,7 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
         ...(tx.status !== 'pending'
           ? [{ label: tx.status === 'verified' ? 'Verified by' : 'Flagged by', value: displayName(tx.verified_by) }]
           : []),
+        ...(tx.status === 'flagged' && tx.flag_reason ? [{ label: 'Reason', value: tx.flag_reason }] : []),
       ],
     })
   }

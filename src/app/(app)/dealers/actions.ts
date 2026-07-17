@@ -37,6 +37,33 @@ export async function bulkSetDealerStatus(ids: string[], status: 'active' | 'ina
   revalidatePath('/dealers')
 }
 
+// Master-only, and only for a dealer with zero transactions ever recorded —
+// a pure onboarding mistake, not a real dealer with history to lose. Every
+// other table stays delete-free by design; this is the one narrow exception.
+// The RLS policy (0011) enforces both conditions independently of this check.
+export async function deleteDealer(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  const user = await requireUser()
+  if (!id) redirect('/dealers')
+  if (user.role !== 'master') {
+    redirect(`/dealers/${id}?error=` + encodeURIComponent('Only master can delete a dealer.'))
+  }
+
+  const supabase = await createClient()
+  const { count } = await supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('dealer_id', id)
+  if (count && count > 0) {
+    redirect(`/dealers/${id}?error=` + encodeURIComponent('This dealer has transactions recorded and cannot be deleted.'))
+  }
+
+  const { error } = await supabase.from('dealers').delete().eq('id', id)
+  if (error) {
+    redirect(`/dealers/${id}?error=` + encodeURIComponent(error.message))
+  }
+
+  revalidatePath('/dealers')
+  redirect('/dealers?deleted=1')
+}
+
 // Minimal RFC4180-ish CSV parser (quoted fields, "" escaping, embedded commas
 // /newlines) — matches the quoting style /api/dealers/export produces, so a
 // round-trip export → edit in Excel → re-import works without a dependency.

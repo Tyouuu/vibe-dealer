@@ -23,6 +23,7 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
+  { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Finance' },
 ]
 

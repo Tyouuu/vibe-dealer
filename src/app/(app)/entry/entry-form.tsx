@@ -27,11 +27,13 @@ export function EntryForm({
   initialDealerId,
   recentDealers = [],
   lastTxByDealer = {},
+  availableBalance,
 }: {
   dealers: DealerOption[]
   initialDealerId?: string
   recentDealers?: { id: string; company_name: string }[]
   lastTxByDealer?: Record<string, LastTxInfo>
+  availableBalance: number
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const [dealerId, setDealerId] = useState(
@@ -75,6 +77,8 @@ export function EntryForm({
     return { points: pts, rate, money, commission: Math.round(pts * COMMISSION_RATE * 100) / 100 }
   }, [type, pkg, dealer, points, moneyOverride])
 
+  const insufficientBalance = preview != null && preview.points > availableBalance
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -85,6 +89,10 @@ export function EntryForm({
     }
     if (type === 'topup' && dealer?.rate == null) {
       setError('This dealer has no package/rate yet — buy them a package first.')
+      return
+    }
+    if (insufficientBalance) {
+      setError('Not enough credit balance for this amount — log a Credit Purchase first.')
       return
     }
 
@@ -300,13 +308,25 @@ export function EntryForm({
             <Row label="Rate" value={`${preview.rate}%`} />
             <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
             <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
+            <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" />
           </div>
         ) : (
           <p className="text-sm text-paper-dim">
             {dealer ? 'This dealer has no package/rate yet — buy them a package first.' : 'Select a dealer first.'}
           </p>
         )}
-        <button type="submit" form="entry-form" disabled={uploading || submitting} className="btn-primary mt-4 w-full">
+        {insufficientBalance && (
+          <div className="alert alert-bad mt-3">
+            Not enough credit balance — {availableBalance.toLocaleString()} pts available, this needs{' '}
+            {preview!.points.toLocaleString()} pts. Log a Credit Purchase first.
+          </div>
+        )}
+        <button
+          type="submit"
+          form="entry-form"
+          disabled={uploading || submitting || insufficientBalance}
+          className="btn-primary mt-4 w-full"
+        >
           {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
         </button>
         <p className="note-strip">Buying a package automatically updates the dealer&apos;s rate for future transactions.</p>

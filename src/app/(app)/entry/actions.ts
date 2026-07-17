@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
+import { getAvailablePointsBalance } from '@/lib/credit-balance'
 
 function fail(message: string): never {
   redirect('/entry?error=' + encodeURIComponent(message))
@@ -58,6 +59,16 @@ export async function createTransaction(formData: FormData) {
   }
 
   if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('Please enter a valid amount.')
+
+  // Every point given to a dealer (package or top-up alike) has to come from
+  // stock master dealer already bought from Vibe Mobile — block the entry
+  // outright if it would oversell what's actually on hand.
+  const { available } = await getAvailablePointsBalance(supabase)
+  if (points > available) {
+    fail(
+      `Not enough credit balance: ${available.toLocaleString()} pts available, this needs ${points.toLocaleString()} pts. Log a Credit Purchase first.`
+    )
+  }
 
   const simType = type === 'package' ? simTypeRaw || null : null
 

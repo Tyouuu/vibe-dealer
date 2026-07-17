@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
 import { markDelivered } from '../../delivery/actions'
+import { deleteDealer } from '../actions'
 import { IconMapPin, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
@@ -38,6 +39,7 @@ type TxRow = {
   commission_rm: number
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
+  flag_reason: string | null
 }
 
 type DeliveryRow = {
@@ -162,10 +164,12 @@ function TimelineItem({
 
 type PageProps = {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }
 
-export default async function DealerDetailPage({ params }: PageProps) {
+export default async function DealerDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const { error } = await searchParams
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -191,7 +195,7 @@ export default async function DealerDetailPage({ params }: PageProps) {
   if (isFinance) {
     const { data } = await supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status')
+      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, flag_reason')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -236,6 +240,8 @@ export default async function DealerDetailPage({ params }: PageProps) {
         ← Back to Dealers
       </Link>
 
+      {error && <div className="alert alert-bad">{error}</div>}
+
       {activity?.isInactive && (
         <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
       )}
@@ -257,6 +263,17 @@ export default async function DealerDetailPage({ params }: PageProps) {
               <a href={`/entry?dealer=${id}`} className="btn-primary py-1.5 text-xs">
                 + Record Transaction
               </a>
+            )}
+            {user.role === 'master' && isFinance && txRows.length === 0 && (
+              <form action={deleteDealer}>
+                <input type="hidden" name="id" value={id} />
+                <ConfirmSubmitButton
+                  className="btn-clay py-1.5 text-xs"
+                  confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
+                >
+                  Delete Dealer
+                </ConfirmSubmitButton>
+              </form>
             )}
           </div>
         </div>
@@ -284,12 +301,12 @@ export default async function DealerDetailPage({ params }: PageProps) {
                     icon={tx.status === 'flagged' ? 'x' : tx.type === 'package' ? 'tag' : 'check'}
                     title={
                       tx.status === 'flagged'
-                        ? 'Flagged — suspicious amount'
+                        ? 'Flagged'
                         : tx.type === 'package'
                           ? `Package ${tx.package} assigned`
                           : `Top-up recorded — ${tx.points.toLocaleString()} pts`
                     }
-                    subtitle={tx.tx_date}
+                    subtitle={tx.status === 'flagged' ? (tx.flag_reason ?? tx.tx_date) : tx.tx_date}
                   />
                 ))}
               </Timeline>

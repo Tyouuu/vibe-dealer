@@ -31,6 +31,7 @@ type PageProps = {
     q?: string
     region?: string
     onboarded?: string
+    deleted?: string
     view?: string
     imported?: string
     skipped_dup?: string
@@ -45,6 +46,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     q = '',
     region = 'all',
     onboarded,
+    deleted,
     view: rawView = 'all',
     imported,
     skipped_dup: skippedDup,
@@ -119,6 +121,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
   return (
     <div className="app-card">
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
+      {deleted && <div className="alert alert-ok">Dealer deleted.</div>}
       {imported && (
         <div className="alert alert-ok">
           Imported {imported} dealer{imported === '1' ? '' : 's'}.

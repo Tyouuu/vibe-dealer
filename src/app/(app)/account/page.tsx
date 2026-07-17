@@ -7,7 +7,7 @@ import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
-import { IconUsers, IconLock, IconBell, IconDevices } from '../icons'
+import { IconInfo } from '../icons'
 
 export const metadata: Metadata = {
   title: 'Account — DealerHub',
@@ -27,6 +27,18 @@ function formatSignInTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+// Managed-by-admin note repeated under each disabled field — matches the
+// GitHub Primer treatment the client picked (a note per field, not one
+// shared banner for the whole section).
+function AdminManagedNote() {
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-paper-dim">
+      <IconInfo className="h-3 w-3 shrink-0" />
+      Managed by your admin
+    </div>
+  )
 }
 
 export default async function AccountPage() {
@@ -52,73 +64,49 @@ export default async function AccountPage() {
   const pastHistory = history.slice(1)
 
   return (
-    <div className="flex max-w-xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
       <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
 
-      <div className="app-card">
-        <div className="form-section-head">
-          <span className="tile">
-            <IconUsers />
-          </span>
-          <span>Profile</span>
-          <span className="rule" />
-        </div>
-        <div className="profile-grid">
-          <div className="profile-field">
-            <label>Name</label>
+      <section>
+        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Profile</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <span className="field-label">Name</span>
             <div className="field-disabled">{user.name ?? '—'}</div>
+            <AdminManagedNote />
           </div>
-          <div className="profile-field">
-            <label>Email</label>
+          <div>
+            <span className="field-label">Email</span>
             <div className="field-disabled">{user.email ?? '—'}</div>
+            <AdminManagedNote />
           </div>
-          <div className="profile-field">
-            <label>Role</label>
+          <div>
+            <span className="field-label">Role</span>
             <div className="field-disabled">{ROLE_LABEL[user.role]}</div>
+            <AdminManagedNote />
           </div>
         </div>
-        <p className="note-strip">
-          Name and role are managed by Master when your account is set up. Contact Master to change either.
-        </p>
         {user.role === 'master' && (
-          <div className="mt-4 border-t border-ink-800 pt-4">
+          <div className="mt-6">
             <ReportSenderNameForm initialValue={profileRow?.report_sender_name ?? ''} />
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="app-card">
-        <div className="form-section-head">
-          <span className="tile">
-            <IconBell />
-          </span>
-          <span>Notifications</span>
-          <span className="rule" />
-        </div>
+      <section>
+        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Notifications</h2>
         <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} />
-      </div>
+      </section>
 
-      <div className="app-card">
-        <div className="form-section-head">
-          <span className="tile">
-            <IconDevices />
-          </span>
-          <span>Sessions</span>
-          <span className="rule" />
-        </div>
+      <section>
+        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Sessions</h2>
         <SessionsPanel currentDevice={currentDevice} since={since} history={pastHistory} />
-      </div>
+      </section>
 
-      <div className="app-card">
-        <div className="form-section-head">
-          <span className="tile">
-            <IconLock />
-          </span>
-          <span>Security</span>
-          <span className="rule" />
-        </div>
+      <section>
+        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Security</h2>
         <ChangePasswordForm />
-      </div>
+      </section>
     </div>
   )
 }

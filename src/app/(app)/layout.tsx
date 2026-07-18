@@ -131,7 +131,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 md:overflow-y-auto">
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
+            {/* No max-width here — the shell above already caps out at 1440px
+                total (md:max-w-[1440px]), so this only needs w-full to use
+                whatever room that leaves past the rail. A redundant narrower
+                cap here (max-w-6xl = 1152px) was leaving visible dead space
+                on wide-grid pages like Credit Purchases/Reconcile/Dealers.
+                Pages that genuinely want a narrower reading column (Account
+                Settings, Notifications) already set their own max-width on
+                their own root element, so this doesn't affect those. */}
+            <div className="mx-auto w-full">{children}</div>
           </main>
         </div>
       </div>

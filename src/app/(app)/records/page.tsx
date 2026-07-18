@@ -47,12 +47,13 @@ type PageProps = {
     month?: string
     q?: string
     sort?: string
+    dealer?: string
   }>
 }
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc' } = await searchParams
+  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId } = await searchParams
   const sortAscending = sort === 'asc'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -79,6 +80,13 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     query = query.gte('tx_date', start).lte('tx_date', end)
   }
 
+  let dealerFilterName: string | null = null
+  if (dealerId) {
+    const { data: d } = await supabase.from('dealers').select('company_name').eq('id', dealerId).maybeSingle()
+    dealerFilterName = d?.company_name ?? null
+    query = query.eq('dealer_id', dealerId)
+  }
+
   const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
     // Filter on the joined dealers table by resolving matching dealer ids first,
@@ -101,6 +109,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     if (status !== 'all') params.set('status', status)
     if (month) params.set('month', month)
     if (q) params.set('q', q)
+    if (dealerId) params.set('dealer', dealerId)
     const nextSort = overrides.sort ?? sort
     if (nextSort !== 'desc') params.set('sort', nextSort)
     const qs = params.toString()
@@ -111,8 +120,16 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   if (status !== 'all') exportParams.set('status', status)
   if (month) exportParams.set('month', month)
   if (q) exportParams.set('q', q)
+  if (dealerId) exportParams.set('dealer', dealerId)
   if (sort !== 'desc') exportParams.set('sort', sort)
   const exportHref = `/api/records/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
+
+  const clearDealerParams = new URLSearchParams()
+  if (status !== 'all') clearDealerParams.set('status', status)
+  if (month) clearDealerParams.set('month', month)
+  if (q) clearDealerParams.set('q', q)
+  if (sort !== 'desc') clearDealerParams.set('sort', sort)
+  const clearDealerHref = `/records${clearDealerParams.toString() ? `?${clearDealerParams.toString()}` : ''}`
 
   return (
     <div className="app-card">
@@ -132,6 +149,17 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             : `${count ?? 0} transactions`}
         </span>
       </div>
+
+      {dealerId && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="pill pill-info">
+            Dealer: {dealerFilterName ?? 'Unknown dealer'}
+            <a href={clearDealerHref} className="ml-1.5 font-bold hover:text-paper" title="Clear dealer filter" aria-label="Clear dealer filter">
+              ✕
+            </a>
+          </span>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <form className="flex flex-wrap items-center gap-3" action="/records" method="GET">
@@ -160,6 +188,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           <div className="w-44">
             <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear />
           </div>
+          {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
           <input type="hidden" name="sort" value={sort} />
           <button type="submit" className="btn-primary">
             Filter

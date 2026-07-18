@@ -20,7 +20,7 @@ type TxRow = {
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
-// Mirrors /records' own filters (status/month/q/sort) so "Export" downloads
+// Mirrors /records' own filters (status/month/q/dealer/sort) so "Export" downloads
 // exactly what's currently on screen, not the unfiltered full table.
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
   const status = params.get('status') ?? 'all'
   const month = params.get('month') ?? ''
   const q = params.get('q') ?? ''
+  const dealerId = params.get('dealer') ?? ''
   const sortAscending = params.get('sort') === 'asc'
 
   const supabase = await createClient()
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
     const { start, end } = monthRange(month)
     query = query.gte('tx_date', start).lte('tx_date', end)
   }
+  if (dealerId) query = query.eq('dealer_id', dealerId)
   const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
     const { data: matchingDealers } = await supabase.from('dealers').select('id').ilike('company_name', `%${safeQ}%`)

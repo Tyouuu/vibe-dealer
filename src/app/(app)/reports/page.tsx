@@ -1,8 +1,25 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
+import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { MonthPicker } from '../month-picker'
+
+function formatDelta(current: number, prior: number): { label: string; positive: boolean } | null {
+  if (prior === 0) return current === 0 ? null : { label: 'New this month', positive: current > 0 }
+  const pct = ((current - prior) / Math.abs(prior)) * 100
+  const rounded = Math.round(pct * 10) / 10
+  return { label: `${rounded > 0 ? '+' : ''}${rounded}% vs last month`, positive: rounded >= 0 }
+}
+
+function Delta({ current, prior }: { current: number; prior: number }) {
+  const delta = formatDelta(current, prior)
+  if (!delta) return <div className="mt-1 text-[11px] font-semibold text-paper-dim">No data last month</div>
+  return (
+    <div className={`mt-1 text-[11px] font-bold ${delta.positive ? 'text-jade-bright' : 'text-clay-bright'}`}>
+      {delta.positive ? '↑' : '↓'} {delta.label}
+    </div>
+  )
+}
 
 export const metadata: Metadata = {
   title: 'Monthly Report — DealerHub',
@@ -21,20 +38,30 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   }
 
   const { start, end } = monthRange(month)
+  const prevMonth = previousMonth(month)
+  const { start: prevStart, end: prevEnd } = monthRange(prevMonth)
   const supabase = await createClient()
 
-  const { data: rows } = await supabase
-    .from('transactions')
-    .select('dealer_id, points, money_rm, commission_rm, dealers(company_name)')
-    .eq('status', 'verified')
-    .gte('tx_date', start)
-    .lte('tx_date', end)
+  const [{ data: rows }, { data: prevRows }] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('dealer_id, points, money_rm, commission_rm, dealers(company_name)')
+      .eq('status', 'verified')
+      .gte('tx_date', start)
+      .lte('tx_date', end),
+    supabase
+      .from('transactions')
+      .select('points, money_rm, commission_rm')
+      .eq('status', 'verified')
+      .gte('tx_date', prevStart)
+      .lte('tx_date', prevEnd),
+  ])
 
-  const byDealer = new Map<string, { name: string; points: number; money: number; commission: number }>()
+  const byDealer = new Map<string, { id: string; name: string; points: number; money: number; commission: number }>()
   for (const t of rows ?? []) {
     const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
     const name = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
-    const prev = byDealer.get(t.dealer_id) ?? { name, points: 0, money: 0, commission: 0 }
+    const prev = byDealer.get(t.dealer_id) ?? { id: t.dealer_id, name, points: 0, money: 0, commission: 0 }
     prev.points += Number(t.points)
     prev.money += Number(t.money_rm)
     prev.commission += Number(t.commission_rm)
@@ -46,6 +73,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const totalMoney = breakdown.reduce((s, d) => s + d.money, 0)
   const totalCommission = breakdown.reduce((s, d) => s + d.commission, 0)
   const maxMoney = Math.max(...breakdown.map((d) => d.money), 0)
+
+  const prevTotalPoints = (prevRows ?? []).reduce((s, t) => s + Number(t.points), 0)
+  const prevTotalCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
+  const prevTxCount = prevRows?.length ?? 0
 
   return (
     <div className="flex flex-col gap-5">
@@ -75,24 +106,31 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <div className="figure-points mt-2 text-2xl font-semibold">
               {totalPoints.toLocaleString()} <span className="text-xs font-semibold text-paper-dim">pts</span>
             </div>
+            <Delta current={totalPoints} prior={prevTotalPoints} />
           </div>
           <div className="p-4 sm:p-5">
             <div className="text-[13px] font-semibold text-paper-dim">Your 2%</div>
             <div className="figure-money mt-2 text-2xl font-semibold">RM {totalCommission.toLocaleString()}</div>
+            <Delta current={totalCommission} prior={prevTotalCommission} />
           </div>
           <div className="p-4 sm:p-5">
             <div className="text-[13px] font-semibold text-paper-dim">Transactions</div>
-            <div className="mt-2 text-2xl font-semibold text-paper">{rows?.length ?? 0}</div>
+            <a href={`/records?month=${month}&status=verified`} className="mt-2 block text-2xl font-semibold text-paper hover:text-primary">
+              {rows?.length ?? 0}
+            </a>
+            <Delta current={rows?.length ?? 0} prior={prevTxCount} />
           </div>
           <div className="p-4 sm:p-5">
             <div className="text-[13px] font-semibold text-paper-dim">Active Dealers</div>
             <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
+            <div className="mt-1 text-[11px] font-semibold text-paper-dim">vs {formatMonthLabel(prevMonth)}</div>
           </div>
         </div>
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">By Dealer</h3>
+        <h3 className="mb-0.5 text-sm font-bold text-paper">By Dealer</h3>
+        <p className="mb-3.5 text-[11.5px] text-paper-dim">Click a dealer to see its individual transactions for this month.</p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -108,9 +146,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               {breakdown.map((d, i) => {
                 const pct = maxMoney > 0 ? Math.round((d.money / maxMoney) * 100) : 0
                 return (
-                  <tr key={d.name + i} className="tr-row">
+                  <tr key={d.id} className="tr-row relative">
                     <td className="td text-paper-dim">{i + 1}</td>
-                    <td className="td font-semibold text-paper">{d.name}</td>
+                    <td className="td font-semibold text-paper">
+                      <a
+                        href={`/records?month=${month}&status=verified&dealer=${d.id}`}
+                        className="after:absolute after:inset-0 after:content-[''] hover:text-primary"
+                      >
+                        {d.name}
+                      </a>
+                    </td>
                     <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
                     <td className="td figure relative text-right text-paper-dim">
                       <span className="absolute -left-1.5 bottom-[3px] top-[3px] rounded-md bg-primary-soft" style={{ width: `${pct}%` }} />

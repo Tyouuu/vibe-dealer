@@ -24,6 +24,12 @@ export function currentMonth() {
   return todayInMalaysia().slice(0, 7)
 }
 
+export function previousMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(y, m - 2, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export function formatMonthLabel(month: string): string {
   const [y, m] = month.split('-').map(Number)
   return new Date(y, m - 1, 1).toLocaleString('en-MY', { year: 'numeric', month: 'long' })

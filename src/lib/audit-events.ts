@@ -54,29 +54,47 @@ type RateHistoryRow = {
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
+// A page is a fixed number of *merged* events across all three sources, not
+// a fixed number of rows per source — each source is over-fetched well past
+// PAGE_SIZE so the merge-sort picks the true most-recent PAGE_SIZE events
+// regardless of which source they came from, then the oldest event actually
+// shown becomes the cursor ("before") for the next page. This replaces the
+// old flat .limit(100)/.limit(50)/.limit(50) — those caps were invisible (no
+// "showing N of M" notice) and had no way to see anything older.
+export const AUDIT_PAGE_SIZE = 75
+const SOURCE_FETCH_LIMIT = 200
+
+export type AuditPage = { events: AuditEvent[]; hasMore: boolean; nextCursor: string | null }
+
 // recorded_by / verified_by / changed_by are bare uuid columns with no FK to
 // profiles (predates the profiles table — see 0001_profiles_and_rls.sql), so
 // PostgREST nested-select can't join them; resolved separately below.
-export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEvent[]> {
-  const [{ data: rows }, { data: revisionRows }, { data: rateHistoryRows }] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select(
-        'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, flag_reason, note, adjusts_id, dealers(company_name)'
-      )
-      .order('created_at', { ascending: false })
-      .limit(100),
-    supabase
-      .from('company_statement_revisions')
-      .select('id, month, company_total_points, company_profit_rm, note, recorded_by, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50),
-    supabase
-      .from('dealer_rate_history')
-      .select('id, old_package, old_rate, new_package, new_rate, changed_by, created_at, dealers(company_name)')
-      .order('created_at', { ascending: false })
-      .limit(50),
-  ])
+export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: string } = {}): Promise<AuditPage> {
+  let txQuery = supabase
+    .from('transactions')
+    .select(
+      'id, created_at, type, package, points, money_rm, status, recorded_by, verified_by, flag_reason, note, adjusts_id, dealers(company_name)'
+    )
+    .order('created_at', { ascending: false })
+    .limit(SOURCE_FETCH_LIMIT)
+  let revisionQuery = supabase
+    .from('company_statement_revisions')
+    .select('id, month, company_total_points, company_profit_rm, note, recorded_by, created_at')
+    .order('created_at', { ascending: false })
+    .limit(SOURCE_FETCH_LIMIT)
+  let rateHistoryQuery = supabase
+    .from('dealer_rate_history')
+    .select('id, old_package, old_rate, new_package, new_rate, changed_by, created_at, dealers(company_name)')
+    .order('created_at', { ascending: false })
+    .limit(SOURCE_FETCH_LIMIT)
+
+  if (opts.before) {
+    txQuery = txQuery.lt('created_at', opts.before)
+    revisionQuery = revisionQuery.lt('created_at', opts.before)
+    rateHistoryQuery = rateHistoryQuery.lt('created_at', opts.before)
+  }
+
+  const [{ data: rows }, { data: revisionRows }, { data: rateHistoryRows }] = await Promise.all([txQuery, revisionQuery, rateHistoryQuery])
 
   const txRows = (rows ?? []) as unknown as TxRow[]
   const revisions = (revisionRows ?? []) as RevisionRow[]
@@ -187,7 +205,10 @@ export async function getAuditEvents(supabase: SupabaseClient): Promise<AuditEve
   }
 
   events.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  return events
+
+  const page = events.slice(0, AUDIT_PAGE_SIZE)
+  const hasMore = events.length > AUDIT_PAGE_SIZE
+  return { events: page, hasMore, nextCursor: hasMore ? page[page.length - 1].createdAt : null }
 }
 
 export type AuditFilters = {

@@ -23,7 +23,7 @@ const VIEW_LABEL: Record<View, string> = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ q?: string; view?: string; actor?: string; month?: string }>
+  searchParams: Promise<{ q?: string; view?: string; actor?: string; month?: string; before?: string }>
 }
 
 export default async function AuditPage({ searchParams }: PageProps) {
@@ -33,14 +33,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
     return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view the audit log.</div>
   }
 
-  const { q = '', view: rawView = 'all', actor = 'all', month = '' } = await searchParams
+  const { q = '', view: rawView = 'all', actor = 'all', month = '', before } = await searchParams
   const view: View = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
 
   const supabase = await createClient()
-  const allEvents = await getAuditEvents(supabase)
-  const actors = Array.from(new Set(allEvents.map((e) => e.actor))).sort()
+  const { events: pageEvents, hasMore, nextCursor } = await getAuditEvents(supabase, { before })
+  const actors = Array.from(new Set(pageEvents.map((e) => e.actor))).sort()
 
-  const filtered = filterAuditEvents(allEvents, { q, kind: view, actor, month })
+  const filtered = filterAuditEvents(pageEvents, { q, kind: view, actor, month })
   const groups = groupByDay(filtered)
 
   function viewHref(v: View) {
@@ -52,6 +52,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
     const qs = params.toString()
     return `/audit${qs ? `?${qs}` : ''}`
   }
+
+  const loadOlderParams = new URLSearchParams()
+  if (q) loadOlderParams.set('q', q)
+  if (actor !== 'all') loadOlderParams.set('actor', actor)
+  if (month) loadOlderParams.set('month', month)
+  if (view !== 'all') loadOlderParams.set('view', view)
+  if (nextCursor) loadOlderParams.set('before', nextCursor)
+  const loadOlderHref = `/audit?${loadOlderParams.toString()}`
 
   const exportParams = new URLSearchParams()
   if (q) exportParams.set('q', q)
@@ -163,7 +171,9 @@ export default async function AuditPage({ searchParams }: PageProps) {
           </span>
           <p className="text-sm text-paper-dim">
             {hasFilter
-              ? 'No events match those filters.'
+              ? before
+                ? "No events match those filters on this page — try loading older events, or clear filters to start from the most recent."
+                : 'No events match those filters.'
               : "Once your team verifies a top-up, saves a reconciliation, or changes a dealer's rate, it'll show up here — permanently, and searchable."}
           </p>
           {hasFilter && (
@@ -175,7 +185,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
       )}
 
       <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-        <span className="text-[11.5px] text-paper-dim">{filtered.length} events</span>
+        <span className="text-[11.5px] text-paper-dim">
+          {filtered.length} of {pageEvents.length} events on this page
+        </span>
+        {hasMore && (
+          <Link href={loadOlderHref} className="btn-ghost text-xs">
+            Load older events ↓
+          </Link>
+        )}
       </div>
     </div>
   )

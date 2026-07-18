@@ -42,14 +42,18 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const supabase = await createClient()
 
   const [{ data: verifiedTx }, { data: statement }] = await Promise.all([
+    // No .limit() — systemPoints below is a real sum over every verified row
+    // this month, and Your 2% Due is computed from it. A cap here would
+    // silently under-count both once the month passes that many rows (this
+    // is company-wide, not per-dealer, so 242 dealers gets there fast).
+    // Reports runs the identical unbounded query for the same reason.
     supabase
       .from('transactions')
       .select('id, dealer_id, tx_date, type, package, points, dealers(company_name, package)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
-      .order('tx_date', { ascending: false })
-      .limit(200),
+      .order('tx_date', { ascending: false }),
     supabase.from('company_statements').select('*').eq('month', `${month}-01`).maybeSingle(),
   ])
 

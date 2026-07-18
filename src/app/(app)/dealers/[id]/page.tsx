@@ -223,13 +223,17 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const rateHistoryNameById = new Map<string, string>()
 
   if (isFinance) {
+    // No .limit() — the sidebar's Lifetime Top-up/Commission figures are a
+    // real sum over txRows below, and the table above them is genuinely
+    // titled "All Transactions". A cap here would silently under-count both
+    // for any dealer who outlives it, with no indicator that either was
+    // ever truncated.
     const { data } = await supabase
       .from('transactions')
       .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, flag_reason, note')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(100)
     txRows = (data as TxRow[] | null) ?? []
 
     const { data: rateHistoryData } = await supabase

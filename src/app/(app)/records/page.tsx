@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
 }
 
+const PAGE_SIZE = 200
+
 type TxRow = {
   id: string
   dealer_id: string
@@ -49,13 +51,15 @@ type PageProps = {
     q?: string
     sort?: string
     dealer?: string
+    page?: string
   }>
 }
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId } = await searchParams
+  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId, page } = await searchParams
   const sortAscending = sort === 'asc'
+  const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view transactions.</div>
@@ -70,7 +74,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     )
     .order('tx_date', { ascending: sortAscending })
     .order('created_at', { ascending: sortAscending })
-    .limit(200)
+    .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1)
 
   if (status !== 'all') {
     query = query.eq('status', status)
@@ -109,7 +113,12 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const flaggedCount = pageRows.filter((r) => r.status === 'flagged').length
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
-  function buildHref(overrides: { sort?: string }) {
+  const totalCount = count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const rangeStart = totalCount === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(pageNum * PAGE_SIZE, totalCount)
+
+  function buildHref(overrides: { sort?: string; page?: number }) {
     const params = new URLSearchParams()
     if (status !== 'all') params.set('status', status)
     if (month) params.set('month', month)
@@ -117,6 +126,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     if (dealerId) params.set('dealer', dealerId)
     const nextSort = overrides.sort ?? sort
     if (nextSort !== 'desc') params.set('sort', nextSort)
+    // Changing sort/filters always drops back to page 1 unless a page
+    // override is explicitly given (Prev/Next) — staying on "page 3" after
+    // the result set changes underneath it would just be confusing.
+    if (overrides.page && overrides.page > 1) params.set('page', String(overrides.page))
     const qs = params.toString()
     return `/records${qs ? `?${qs}` : ''}`
   }
@@ -149,9 +162,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Transactions</h1>
         <span className="pill pill-neutral">
-          {count != null && count > 200
-            ? `Showing 200 of ${count} transactions — narrow with a filter to see more`
-            : `${count ?? 0} transactions`}
+          {totalCount > PAGE_SIZE ? `Showing ${rangeStart}–${rangeEnd} of ${totalCount} transactions` : `${totalCount} transactions`}
         </span>
       </div>
 
@@ -330,6 +341,30 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+          <span className="text-[11.5px] text-paper-dim">
+            Page {pageNum} of {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            {pageNum > 1 ? (
+              <Link href={buildHref({ page: pageNum - 1 })} className="btn-ghost py-1.5 text-xs">
+                ← Prev
+              </Link>
+            ) : (
+              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+            )}
+            {pageNum < totalPages ? (
+              <Link href={buildHref({ page: pageNum + 1 })} className="btn-ghost py-1.5 text-xs">
+                Next →
+              </Link>
+            ) : (
+              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

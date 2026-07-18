@@ -54,14 +54,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const notifications: Notification[] = builtNotifications.slice(0, 4).map((n) => ({ title: n.title, subtitle: n.subtitle }))
 
   return (
-    // Floating "app shell" card on md+ (matches the design reference exactly:
-    // 28px page margin, 1440px max-width, rounded 28px, bordered, shadowed) —
-    // below md it collapses back to a plain edge-to-edge page, since the
-    // reference never accounted for phone widths and a floating card with a
-    // page margin would just waste screen space there.
-    <div className="min-h-screen bg-ink-950 text-paper md:p-7">
+    // Edge-to-edge at every size — the app used to float as a card with a
+    // page margin/rounded corners/shadow on md+ (matching the original design
+    // reference literally), collapsing to a plain full-bleed page only below
+    // md. Dropped the floating-card treatment entirely per client feedback:
+    // now every size gets the plain full-bleed layout mobile already had.
+    <div className="min-h-screen bg-ink-900 text-paper">
       <NotificationToast notifications={builtNotifications.map((n) => ({ id: n.id, title: n.title, subtitle: n.subtitle, variant: n.variant }))} />
-      <div className="flex min-h-screen flex-col md:mx-auto md:h-[calc(100vh-3.5rem)] md:max-w-[1440px] md:flex-row md:overflow-hidden md:rounded-[28px] md:border md:border-ink-800 md:bg-ink-900 md:shadow-[0_20px_60px_-30px_rgba(20,20,43,0.25)]">
+      <div className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
         <div className="hidden md:block">
           <RailNav
             items={railItems}

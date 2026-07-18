@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { monthRange } from '@/lib/month'
 
 function fail(month: string, message: string): never {
   redirect(`/reconcile?month=${month}&error=${encodeURIComponent(message)}`)
@@ -59,15 +60,29 @@ export async function markReconciled(formData: FormData) {
   if (user.role !== 'accountant' && user.role !== 'master') fail(month, 'Not authorized.')
 
   const monthDate = `${month}-01`
+  const { start, end } = monthRange(month)
+  const overrideReason = String(formData.get('override_reason') ?? '').trim()
   const supabase = await createClient()
 
-  const { data: existing } = await supabase
-    .from('company_statements')
-    .select('company_total_points, company_profit_rm')
-    .eq('month', monthDate)
-    .maybeSingle()
+  const [{ data: existing }, { data: verifiedTx }] = await Promise.all([
+    supabase.from('company_statements').select('company_total_points, company_profit_rm').eq('month', monthDate).maybeSingle(),
+    supabase.from('transactions').select('points').eq('status', 'verified').gte('tx_date', start).lte('tx_date', end),
+  ])
 
   if (!existing) fail(month, 'No statement found for this month.')
+
+  // Recomputed server-side from a fresh read rather than trusting a diff the
+  // client sends — the whole point of this check is to stop a month closing
+  // while the numbers disagree, so it can't itself trust client-supplied numbers.
+  const systemPoints = (verifiedTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
+  const diff = systemPoints - Number(existing.company_total_points)
+
+  if (diff !== 0 && !overrideReason) {
+    fail(
+      month,
+      `System total (${systemPoints.toLocaleString()} pts) doesn't match Vibe's statement (${Number(existing.company_total_points).toLocaleString()} pts) — enter a reason to override and mark reconciled anyway.`
+    )
+  }
 
   const { error } = await supabase.from('company_statements').update({ reconciled: true }).eq('month', monthDate)
 
@@ -75,12 +90,14 @@ export async function markReconciled(formData: FormData) {
 
   // Reconciliation itself is a real change of record — log it in the same
   // append-only history saveStatement uses, so audit shows who formally
-  // closed the month, not just who last edited the numbers.
+  // closed the month, not just who last edited the numbers. When there's a
+  // mismatch, the override reason is the whole reason this closure is worth
+  // being able to trace later, so it goes in the same note real revisions use.
   await supabase.from('company_statement_revisions').insert({
     month: monthDate,
     company_total_points: existing.company_total_points,
     company_profit_rm: existing.company_profit_rm,
-    note: 'Reconciliation marked complete',
+    note: diff === 0 ? 'Reconciliation marked complete' : `Reconciliation marked complete despite a ${diff.toLocaleString()} pt mismatch — override reason: ${overrideReason}`,
     recorded_by: user.id,
   })
 

@@ -8,6 +8,13 @@ import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
 
+// Mirrors /api/reconcile/extract's limits — this upload previously had none
+// at all, client-side or bucket-level, unlike the OCR route which validates
+// both. Client-side check here is a fast-fail UX nicety only; the bucket's
+// own file_size_limit/allowed_mime_types (0019) is the real backstop.
+const RECEIPT_MAX_BYTES = 10 * 1024 * 1024
+const RECEIPT_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
 type DealerOption = {
   id: string
   company_name: string
@@ -36,6 +43,11 @@ export function EntryForm({
   availableBalance: number
 }) {
   const formRef = useRef<HTMLFormElement>(null)
+  // Generated once per form mount, sent with every submit attempt — a
+  // network retry or double-click before this component unmounts resubmits
+  // the same key, which the DB's unique index (0020) turns into a harmless
+  // no-op instead of a second, duplicate transaction.
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
   const [dealerId, setDealerId] = useState(
     initialDealerId && dealers.some((d) => d.id === initialDealerId) ? initialDealerId : ''
   )
@@ -139,6 +151,7 @@ export function EntryForm({
         {error && <div className="alert alert-bad">{error}</div>}
 
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <input type="hidden" name="idempotency_key" value={idempotencyKey} />
           <div className="form-section-head">
             <span className="tile">
               <IconDocument />
@@ -285,7 +298,20 @@ export function EntryForm({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    if (file && !RECEIPT_ALLOWED_TYPES.has(file.type)) {
+                      setError('Please upload a JPEG, PNG, WEBP, or GIF image.')
+                      e.target.value = ''
+                      return
+                    }
+                    if (file && file.size > RECEIPT_MAX_BYTES) {
+                      setError('Image is too large (max 10MB).')
+                      e.target.value = ''
+                      return
+                    }
+                    setReceiptFile(file)
+                  }}
                   className="hidden"
                 />
               </label>

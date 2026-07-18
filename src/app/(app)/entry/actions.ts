@@ -75,6 +75,7 @@ export async function createTransaction(formData: FormData) {
   }
 
   const simType = type === 'package' ? simTypeRaw || null : null
+  const idempotencyKey = String(formData.get('idempotency_key') ?? '').trim() || null
 
   const { error: txError } = await supabase.from('transactions').insert({
     dealer_id: dealerId,
@@ -88,9 +89,15 @@ export async function createTransaction(formData: FormData) {
     receipt_url: receiptUrl,
     note,
     recorded_by: user.id,
+    idempotency_key: idempotencyKey,
   })
 
-  if (txError) fail(txError.message)
+  // 23505 = unique_violation. A retry (slow-network resubmit, double-click
+  // before the form unmounts) sends the same idempotency_key as an already-
+  // successful attempt — that's not a real failure, the transaction already
+  // exists, so this falls through to the normal success redirect below
+  // instead of showing an error and letting someone resubmit a third time.
+  if (txError && txError.code !== '23505') fail(txError.message)
 
   if (type === 'package' && pkg) {
     // Packages bought the same day count as one batch (e.g. dealer buys A + B + C

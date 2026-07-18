@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
+import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
-import { verifyTransaction } from './actions'
+import { VerifyButton } from './verify-button'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
 import { IconSearch } from '../icons'
@@ -30,6 +31,7 @@ type TxRow = {
   sim_type: string | null
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
+  recorded_by: string | null
   dealers:
     | { company_name: string; package: string | null }
     | { company_name: string; package: string | null }[]
@@ -61,7 +63,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, dealers(company_name, package)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, recorded_by, dealers(company_name, package)',
       { count: 'exact' }
     )
     .order('tx_date', { ascending: sortAscending })
@@ -77,7 +79,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     query = query.gte('tx_date', start).lte('tx_date', end)
   }
 
-  const safeQ = q.replace(/[,()%]/g, '').trim()
+  const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
     // Filter on the joined dealers table by resolving matching dealer ids first,
     // then narrowing transactions with .in() — a real server-side query, not a
@@ -267,12 +269,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td">
                     {tx.status === 'pending' ? (
                       <div className="flex items-center gap-1.5">
-                        <form action={verifyTransaction}>
-                          <input type="hidden" name="id" value={tx.id} />
-                          <button type="submit" className="btn-jade">
-                            Verify ✓
-                          </button>
-                        </form>
+                        <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} />
                         <FlagButton transactionId={tx.id} />
                       </div>
                     ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (

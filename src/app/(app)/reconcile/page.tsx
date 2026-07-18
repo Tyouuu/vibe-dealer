@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
-import { markReconciled } from './actions'
 import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
+import { MarkReconciledForm } from './mark-reconciled-form'
 import { MonthPicker } from '../month-picker'
 
 export const metadata: Metadata = {
@@ -146,12 +146,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         </div>
 
         <div className="mt-4 flex items-center gap-3">
-          <form action={markReconciled} className="w-full">
-            <input type="hidden" name="month" value={month} />
-            <button type="submit" disabled={!statement} className="btn-primary w-full">
-              Mark Reconciled ✓
-            </button>
-          </form>
+          <MarkReconciledForm month={month} hasStatement={!!statement} diff={diff} />
         </div>
 
         <div className="mt-5 border-t border-ink-800 pt-4">

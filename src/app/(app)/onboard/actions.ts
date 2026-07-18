@@ -6,6 +6,23 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 
+// dealers_directory (0015) is the cs-safe view — cs has no SELECT on the
+// dealers base table, so this is the only way this lookup works for cs too,
+// not just master/accountant. ilike with no wildcards is just a case-
+// insensitive exact match, which is enough to catch "Ipoh Trading" vs.
+// "ipoh trading" without pulling in unrelated partial matches.
+export async function checkDuplicateDealer(companyName: string): Promise<{ id: string; company_name: string } | null> {
+  const user = await requireUser()
+  if (user.role !== 'cs' && user.role !== 'master') return null
+
+  const trimmed = companyName.trim()
+  if (!trimmed) return null
+
+  const supabase = await createClient()
+  const { data } = await supabase.from('dealers_directory').select('id, company_name').ilike('company_name', trimmed).maybeSingle()
+  return data
+}
+
 export async function createDealer(formData: FormData) {
   const user = await requireUser()
   if (user.role !== 'cs' && user.role !== 'master') {
@@ -24,25 +41,38 @@ export async function createDealer(formData: FormData) {
 
   const supabase = await createClient()
 
-  const { data: dealer, error } = await supabase
-    .from('dealers')
-    .insert({
-      company_name: companyName,
-      company_no: String(formData.get('company_no') ?? '').trim() || null,
-      contact_person: String(formData.get('contact_person') ?? '').trim() || null,
-      phone: String(formData.get('phone') ?? '').trim() || null,
-      email: String(formData.get('email') ?? '').trim() || null,
-      address: String(formData.get('address') ?? '').trim() || null,
-      region: String(formData.get('region') ?? '').trim() || null,
-      package: pkg,
-      rate: pkg ? PACKAGES[pkg].rate : null,
-      onboarded_by: user.id,
-    })
-    .select('id')
-    .single()
+  // Defense in depth — OnboardForm already checks and asks the user to
+  // confirm client-side, but that's only a UX nicety; this is the real
+  // backstop against two staff independently onboarding the same dealer.
+  const confirmedDuplicate = String(formData.get('confirm_duplicate') ?? '') === 'true'
+  if (!confirmedDuplicate) {
+    const { data: existing } = await supabase.from('dealers_directory').select('company_name').ilike('company_name', companyName).maybeSingle()
+    if (existing) {
+      redirect('/onboard?error=' + encodeURIComponent(`A dealer named "${existing.company_name}" already exists — resubmit to confirm this is a different dealer.`))
+    }
+  }
 
-  if (error || !dealer) {
-    redirect('/onboard?error=' + encodeURIComponent(error?.message ?? 'Failed to create dealer.'))
+  // id generated here instead of left to the DB default, so nothing needs to
+  // be read back via INSERT...RETURNING — cs has no SELECT on the dealers
+  // base table (0015), which makes RETURNING come back empty for a cs
+  // session even though the insert itself succeeds.
+  const dealerId = crypto.randomUUID()
+  const { error } = await supabase.from('dealers').insert({
+    id: dealerId,
+    company_name: companyName,
+    company_no: String(formData.get('company_no') ?? '').trim() || null,
+    contact_person: String(formData.get('contact_person') ?? '').trim() || null,
+    phone: String(formData.get('phone') ?? '').trim() || null,
+    email: String(formData.get('email') ?? '').trim() || null,
+    address: String(formData.get('address') ?? '').trim() || null,
+    region: String(formData.get('region') ?? '').trim() || null,
+    package: pkg,
+    rate: pkg ? PACKAGES[pkg].rate : null,
+    onboarded_by: user.id,
+  })
+
+  if (error) {
+    redirect('/onboard?error=' + encodeURIComponent(error.message))
   }
 
   // Onboarding can set an Initial Package directly on the new dealer row
@@ -54,7 +84,7 @@ export async function createDealer(formData: FormData) {
   // DEFINER function instead of a direct .insert(), which would silently
   // drop the row for cs.
   if (pkg) {
-    await supabase.rpc('seed_dealer_rate_history', { p_dealer_id: dealer.id, p_package: pkg, p_rate: PACKAGES[pkg].rate })
+    await supabase.rpc('seed_dealer_rate_history', { p_dealer_id: dealerId, p_package: pkg, p_rate: PACKAGES[pkg].rate })
   }
 
   revalidatePath('/dealers')

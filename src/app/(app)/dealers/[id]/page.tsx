@@ -9,6 +9,7 @@ import { deleteDealer } from '../actions'
 import { IconMapPin, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
+import { EditDealerButton } from './edit-dealer-button'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -173,12 +174,12 @@ function TimelineItem({
 
 type PageProps = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; updated?: string }>
 }
 
 export default async function DealerDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params
-  const { error } = await searchParams
+  const { error, updated } = await searchParams
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -186,6 +187,9 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   // figure PROJECT_SPEC.md says cs must never see) — read through
   // dealers_directory instead, which has every column except rate.
   const isFinance = user.role === 'accountant' || user.role === 'master'
+  // Roster management (edit profile, status, import) is cs/master, same
+  // split as onboarding — not the finance role split above.
+  const canManage = user.role === 'cs' || user.role === 'master'
   const { data: dealer } = await supabase
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
@@ -267,6 +271,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
       </Link>
 
       {error && <div className="alert alert-bad">{error}</div>}
+      {updated && <div className="alert alert-ok">Dealer info updated.</div>}
 
       {activity?.isInactive && (
         <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
@@ -285,6 +290,20 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
               {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
             </span>
+            {canManage && (
+              <EditDealerButton
+                dealer={{
+                  id,
+                  company_name: typedDealer.company_name,
+                  company_no: typedDealer.company_no,
+                  contact_person: typedDealer.contact_person,
+                  phone: typedDealer.phone,
+                  email: typedDealer.email,
+                  address: typedDealer.address,
+                  region: typedDealer.region,
+                }}
+              />
+            )}
             {isFinance && (
               <a href={`/entry?dealer=${id}`} className="btn-primary py-1.5 text-xs">
                 + Record Transaction
@@ -381,6 +400,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
                         <td className="td">
                           <StatusPill status={tx.status} />
+                          {tx.status === 'flagged' && tx.flag_reason && (
+                            <div className="mt-0.5 max-w-[160px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
+                              {tx.flag_reason}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

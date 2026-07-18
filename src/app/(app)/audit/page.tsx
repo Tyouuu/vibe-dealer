@@ -92,7 +92,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
             type="text"
             name="q"
             defaultValue={q}
-            placeholder="Search dealer, actor…"
+            placeholder="Search dealer, actor, or reason…"
             className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
           />
         </label>

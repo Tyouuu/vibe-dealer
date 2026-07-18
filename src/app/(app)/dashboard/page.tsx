@@ -447,9 +447,9 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
         />
         <KpiCard
           icon={<IconUsers className="h-4 w-4" />}
-          label="Inactive Dealers"
+          label="Needs Follow-up"
           value={String(inactiveCount)}
-          footer={inactiveCount ? 'Might be worth a follow-up' : 'Everyone active'}
+          footer={inactiveCount ? 'No verified top-up in 30+ days' : 'Nothing to follow up on'}
           href="/dealers?view=inactive"
         />
         <KpiCard

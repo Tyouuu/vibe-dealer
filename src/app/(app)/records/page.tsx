@@ -31,6 +31,7 @@ type TxRow = {
   sim_type: string | null
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
+  flag_reason: string | null
   recorded_by: string | null
   dealers:
     | { company_name: string; package: string | null }
@@ -64,7 +65,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, recorded_by, dealers(company_name, package)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
       { count: 'exact' }
     )
     .order('tx_date', { ascending: sortAscending })
@@ -89,12 +90,16 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
   const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
-    // Filter on the joined dealers table by resolving matching dealer ids first,
-    // then narrowing transactions with .in() — a real server-side query, not a
-    // client-side filter over the fetched page.
+    // Matches dealer name (resolved to ids first, since it's a joined table)
+    // OR the transaction's own note/flag_reason text — previously name-only,
+    // which meant the only way to find "that flagged transaction about X" was
+    // to already know which dealer it was under. sanitizeSearchTerm already
+    // strips ,()% so safeQ can't break out of the .or() filter string.
     const { data: matchingDealers } = await supabase.from('dealers').select('id').ilike('company_name', `%${safeQ}%`)
     const dealerIds = (matchingDealers ?? []).map((d) => d.id)
-    query = query.in('dealer_id', dealerIds.length ? dealerIds : ['00000000-0000-0000-0000-000000000000'])
+    const orParts = [`note.ilike.%${safeQ}%`, `flag_reason.ilike.%${safeQ}%`]
+    if (dealerIds.length) orParts.push(`dealer_id.in.(${dealerIds.join(',')})`)
+    query = query.or(orParts.join(','))
   }
 
   const { data: rows, count } = await query
@@ -169,7 +174,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="Search by dealer company name"
+              placeholder="Search dealer, note, or flag reason"
               className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
             />
           </label>
@@ -294,6 +299,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   </td>
                   <td className="td">
                     <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
+                    {tx.status === 'flagged' && tx.flag_reason && (
+                      <div className="mt-0.5 max-w-[140px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
+                        {tx.flag_reason}
+                      </div>
+                    )}
                   </td>
                   <td className="td">
                     {tx.status === 'pending' ? (

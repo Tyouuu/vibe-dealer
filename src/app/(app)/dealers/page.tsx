@@ -149,8 +149,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <Link href={viewHref('region')} className={`segmented-btn ${view === 'region' ? 'active' : ''}`}>
           By Region
         </Link>
-        <Link href={viewHref('inactive')} className={`segmented-btn ${view === 'inactive' ? 'active' : ''}`}>
-          Inactive
+        <Link
+          href={viewHref('inactive')}
+          className={`segmented-btn ${view === 'inactive' ? 'active' : ''}`}
+          title="Dealers with no verified top-up in 30+ days — independent of the Active/Inactive status field"
+        >
+          Needs Follow-up
         </Link>
       </div>
 
@@ -191,7 +195,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             {hasFilter
               ? `No dealers match${q ? ` "${q}"` : ''}${region !== 'all' ? ` in ${region}` : ''}.`
               : view === 'inactive'
-                ? 'No inactive dealers right now.'
+                ? 'No dealers need a follow-up right now.'
                 : 'No dealers yet.'}
           </p>
           {hasFilter && (

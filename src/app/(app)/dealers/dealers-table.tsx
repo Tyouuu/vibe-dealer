@@ -155,7 +155,12 @@ export function DealersTable({
                               {d.company_name}
                             </Link>
                             {d.isInactive && (
-                              <span className={`pill ${d.isSeverelyInactive ? 'pill-clay' : 'pill-brass'}`}>{d.daysSinceLastActivity}d</span>
+                              <span
+                                className={`pill ${d.isSeverelyInactive ? 'pill-clay' : 'pill-brass'}`}
+                                title={`${d.daysSinceLastActivity} days since the last verified top-up — separate from the Active/Inactive status field`}
+                              >
+                                {d.daysSinceLastActivity}d
+                              </span>
                             )}
                           </div>
                           {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}

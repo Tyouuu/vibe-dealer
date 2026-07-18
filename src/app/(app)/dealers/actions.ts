@@ -37,6 +37,44 @@ export async function bulkSetDealerStatus(ids: string[], status: 'active' | 'ina
   revalidatePath('/dealers')
 }
 
+// cs/master only, matching who can onboard a dealer in the first place —
+// editing contact/profile info is roster management, not a finance action,
+// same split the page already draws for status toggling and CSV import.
+// Routes through update_dealer_profile (0021) unconditionally, same as
+// setDealerStatus, rather than branching cs through the RPC and master
+// through a direct .update() — one code path, no drift between them.
+export async function updateDealer(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  const user = await requireUser()
+  assertCanManage(user.role)
+  if (!id) redirect('/dealers')
+
+  const companyName = String(formData.get('company_name') ?? '').trim()
+  if (!companyName) {
+    redirect(`/dealers/${id}?error=` + encodeURIComponent('Company name is required.'))
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('update_dealer_profile', {
+    p_dealer_id: id,
+    p_company_name: companyName,
+    p_company_no: String(formData.get('company_no') ?? '').trim() || null,
+    p_contact_person: String(formData.get('contact_person') ?? '').trim() || null,
+    p_phone: String(formData.get('phone') ?? '').trim() || null,
+    p_email: String(formData.get('email') ?? '').trim() || null,
+    p_address: String(formData.get('address') ?? '').trim() || null,
+    p_region: String(formData.get('region') ?? '').trim() || null,
+  })
+
+  if (error) {
+    redirect(`/dealers/${id}?error=` + encodeURIComponent(error.message))
+  }
+
+  revalidatePath('/dealers')
+  revalidatePath(`/dealers/${id}`)
+  redirect(`/dealers/${id}?updated=1`)
+}
+
 // Master-only, and only for a dealer with zero transactions ever recorded —
 // a pure onboarding mistake, not a real dealer with history to lose. Every
 // other table stays delete-free by design; this is the one narrow exception.

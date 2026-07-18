@@ -6,7 +6,7 @@ export const NOTIFICATION_CATEGORIES: { key: NotificationCategory; label: string
   { key: 'pending_review', label: 'Pending review', description: 'Transactions waiting on you' },
   { key: 'deliveries', label: 'Deliveries', description: 'SIM delivery queue' },
   { key: 'credit_reconciliation', label: 'Credit & reconciliation', description: 'Low balance, unreconciled statements' },
-  { key: 'dealer_activity', label: 'Dealer activity', description: 'Inactive dealer alerts' },
+  { key: 'dealer_activity', label: 'Dealer activity', description: 'Needs-follow-up alerts for quiet dealers' },
 ]
 
 export type NotificationPrefs = {

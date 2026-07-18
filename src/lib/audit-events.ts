@@ -207,7 +207,11 @@ export function filterAuditEvents(events: AuditEvent[], filters: AuditFilters): 
     }
     if (filters.q) {
       const q = filters.q.toLowerCase()
-      const haystack = `${e.actor} ${e.dealer ?? ''} ${e.event}`.toLowerCase()
+      // detail values carry the free-text bits (flag/adjustment reasons,
+      // reconciliation notes) — without them, searching "why was this
+      // flagged" only worked if you already knew the actor or dealer name.
+      const detailText = e.detail.map((d) => d.value).join(' ')
+      const haystack = `${e.actor} ${e.dealer ?? ''} ${e.event} ${detailText}`.toLowerCase()
       if (!haystack.includes(q)) return false
     }
     return true

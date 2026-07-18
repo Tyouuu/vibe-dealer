@@ -45,7 +45,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const [{ data: rows }, { data: prevRows }] = await Promise.all([
     supabase
       .from('transactions')
-      .select('dealer_id, points, money_rm, commission_rm, dealers(company_name)')
+      .select('dealer_id, type, package, points, money_rm, commission_rm, dealers(company_name)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end),
@@ -67,6 +67,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     prev.commission += Number(t.commission_rm)
     byDealer.set(t.dealer_id, prev)
   }
+
+  // Same 3-way label already used on Records/Reconcile/dealer detail — group
+  // by that instead of a new categorization, so "By Package" reads the same
+  // as the type column everywhere else in the app.
+  const byType = new Map<string, { label: string; points: number; money: number; commission: number; count: number }>()
+  for (const t of rows ?? []) {
+    const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Adjustment' : 'Top-up'
+    const prev = byType.get(label) ?? { label, points: 0, money: 0, commission: 0, count: 0 }
+    prev.points += Number(t.points)
+    prev.money += Number(t.money_rm)
+    prev.commission += Number(t.commission_rm)
+    prev.count += 1
+    byType.set(label, prev)
+  }
+  const typeBreakdown = [...byType.values()].sort((a, b) => b.money - a.money)
 
   const breakdown = [...byDealer.values()].sort((a, b) => b.points - a.points)
   const totalPoints = breakdown.reduce((s, d) => s + d.points, 0)
@@ -125,6 +140,42 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
             <div className="mt-1 text-[11px] font-semibold text-paper-dim">vs {formatMonthLabel(prevMonth)}</div>
           </div>
+        </div>
+      </div>
+
+      <div className="app-card">
+        <h3 className="mb-0.5 text-sm font-bold text-paper">By Package</h3>
+        <p className="mb-3.5 text-[11.5px] text-paper-dim">This month&apos;s verified total, split by transaction type.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="th">Type</th>
+                <th className="th text-right">Count</th>
+                <th className="th text-right">Points</th>
+                <th className="th text-right">Money Collected (RM)</th>
+                <th className="th text-right">Your 2%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {typeBreakdown.map((t) => (
+                <tr key={t.label} className="tr-row">
+                  <td className="td font-semibold text-paper">{t.label}</td>
+                  <td className="td text-right text-paper-dim">{t.count}</td>
+                  <td className="td figure-points text-right">{t.points.toLocaleString()} pts</td>
+                  <td className="td figure text-right text-paper-dim">RM {t.money.toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {t.commission.toLocaleString()}</td>
+                </tr>
+              ))}
+              {!typeBreakdown.length && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
+                    No verified transactions this month yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

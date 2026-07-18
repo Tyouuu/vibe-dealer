@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireUser } from '@/lib/auth/dal'
+import { createClient } from '@/lib/supabase/server'
 
 const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
@@ -27,6 +28,19 @@ export async function POST(request: NextRequest) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'Statement reading is not configured yet.' }, { status: 503 })
+  }
+
+  // Every call is real, billed Anthropic spend with no prior throttle —
+  // generous enough for normal reconciliation use, tight enough to stop a
+  // runaway retry loop or scripted abuse from racking up unbounded cost.
+  const supabase = await createClient()
+  const { data: allowed } = await supabase.rpc('check_rate_limit', {
+    p_key: `ocr:${user.id}`,
+    p_max_hits: 20,
+    p_window_seconds: 60 * 60,
+  })
+  if (allowed === false) {
+    return NextResponse.json({ error: 'Too many statement reads this hour — enter the numbers manually, or try again later.' }, { status: 429 })
   }
 
   const formData = await request.formData()

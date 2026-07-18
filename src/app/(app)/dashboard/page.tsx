@@ -105,12 +105,12 @@ export default async function DashboardPage() {
     { data: currentStatement },
     { data: recentTxRows },
   ] = await Promise.all([
-    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     // "last month end" baseline for the Total Dealers chg badge — dealers
     // created before this month started, i.e. how many existed as of last
     // month's close.
-    supabase.from('dealers').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
-    supabase.from('dealers').select('id, company_name, package, region'),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
+    supabase.from('dealers_directory').select('id, company_name, package, region'),
     supabase
       .from('transactions')
       .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
@@ -259,7 +259,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
       supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
       getAvailablePointsBalance(supabase),
       supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
-      supabase.from('dealers').select('id, region'),
+      supabase.from('dealers_directory').select('id, region'),
       supabase
         .from('transactions')
         .select('tx_date, points, dealers(region)')
@@ -385,24 +385,30 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
 
-  const [{ data: deliveryListRows, count: pendingDeliveryCount }, { count: dealerCount }, { count: dealerCountLastMonth }, activityMap, { data: monthTx }] =
-    await Promise.all([
-      supabase
-        .from('delivery_queue')
-        .select('id, tx_date, company_name, package, sim_type, delivery_status', { count: 'exact' })
-        .eq('delivery_status', 'pending')
-        .order('tx_date', { ascending: true })
-        .limit(DELIVERY_TABLE_LIMIT),
-      supabase.from('dealers').select('id', { count: 'exact', head: true }),
-      supabase.from('dealers').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
-      getDealerActivityMap(supabase),
-      supabase
-        .from('transactions')
-        .select('points, dealers(region)')
-        .eq('status', 'verified')
-        .gte('tx_date', monthStart)
-        .lte('tx_date', today),
-    ])
+  const [
+    { data: deliveryListRows, count: pendingDeliveryCount },
+    { count: dealerCount },
+    { count: dealerCountLastMonth },
+    activityMap,
+    { data: monthTx },
+    { data: dealerRegionRows },
+  ] = await Promise.all([
+    supabase
+      .from('delivery_queue')
+      .select('id, tx_date, company_name, package, sim_type, delivery_status', { count: 'exact' })
+      .eq('delivery_status', 'pending')
+      .order('tx_date', { ascending: true })
+      .limit(DELIVERY_TABLE_LIMIT),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
+    getDealerActivityMap(supabase),
+    // dealer_id only, not an embedded dealers(region) join — cs has no SELECT
+    // on the dealers base table (0015), so that embed would silently come
+    // back null for every row. Region is joined in JS below instead, off
+    // dealers_directory, which cs can read.
+    supabase.from('transactions').select('dealer_id, points').eq('status', 'verified').gte('tx_date', monthStart).lte('tx_date', today),
+    supabase.from('dealers_directory').select('id, region'),
+  ])
 
   const oldestDeliveryDays = deliveryListRows?.length ? daysSince(deliveryListRows[0].tx_date) : 0
   const inactiveCount = [...activityMap.values()].filter((a) => a.isInactive).length
@@ -423,8 +429,10 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
     }
   })
 
-  const totalPoints = (monthTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
-  const regionGrowth = buildRegionGrowth(monthTx ?? [], totalPoints)
+  const regionByDealerId = new Map((dealerRegionRows ?? []).map((d) => [d.id, d.region]))
+  const monthTxWithRegion = (monthTx ?? []).map((t) => ({ points: t.points, dealers: { region: regionByDealerId.get(t.dealer_id) ?? null } }))
+  const totalPoints = monthTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
+  const regionGrowth = buildRegionGrowth(monthTxWithRegion, totalPoints)
 
   return (
     <div className="flex flex-col gap-5">

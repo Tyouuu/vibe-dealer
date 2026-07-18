@@ -180,9 +180,17 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const user = await requireUser()
   const supabase = await createClient()
 
+  // cs has no SELECT on the dealers base table (0015 — rate is a commission
+  // figure PROJECT_SPEC.md says cs must never see) — read through
+  // dealers_directory instead, which has every column except rate.
+  const isFinance = user.role === 'accountant' || user.role === 'master'
   const { data: dealer } = await supabase
-    .from('dealers')
-    .select('id, company_name, company_no, contact_person, phone, email, address, region, package, rate, status')
+    .from(isFinance ? 'dealers' : 'dealers_directory')
+    .select(
+      isFinance
+        ? 'id, company_name, company_no, contact_person, phone, email, address, region, package, rate, status'
+        : 'id, company_name, company_no, contact_person, phone, email, address, region, package, status'
+    )
     .eq('id', id)
     .single()
 
@@ -190,9 +198,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     notFound()
   }
 
-  const typedDealer = dealer as Dealer
+  const typedDealer = { rate: null, ...(dealer as object) } as Dealer
   const activity = (await getDealerActivityMap(supabase)).get(id)
-  const isFinance = user.role === 'accountant' || user.role === 'master'
 
   let txRows: TxRow[] = []
   let deliveryRows: DeliveryRow[] = []

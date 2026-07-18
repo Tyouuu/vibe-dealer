@@ -6,10 +6,14 @@ import { createClient } from '@/lib/supabase/server'
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
 
 export async function setNotificationsMasterEnabled(enabled: boolean) {
-  const user = await requireUser()
+  await requireUser()
   const supabase = await createClient()
 
-  await supabase.from('profiles').update({ notifications_enabled: enabled }).eq('id', user.id)
+  // profiles' only UPDATE policy is master-only (0001/0008) — a direct
+  // .update() here silently no-ops for accountant/cs (0 rows, no error).
+  // This RPC (0017) is self-scoped via auth.uid(), not a broader self-update
+  // policy, which would also let a user rewrite their own role column.
+  await supabase.rpc('set_own_notifications_enabled', { p_enabled: enabled })
 
   revalidatePath('/account')
   revalidatePath('/', 'layout')
@@ -45,6 +49,7 @@ export async function updateReportSenderName(name: string) {
 }
 
 export async function signOutOtherSessions() {
+  await requireUser()
   const supabase = await createClient()
   await supabase.auth.signOut({ scope: 'others' })
   revalidatePath('/account')

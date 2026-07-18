@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { sanitizeSearchTerm } from '@/lib/search'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
@@ -61,15 +62,19 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
   const supabase = await createClient()
 
+  // cs has no SELECT on the dealers base table (0015 — rate is a commission
+  // figure PROJECT_SPEC.md says cs must never see, enforced at the DB layer
+  // now, not just by stripping it below) — read through dealers_directory
+  // instead, which has every column except rate.
   let query = supabase
-    .from('dealers')
-    .select('id, company_name, company_no, contact_person, phone, region, package, rate, status', { count: 'exact' })
+    .from(showRate ? 'dealers' : 'dealers_directory')
+    .select(showRate ? 'id, company_name, company_no, contact_person, phone, region, package, rate, status' : 'id, company_name, company_no, contact_person, phone, region, package, status', { count: 'exact' })
     .order('company_name', { ascending: true })
 
   if (q) {
     // Strip characters with special meaning in PostgREST's .or() filter syntax
     // so a search term can't break out of the intended filter structure.
-    const safeQ = q.replace(/[,()%]/g, '')
+    const safeQ = sanitizeSearchTerm(q)
     if (safeQ) {
       query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
     }
@@ -80,17 +85,17 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
   const [{ data: dealers, count }, { data: regionRows }, activityMap] = await Promise.all([
     query,
-    supabase.from('dealers').select('region').not('region', 'is', null),
+    supabase.from('dealers_directory').select('region').not('region', 'is', null),
     getDealerActivityMap(supabase),
   ])
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
-  let rows: DealerRow[] = ((dealers as Dealer[] | null) ?? []).map((d) => {
+  let rows: DealerRow[] = ((dealers as (Dealer & { rate?: number | null })[] | null) ?? []).map((d) => {
     const activity = activityMap.get(d.id)
     return {
       ...d,
-      rate: showRate ? d.rate : null,
+      rate: showRate ? (d.rate ?? null) : null,
       isInactive: activity?.isInactive ?? false,
       isSeverelyInactive: activity?.isSeverelyInactive ?? false,
       daysSinceLastActivity: activity?.daysSinceLastActivity ?? null,

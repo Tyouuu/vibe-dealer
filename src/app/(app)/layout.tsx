@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const isFinance = user.role === 'master' || user.role === 'accountant'
 
   const [{ count: dealerCount }, { count: pendingCount }, creditBalance, builtNotifications] = await Promise.all([
-    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     getAvailablePointsBalance(supabase),
     buildNotifications(supabase, user.id, user.role),

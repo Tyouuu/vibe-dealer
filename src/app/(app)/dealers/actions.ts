@@ -135,7 +135,7 @@ export async function importDealers(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const { data: existing } = await supabase.from('dealers').select('company_name')
+  const { data: existing } = await supabase.from('dealers_directory').select('company_name')
   const existingNames = new Set((existing ?? []).map((d) => d.company_name.trim().toLowerCase()))
   const seenInBatch = new Set<string>()
 
@@ -191,11 +191,18 @@ export async function importDealers(formData: FormData) {
 
   let created = 0
   if (toInsert.length) {
-    const { data: inserted, error } = await supabase.from('dealers').insert(toInsert).select('id, package, rate')
+    // ids generated here instead of left to the DB default, and rate/package
+    // read back off this same local array rather than an INSERT...RETURNING
+    // — cs has no SELECT on the dealers base table (0015), which makes
+    // RETURNING come back empty for a cs session even though the insert
+    // itself succeeds (same failure shape RLS-restricted RETURNING always
+    // has). Avoiding it here means the import path needs no special-casing.
+    const rows = toInsert.map((d) => ({ ...d, id: crypto.randomUUID() }))
+    const { error } = await supabase.from('dealers').insert(rows)
     if (error) {
       redirect('/dealers?import_error=' + encodeURIComponent(error.message))
     }
-    created = inserted?.length ?? 0
+    created = rows.length
 
     // Same reasoning as onboard's createDealer: a CSV row with an initial
     // package has no prior transaction to derive it from, so seed the audit
@@ -205,7 +212,7 @@ export async function importDealers(formData: FormData) {
     // the same narrow SECURITY DEFINER function onboarding uses, instead of
     // a direct .insert() that would silently drop the row for cs.
     await Promise.all(
-      (inserted ?? [])
+      rows
         .filter((d) => d.package)
         .map((d) => supabase.rpc('seed_dealer_rate_history', { p_dealer_id: d.id, p_package: d.package, p_rate: d.rate }))
     )

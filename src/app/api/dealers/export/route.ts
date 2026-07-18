@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { csvCell } from '@/lib/csv'
+import { sanitizeSearchTerm } from '@/lib/search'
 
 const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'package', 'rate', 'status'] as const
 
@@ -18,10 +19,15 @@ export async function GET(request: NextRequest) {
   const view = params.get('view') ?? 'all'
 
   const supabase = await createClient()
-  let query = supabase.from('dealers').select(COLUMNS.join(', ')).order('company_name', { ascending: true })
+  // cs has no SELECT on the dealers base table (0015) — read through
+  // dealers_directory instead, which has every column except rate.
+  let query = supabase
+    .from(user.role === 'cs' ? 'dealers_directory' : 'dealers')
+    .select(COLUMNS.join(', '))
+    .order('company_name', { ascending: true })
 
   if (q) {
-    const safeQ = q.replace(/[,()%]/g, '')
+    const safeQ = sanitizeSearchTerm(q)
     if (safeQ) query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
   }
   if (region !== 'all') query = query.eq('region', region)
@@ -31,7 +37,7 @@ export async function GET(request: NextRequest) {
   let filtered = (rows ?? []) as unknown as Record<(typeof COLUMNS)[number], string | number | null>[]
   if (view === 'inactive') {
     const { getDealerActivityMap } = await import('@/lib/dealer-activity')
-    const { data: idRows } = await supabase.from('dealers').select('id, company_name').order('company_name')
+    const { data: idRows } = await supabase.from('dealers_directory').select('id, company_name').order('company_name')
     const activityMap = await getDealerActivityMap(supabase)
     const inactiveNames = new Set(
       (idRows ?? []).filter((d) => activityMap.get(d.id)?.isInactive).map((d) => d.company_name)

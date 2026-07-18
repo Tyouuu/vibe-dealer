@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
 import { csvCell } from '@/lib/csv'
+import { sanitizeSearchTerm } from '@/lib/search'
 
 const DELIVERY_LABEL: Record<string, string> = { na: '—', pending: 'Pending', sent: 'Sent' }
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     const { start, end } = monthRange(month)
     query = query.gte('tx_date', start).lte('tx_date', end)
   }
-  const safeQ = q.replace(/[,()%]/g, '').trim()
+  const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
     const { data: matchingDealers } = await supabase.from('dealers').select('id').ilike('company_name', `%${safeQ}%`)
     const dealerIds = (matchingDealers ?? []).map((d) => d.id)
@@ -54,11 +55,17 @@ export async function GET(request: NextRequest) {
   }
 
   const { data: rows } = await query
+  const txRows = (rows as unknown as TxRow[] | null) ?? []
+  // .limit(2000) with no signal if hit — "export the audit trail" implies
+  // "the whole record," so a silently partial file is a real footgun for
+  // anyone pulling this for a dispute. Not a precise "there are exactly N
+  // more" count, just an honest "this isn't everything, narrow your filter."
+  const truncated = txRows.length === 2000
 
   const lines = [
     ['Date', 'Dealer', 'Type', 'In (RM)', 'Out (pts)', 'Rate', 'Your 2%', 'Delivery', 'Status'].map(csvCell).join(','),
   ]
-  for (const tx of (rows as unknown as TxRow[] | null) ?? []) {
+  for (const tx of txRows) {
     const rel = tx.dealers
     const dealerName = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
     lines.push(
@@ -74,6 +81,10 @@ export async function GET(request: NextRequest) {
         csvCell(tx.status),
       ].join(',')
     )
+  }
+
+  if (truncated) {
+    lines.push([csvCell('⚠ Hit the 2000-row export cap — this is not the full result set. Narrow your filters and export again to see the rest.')].join(','))
   }
 
   const csv = '﻿' + lines.join('\r\n')

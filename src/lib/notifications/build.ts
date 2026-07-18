@@ -35,7 +35,7 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
   const [prefs, { data: dealerRows }, { data: pendingRows }, { data: statement }, activityMap, creditBalance, { data: pendingDeliveryRows }] =
     await Promise.all([
       getNotificationPrefs(supabase, userId),
-      supabase.from('dealers').select('id, company_name'),
+      supabase.from('dealers_directory').select('id, company_name'),
       isFinance ? supabase.from('transactions').select('id, tx_date').eq('status', 'pending') : Promise.resolve({ data: null }),
       isFinance
         ? supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle()

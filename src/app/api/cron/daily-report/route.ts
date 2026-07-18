@@ -34,6 +34,14 @@ async function resolveMasterEmails(
   return emails
 }
 
+// mostActiveDealer.name is free text (dealers.company_name, insertable by
+// cs on onboarding/import) landing raw in an HTML email sent to every
+// master — unescaped, a crafted dealer name could inject a phishing link or
+// tracking pixel into a mail clients trusts as an internal system notice.
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
 function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
   return `
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
@@ -50,7 +58,7 @@ function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
         </tr>
         <tr>
           <td style="padding: 8px 0; border-bottom: 1px solid #eee;">Most Active Dealer</td>
-          <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${summary.mostActiveDealer?.name ?? '—'}</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${summary.mostActiveDealer?.name ? escapeHtml(summary.mostActiveDealer.name) : '—'}</td>
         </tr>
         <tr>
           <td style="padding: 8px 0;">Pending Review</td>

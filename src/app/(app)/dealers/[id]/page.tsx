@@ -26,6 +26,8 @@ type Dealer = {
   package: 'A' | 'B' | 'C' | null
   rate: number | null
   status: 'active' | 'inactive'
+  onboarded_by: string | null
+  created_at: string | null
 }
 
 type TxRow = {
@@ -188,8 +190,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
       isFinance
-        ? 'id, company_name, company_no, contact_person, phone, email, address, region, package, rate, status'
-        : 'id, company_name, company_no, contact_person, phone, email, address, region, package, status'
+        ? 'id, company_name, company_no, contact_person, phone, email, address, region, package, rate, status, onboarded_by, created_at'
+        : 'id, company_name, company_no, contact_person, phone, email, address, region, package, status, onboarded_by, created_at'
     )
     .eq('id', id)
     .single()
@@ -198,7 +200,17 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     notFound()
   }
 
-  const typedDealer = { rate: null, ...(dealer as object) } as Dealer
+  const typedDealer = { rate: null, onboarded_by: null, created_at: null, ...(dealer as object) } as Dealer
+
+  let onboardedByName: string | null = null
+  if (typedDealer.onboarded_by) {
+    const { data: onboardedByProfile } = await supabase
+      .from('profiles')
+      .select('name, email')
+      .eq('id', typedDealer.onboarded_by)
+      .maybeSingle()
+    onboardedByName = onboardedByProfile?.name ?? onboardedByProfile?.email ?? null
+  }
   const activity = (await getDealerActivityMap(supabase)).get(id)
 
   let txRows: TxRow[] = []
@@ -479,7 +491,9 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               <RailField label="Contact Person" value={typedDealer.contact_person ?? '—'} />
               <RailField label="Phone" value={typedDealer.phone ?? '—'} />
               <RailField label="Email" value={typedDealer.email ?? '—'} />
-              <RailField label="Address" value={typedDealer.address ?? '—'} last />
+              <RailField label="Address" value={typedDealer.address ?? '—'} />
+              <RailField label="Onboarded By" value={onboardedByName ?? '—'} />
+              <RailField label="Onboarded On" value={typedDealer.created_at ? formatDateTime(typedDealer.created_at) : '—'} last />
             </div>
           </div>
 

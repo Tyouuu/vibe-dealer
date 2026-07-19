@@ -1,4 +1,4 @@
--- Phase 25: a top-up's money can be issued partly or fully as coupons
+-- Phase 28: a top-up's money can be issued partly or fully as coupons
 -- instead of straight to the dealer's phone (dealer's choice, split however
 -- they like) — coupon_rm is how much of money_rm went out that way. Coupons
 -- are a fixed RM10 denomination (COUPON_DENOMINATION_RM, src/lib/packages.ts),
@@ -9,6 +9,11 @@
 -- is purely a fulfillment-method annotation on the existing calculation.
 alter table transactions add column if not exists coupon_rm numeric not null default 0;
 
+-- Renumbered from a colliding "0027" and given the drop-first guard this was
+-- missing — the original had no way to re-run once the constraint existed
+-- (SQLSTATE 42710 on a second push), which the numbering collision itself
+-- triggered.
+alter table transactions drop constraint if exists transactions_coupon_rm_valid;
 alter table transactions add constraint transactions_coupon_rm_valid check (
   coupon_rm >= 0
   and coupon_rm <= money_rm

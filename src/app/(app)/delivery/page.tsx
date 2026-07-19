@@ -17,6 +17,7 @@ type RawDeliveryRow = {
   package: string | null
   sim_type: 'physical' | 'esim' | null
   delivery_status: 'na' | 'pending' | 'sent'
+  status: 'pending' | 'verified' | 'flagged'
 }
 
 type PageProps = {
@@ -33,9 +34,17 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
   }
 
   const supabase = await createClient()
+  // A flagged transaction is disputed/wrong until someone resolves it — it
+  // never belongs in the "please ship this" queue (this SIM might get
+  // corrected or reversed), so it's excluded here regardless of which tab
+  // is showing, not just filtered out of "pending only". A merely-pending
+  // (not yet verified) transaction is fine to prep/ship — the accountant
+  // verifying it later is a paperwork step, not a gate on physically
+  // handing over a card that's already been sold.
   let query = supabase
     .from('delivery_queue')
-    .select('id, company_name, tx_date, type, package, sim_type, delivery_status')
+    .select('id, company_name, tx_date, type, package, sim_type, delivery_status, status')
+    .neq('status', 'flagged')
     .order('tx_date', { ascending: false })
 
   if (!showAll) {

@@ -21,6 +21,7 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Transactions' },
   { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Transactions' },
   { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },
+  { href: '/sim-stock', label: 'SIM Card Stock', roles: ['cs', 'accountant', 'master'], group: 'Transactions' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },

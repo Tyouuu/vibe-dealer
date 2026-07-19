@@ -20,6 +20,7 @@ import {
   IconShoppingBag,
   IconShield,
   IconSettings,
+  IconLayers,
 } from './rail-icons'
 import { IconBell } from './icons'
 
@@ -32,6 +33,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/entry': IconReceipt,
   '/records': IconList,
   '/delivery': IconTruckRail,
+  '/sim-stock': IconLayers,
   '/reports': IconChart,
   '/reconcile': IconReconcile,
   '/purchases': IconShoppingBag,

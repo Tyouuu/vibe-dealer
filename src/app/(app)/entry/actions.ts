@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { PACKAGES, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
@@ -27,6 +27,14 @@ export async function createTransaction(formData: FormData) {
 
   if (!dealerId) fail('Please select a dealer.')
   if (type !== 'package' && type !== 'topup') fail('Please select a transaction type.')
+
+  // The form defaults this to today and blocks future dates client-side —
+  // that's only a UX nicety, this is the real backstop. Falls back to today
+  // rather than rejecting outright if it's ever missing/malformed, since
+  // "today" is what every submission used to mean before this field existed.
+  const today = todayInMalaysia()
+  const txDateRaw = String(formData.get('tx_date') ?? '')
+  const txDate = /^\d{4}-\d{2}-\d{2}$/.test(txDateRaw) && txDateRaw <= today ? txDateRaw : today
 
   const supabase = await createClient()
 
@@ -65,6 +73,15 @@ export async function createTransaction(formData: FormData) {
   if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('Please enter a valid amount.')
   if (!Number.isFinite(points) || points <= 0) fail('Please enter a valid top-up amount.')
 
+  // Same UX-nicety-vs-real-backstop split as the date field above — the form
+  // already blocks a non-multiple/over-total coupon amount client-side.
+  // Package purchases don't have this field at all (always direct/eSIM or
+  // physical-SIM delivery, never coupon), so it's a no-op for them.
+  const couponRmRaw = type === 'topup' ? Number(formData.get('coupon_rm')) : 0
+  const couponRm = Number.isFinite(couponRmRaw) && couponRmRaw > 0 ? couponRmRaw : 0
+  if (couponRm % COUPON_DENOMINATION_RM !== 0) fail(`Coupon amount must be a multiple of RM${COUPON_DENOMINATION_RM}.`)
+  if (couponRm > moneyRm) fail('Coupon amount cannot exceed the total amount collected.')
+
   // Every point given to a dealer (package or top-up alike) has to come from
   // stock master dealer already bought from Vibe Mobile — block the entry
   // outright if it would oversell what's actually on hand.
@@ -91,12 +108,8 @@ export async function createTransaction(formData: FormData) {
     note,
     recorded_by: user.id,
     idempotency_key: idempotencyKey,
-    // Explicit, not the column's own default — that default is a bare
-    // current_date, which reflects the DB session's timezone (UTC on
-    // Supabase) rather than Malaysia's. Anything entered roughly 12am-8am
-    // MYT would otherwise land on the wrong calendar day, filed into the
-    // wrong month's report/reconciliation.
-    tx_date: todayInMalaysia(),
+    tx_date: txDate,
+    coupon_rm: couponRm,
   })
 
   // 23505 = unique_violation. A retry (slow-network resubmit, double-click

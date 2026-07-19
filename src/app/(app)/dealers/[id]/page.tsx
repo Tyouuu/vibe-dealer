@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { markDelivered } from '../../delivery/actions'
 import { deleteDealer } from '../actions'
 import { IconMapPin, IconTag, IconUsers } from '../../icons'
@@ -41,6 +42,7 @@ type TxRow = {
   money_rm: number
   rate: number | null
   commission_rm: number
+  coupon_rm: number
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
@@ -231,7 +233,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     // ever truncated.
     const { data } = await supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, flag_reason, note')
+      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -400,7 +402,14 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     {txRows.map((tx) => (
                       <tr key={tx.id} className="tr-row">
                         <td className="td text-paper-dim">{tx.tx_date}</td>
-                        <td className="td text-paper-dim">{tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}</td>
+                        <td className="td text-paper-dim">
+                          {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
+                          {tx.type === 'topup' && tx.coupon_rm > 0 && (
+                            <div className="mt-0.5 text-[10.5px] text-paper-dim">
+                              RM {tx.coupon_rm.toLocaleString()} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
+                            </div>
+                          )}
+                        </td>
                         <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                         <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>

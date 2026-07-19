@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PACKAGES, COMMISSION_RATE, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
 import { createTransaction } from './actions'
 import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
 import { Combobox } from '../combobox'
@@ -35,12 +35,14 @@ export function EntryForm({
   recentDealers = [],
   lastTxByDealer = {},
   availableBalance,
+  today,
 }: {
   dealers: DealerOption[]
   initialDealerId?: string
   recentDealers?: { id: string; company_name: string }[]
   lastTxByDealer?: Record<string, LastTxInfo>
   availableBalance: number
+  today: string
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   // Generated once per form mount, sent with every submit attempt — a
@@ -51,10 +53,17 @@ export function EntryForm({
   const [dealerId, setDealerId] = useState(
     initialDealerId && dealers.some((d) => d.id === initialDealerId) ? initialDealerId : ''
   )
+  // Defaults to today (server-computed, Malaysia time — not the browser's
+  // own clock/timezone) but editable, for the common case of recording a
+  // sale that actually happened a day or few earlier (dealer paid via
+  // WhatsApp/bank transfer, receipt only gets keyed in once someone's caught
+  // up on the backlog).
+  const [txDate, setTxDate] = useState(today)
   const [type, setType] = useState<'topup' | 'package'>('topup')
   const [pkg, setPkg] = useState<PackageCode>('A')
   const [moneyCollected, setMoneyCollected] = useState('')
   const [pointsOverride, setPointsOverride] = useState('')
+  const [couponRm, setCouponRm] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -103,6 +112,14 @@ export function EntryForm({
       setError('Please select a dealer.')
       return
     }
+    if (!txDate) {
+      setError('Please enter a date.')
+      return
+    }
+    if (txDate > today) {
+      setError('Date cannot be in the future.')
+      return
+    }
     if (type === 'topup' && dealer?.rate == null) {
       setError('This dealer has no package/rate yet — buy them a package first.')
       return
@@ -110,6 +127,17 @@ export function EntryForm({
     if (insufficientBalance) {
       setError('Not enough credit balance for this amount — log a Credit Purchase first.')
       return
+    }
+    if (type === 'topup' && couponRm) {
+      const couponAmount = Number(couponRm)
+      if (!Number.isFinite(couponAmount) || couponAmount < 0 || couponAmount % COUPON_DENOMINATION_RM !== 0) {
+        setError(`Coupon amount must be a multiple of RM${COUPON_DENOMINATION_RM}.`)
+        return
+      }
+      if (couponAmount > (Number(moneyCollected) || 0)) {
+        setError('Coupon amount cannot exceed the total amount collected.')
+        return
+      }
     }
 
     setSubmitting(true)
@@ -176,25 +204,25 @@ export function EntryForm({
             </div>
           )}
 
-          <div className="form-grid">
-            <div>
-              <label className="field-label">Dealer</label>
-              <Combobox
-                name="dealer_id"
-                value={dealerId}
-                onChange={selectDealer}
-                placeholder="Select a dealer…"
-                searchPlaceholder="Search dealer…"
-                options={dealers.map((d) => ({
-                  value: d.id,
-                  label: d.company_name,
-                  sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'No package',
-                  avatarName: d.company_name,
-                  avatarPackage: d.package,
-                }))}
-              />
-            </div>
+          <div>
+            <label className="field-label">Dealer</label>
+            <Combobox
+              name="dealer_id"
+              value={dealerId}
+              onChange={selectDealer}
+              placeholder="Select a dealer…"
+              searchPlaceholder="Search dealer…"
+              options={dealers.map((d) => ({
+                value: d.id,
+                label: d.company_name,
+                sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'No package',
+                avatarName: d.company_name,
+                avatarPackage: d.package,
+              }))}
+            />
+          </div>
 
+          <div className="form-grid">
             <div>
               <label className="field-label">Type</label>
               <input type="hidden" name="type" value={type} />
@@ -214,6 +242,20 @@ export function EntryForm({
                   Buy Package
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="field-label">Date</label>
+              <input
+                name="tx_date"
+                type="date"
+                value={txDate}
+                max={today}
+                onChange={(e) => setTxDate(e.target.value)}
+                required
+                className="field-input"
+              />
+              <span className="hint">When the sale actually happened, not when you&apos;re entering it</span>
             </div>
           </div>
 
@@ -278,6 +320,24 @@ export function EntryForm({
                   className="field-input"
                 />
                 <span className="hint">Auto-calculated from rate — editable</span>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="field-label">Coupon Amount (RM, optional)</label>
+                <input
+                  name="coupon_rm"
+                  type="number"
+                  step={COUPON_DENOMINATION_RM}
+                  min="0"
+                  value={couponRm}
+                  onChange={(e) => setCouponRm(e.target.value)}
+                  placeholder="0"
+                  className="field-input"
+                />
+                <span className="hint">
+                  Portion of the amount above issued as RM{COUPON_DENOMINATION_RM} coupons instead of straight to the
+                  dealer&apos;s phone — leave blank if this whole top-up is direct.
+                  {Number(couponRm) > 0 ? ` = ${Number(couponRm) / COUPON_DENOMINATION_RM} coupon(s)` : ''}
+                </span>
               </div>
             </div>
           )}

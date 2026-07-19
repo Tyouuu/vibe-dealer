@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange, todayInMalaysia } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
+import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { VerifyButton } from './verify-button'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
@@ -30,6 +31,7 @@ type TxRow = {
   money_rm: number
   rate: number | null
   commission_rm: number
+  coupon_rm: number
   sim_type: string | null
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
@@ -98,7 +100,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
       { count: 'exact' }
     )
   if (monthWindow) query = query.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
@@ -317,6 +319,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   </td>
                   <td className="td text-paper-dim">
                     {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                    {tx.type === 'topup' && tx.coupon_rm > 0 && (
+                      <div className="mt-0.5 text-[10.5px] text-paper-dim">
+                        RM {tx.coupon_rm.toLocaleString()} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
+                      </div>
+                    )}
                   </td>
                   <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
                   <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>

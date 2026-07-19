@@ -15,6 +15,7 @@ type TxRow = {
   money_rm: number
   rate: number | null
   commission_rm: number
+  coupon_rm: number
   delivery_status: string
   status: 'pending' | 'verified' | 'flagged'
   dealers: { company_name: string } | { company_name: string }[] | null
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   let query = supabase
     .from('transactions')
-    .select('tx_date, type, package, points, money_rm, rate, commission_rm, delivery_status, status, dealers(company_name)')
+    .select('tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, dealers(company_name)')
     .order('tx_date', { ascending: sortAscending })
     .order('created_at', { ascending: sortAscending })
     .limit(2000)
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
   const truncated = txRows.length === 2000
 
   const lines = [
-    ['Date', 'Dealer', 'Type', 'In (RM)', 'Out (pts)', 'Rate', 'Your 2%', 'Delivery', 'Status'].map(csvCell).join(','),
+    ['Date', 'Dealer', 'Type', 'In (RM)', 'Out (pts)', 'Rate', 'Your 2%', 'Coupon (RM)', 'Delivery', 'Status'].map(csvCell).join(','),
   ]
   for (const tx of txRows) {
     const rel = tx.dealers
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
         csvCell(Number(tx.points)),
         csvCell(tx.rate != null ? `${tx.rate}%` : ''),
         csvCell(Number(tx.commission_rm)),
+        csvCell(Number(tx.coupon_rm) > 0 ? Number(tx.coupon_rm) : ''),
         csvCell(DELIVERY_LABEL[tx.delivery_status] ?? tx.delivery_status),
         csvCell(tx.status),
       ].join(',')

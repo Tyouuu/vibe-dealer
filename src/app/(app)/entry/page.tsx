@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
+import { todayInMalaysia } from '@/lib/month'
 import { EntryForm, type LastTxInfo } from './entry-form'
 
 export const metadata: Metadata = {
@@ -53,6 +54,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
         recentDealers={recentDealers}
         lastTxByDealer={lastTxByDealer}
         availableBalance={balance.available}
+        today={todayInMalaysia()}
       />
     </>
   )

@@ -10,3 +10,10 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 }
 
 export const COMMISSION_RATE = 0.02
+
+// A top-up's money can be issued partly or fully as fixed-denomination
+// coupons instead of straight to the dealer's phone — same points/rate/2%
+// math either way (coupon_rm is purely a fulfillment-method annotation on
+// top of the existing calculation, not a different pricing model like SIM
+// Card Stock). Coupons only come in this one denomination.
+export const COUPON_DENOMINATION_RM = 10

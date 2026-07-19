@@ -11,9 +11,30 @@ export const SIM_MARGIN_RM = SIM_SELL_PRICE_RM - SIM_UNIT_COST_RM
 export const SIM_MIN_ORDER_QTY = 10
 export const SIM_BOX_SIZE = 250
 
-export type SimStockType = 'physical' | 'esim'
+export type SimStockType = 'physical' | 'esim' | 'esim_no_number'
+
+export const SIM_STOCK_TYPES: SimStockType[] = ['physical', 'esim', 'esim_no_number']
+
+export function isSimStockType(value: string): value is SimStockType {
+  return (SIM_STOCK_TYPES as string[]).includes(value)
+}
 
 export const SIM_TYPE_LABEL: Record<SimStockType, string> = {
   physical: 'Physical SIM',
   esim: 'eSIM',
+  esim_no_number: 'eSIM (No Number)',
+}
+
+export const SIM_TYPE_PILL_CLASS: Record<SimStockType, string> = {
+  physical: 'pill-slate',
+  esim: 'pill-jade',
+  esim_no_number: 'pill-info',
+}
+
+// Physical is the only type with a real shipment (shipping fee/invoice,
+// mark-as-sent). Both eSIM variants activate via a code instead — a data-
+// only eSIM still needs a QR/activation code, it just isn't bound to a
+// phone number the way regular eSIM is.
+export function isPhysicalSimType(simType: SimStockType): boolean {
+  return simType === 'physical'
 }

@@ -4,19 +4,24 @@
 --    to open the dealer detail page separately just to pack a box. Added
 --    here (non-sensitive — same address dealers_directory (0015) already
 --    exposes to cs elsewhere).
+--    address is appended at the end, not inserted where it reads naturally
+--    next to company_name — CREATE OR REPLACE VIEW can only append columns
+--    at the end; it errors (SQLSTATE 42P16) if an existing column's position
+--    would shift. Column order has no meaning to PostgREST/supabase-js
+--    callers, which select by name (same fix as 0022).
 create or replace view delivery_queue
 with (security_invoker = off) as
 select
   t.id,
   t.dealer_id,
   d.company_name,
-  d.address,
   t.tx_date,
   t.type,
   t.package,
   t.sim_type,
   t.delivery_status,
-  t.status
+  t.status,
+  d.address
 from transactions t
 join dealers d on d.id = t.dealer_id
 where t.sim_type is not null

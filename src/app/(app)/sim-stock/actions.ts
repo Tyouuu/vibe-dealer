@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { isSimStockType, isPhysicalSimType } from '@/lib/sim-stock'
 
 function fail(message: string): never {
   redirect('/sim-stock?error=' + encodeURIComponent(message))
@@ -20,7 +21,7 @@ export async function recordSimIntake(formData: FormData) {
   const note = String(formData.get('note') ?? '').trim() || null
 
   if (!intakeDate) fail('Intake date is required.')
-  if (simType !== 'physical' && simType !== 'esim') fail('Invalid SIM type.')
+  if (!isSimStockType(simType)) fail('Invalid SIM type.')
   if (!Number.isFinite(quantity) || quantity <= 0) fail('Quantity must be a positive number.')
   if (!Number.isFinite(costPerUnit) || costPerUnit < 0) fail('Cost per unit must be zero or more.')
 
@@ -55,19 +56,20 @@ export async function createSimOrder(formData: FormData) {
 
   if (!dealerId) fail('Please select a dealer.')
   if (!orderDate) fail('Order date is required.')
-  if (simType !== 'physical' && simType !== 'esim') fail('Invalid SIM type.')
+  if (!isSimStockType(simType)) fail('Invalid SIM type.')
   if (!Number.isFinite(quantity) || quantity < 10) fail('Minimum order quantity is 10.')
   if (shippingFeeRaw && (!Number.isFinite(shippingFee) || (shippingFee ?? -1) < 0)) fail('Shipping fee must be zero or more.')
 
+  const isPhysical = isPhysicalSimType(simType)
   const supabase = await createClient()
   const { error } = await supabase.rpc('create_sim_order', {
     p_dealer_id: dealerId,
     p_order_date: orderDate,
     p_quantity: quantity,
-    p_shipping_fee_rm: simType === 'esim' ? null : shippingFee,
-    p_shipping_invoice_path: simType === 'esim' ? null : shippingInvoicePath,
+    p_shipping_fee_rm: isPhysical ? shippingFee : null,
+    p_shipping_invoice_path: isPhysical ? shippingInvoicePath : null,
     p_sim_type: simType,
-    p_esim_codes: simType === 'esim' ? esimCodes : null,
+    p_esim_codes: isPhysical ? null : esimCodes,
   })
 
   if (error) {

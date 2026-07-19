@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { recordSimIntake } from './actions'
-import { SIM_BOX_SIZE, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
+import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 
 export function IntakeForm() {
   const [simType, setSimType] = useState<SimStockType>('physical')
@@ -13,12 +13,11 @@ export function IntakeForm() {
         <label className="field-label">SIM Type</label>
         <input type="hidden" name="sim_type" value={simType} />
         <div className="segmented w-full">
-          <button type="button" onClick={() => setSimType('physical')} className={`segmented-btn flex-1 ${simType === 'physical' ? 'active' : ''}`}>
-            {SIM_TYPE_LABEL.physical}
-          </button>
-          <button type="button" onClick={() => setSimType('esim')} className={`segmented-btn flex-1 ${simType === 'esim' ? 'active' : ''}`}>
-            {SIM_TYPE_LABEL.esim}
-          </button>
+          {SIM_STOCK_TYPES.map((t) => (
+            <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
+              {SIM_TYPE_LABEL[t]}
+            </button>
+          ))}
         </div>
       </div>
       <div>

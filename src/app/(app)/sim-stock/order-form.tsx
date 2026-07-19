@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createSimOrder } from './actions'
-import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_TYPE_LABEL, type SimStockType } from '@/lib/sim-stock'
+import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 
@@ -40,9 +40,10 @@ export function OrderForm({
     setSubmitting(true)
     const formData = new FormData(e.currentTarget)
 
-    // eSIM has no physical shipment — only upload/attach an invoice for a
-    // physical order, regardless of whether the field was somehow filled in.
-    if (simType === 'physical' && invoiceFile) {
+    // eSIM (either variant) has no physical shipment — only upload/attach an
+    // invoice for a physical order, regardless of whether the field was
+    // somehow filled in.
+    if (isPhysicalSimType(simType) && invoiceFile) {
       setUploading(true)
       const supabase = createClient()
       const path = `${dealerId}/${Date.now()}-${invoiceFile.name}`
@@ -70,12 +71,11 @@ export function OrderForm({
         <label className="field-label">SIM Type</label>
         <input type="hidden" name="sim_type" value={simType} />
         <div className="segmented w-full">
-          <button type="button" onClick={() => setSimType('physical')} className={`segmented-btn flex-1 ${simType === 'physical' ? 'active' : ''}`}>
-            {SIM_TYPE_LABEL.physical}
-          </button>
-          <button type="button" onClick={() => setSimType('esim')} className={`segmented-btn flex-1 ${simType === 'esim' ? 'active' : ''}`}>
-            {SIM_TYPE_LABEL.esim}
-          </button>
+          {SIM_STOCK_TYPES.map((t) => (
+            <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
+              {SIM_TYPE_LABEL[t]}
+            </button>
+          ))}
         </div>
       </div>
       <div>
@@ -88,7 +88,7 @@ export function OrderForm({
           searchPlaceholder="Search dealer…"
           options={dealers.map((d) => ({ value: d.id, label: d.company_name, sublabel: d.address ?? undefined }))}
         />
-        {simType === 'physical' && (
+        {isPhysicalSimType(simType) && (
           <p className="mt-1 text-[11px] text-paper-dim">
             Ship to: {selectedDealer ? (selectedDealer.address ?? 'No address on file') : '—'}
           </p>
@@ -105,7 +105,7 @@ export function OrderForm({
           RM {SIM_SELL_PRICE_RM.toFixed(2)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
         </p>
       </div>
-      {simType === 'physical' ? (
+      {isPhysicalSimType(simType) ? (
         <>
           <div>
             <label className="field-label">Shipping Fee (RM, optional)</label>

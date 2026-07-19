@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_TYPE_LABEL, type SimStockType } from '@/lib/sim-stock'
+import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { markSimOrderSent } from './actions'
 import { OrderForm } from './order-form'
@@ -73,10 +73,9 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   ])
 
   const balanceByType = new Map((balanceRows as BalanceRow[] | null ?? []).map((b) => [b.sim_type, b]))
-  const emptyBalance: BalanceRow = { sim_type: 'physical', total_intake: 0, total_sold: 0, available: 0 }
-  const physicalBalance = balanceByType.get('physical') ?? emptyBalance
-  const esimBalance = balanceByType.get('esim') ?? emptyBalance
-  const availableByType: Record<SimStockType, number> = { physical: physicalBalance.available, esim: esimBalance.available }
+  const emptyBalanceFor = (t: SimStockType): BalanceRow => ({ sim_type: t, total_intake: 0, total_sold: 0, available: 0 })
+  const balances = SIM_STOCK_TYPES.map((t) => balanceByType.get(t) ?? emptyBalanceFor(t))
+  const availableByType = Object.fromEntries(balances.map((b) => [b.sim_type, b.available])) as Record<SimStockType, number>
 
   const dealerList = (dealers ?? []) as { id: string; company_name: string; address: string | null }[]
   const dealerNameById = new Map(dealerList.map((d) => [d.id, d.company_name]))
@@ -101,22 +100,20 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       <div className="app-card">
         <h1 className="mb-1 text-[26px] font-extrabold tracking-tight text-paper">SIM Card Stock</h1>
         <p className="mb-4 text-[12.5px] text-paper-dim">
-          SIM cards (physical or eSIM) bought from Vibe Mobile in bulk (a box is {SIM_BOX_SIZE}), resold to dealers in
-          batches — same system for both, eSIM just has no physical shipment. Kept separate from the points/topup
-          ledger — this is a flat per-card margin, not a %-rate commission.
+          SIM cards — physical, eSIM, or eSIM with no number — bought from Vibe Mobile in bulk (a box is {SIM_BOX_SIZE}),
+          resold to dealers in batches. Same system across all three, each its own stock pool; only physical has a
+          real shipment. Kept separate from the points/topup ledger — this is a flat per-card margin, not a %-rate
+          commission.
         </p>
 
         {error && <div className="alert alert-bad">{error}</div>}
         {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
         {order_saved && <div className="alert alert-ok">Order recorded.</div>}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {([
-            ['physical', physicalBalance],
-            ['esim', esimBalance],
-          ] as [SimStockType, BalanceRow][]).map(([type, b]) => (
-            <div key={type} className="rounded-2xl border border-ink-800 p-4">
-              <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">{SIM_TYPE_LABEL[type]}</div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {balances.map((b) => (
+            <div key={b.sim_type} className="rounded-2xl border border-ink-800 p-4">
+              <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">{SIM_TYPE_LABEL[b.sim_type]}</div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <div className="text-[10.5px] font-semibold text-paper-dim">Available</div>
@@ -138,7 +135,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         {isFinance && (
           <>
             <div className="mt-3.5 app-tile">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin So Far (both types)</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin So Far (all types)</div>
               <div className="figure-money mt-1.5 text-xl font-semibold">RM {totalOrderMargin.toLocaleString()}</div>
               <div className="mt-0.5 text-[11px] text-paper-dim">RM {SIM_MARGIN_RM.toFixed(2)}/card</div>
             </div>
@@ -181,14 +178,14 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                         <td className="td text-paper-dim">{o.order_date}</td>
                         <td className="td font-semibold text-paper">{dealerName}</td>
                         <td className="td">
-                          <span className={o.sim_type === 'esim' ? 'pill pill-jade' : 'pill pill-slate'}>{SIM_TYPE_LABEL[o.sim_type]}</span>
+                          <span className={`pill ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
                         </td>
                         <td className="td text-right">{o.quantity.toLocaleString()}</td>
                         <td className="td figure-money text-right">RM {paid.toLocaleString()}</td>
                         {isFinance && <td className="td figure-money text-right">RM {margin.toLocaleString()}</td>}
                         <td className="td text-right text-paper-dim">{o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}</td>
                         <td className="td">
-                          {o.sim_type === 'physical' ? (
+                          {isPhysicalSimType(o.sim_type) ? (
                             o.shipping_invoice_path ? (
                               <a
                                 href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
@@ -267,7 +264,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                       <tr key={r.id} className="tr-row">
                         <td className="td text-paper-dim">{r.intake_date}</td>
                         <td className="td">
-                          <span className={r.sim_type === 'esim' ? 'pill pill-jade' : 'pill pill-slate'}>{SIM_TYPE_LABEL[r.sim_type]}</span>
+                          <span className={`pill ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
                         </td>
                         <td className="td text-right">{r.quantity.toLocaleString()}</td>
                         <td className="td figure-money text-right">RM {Number(r.cost_per_unit_rm).toFixed(2)}</td>

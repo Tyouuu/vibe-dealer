@@ -9,6 +9,7 @@ export type DeliveryRow = {
   id: string
   tx_date: string
   company_name: string
+  address: string | null
   package: string | null
   sim_type: 'physical' | 'esim' | null
   delivery_status: 'na' | 'pending' | 'sent'
@@ -70,6 +71,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
               )}
               <th className="th">Date</th>
               <th className="th">Dealer</th>
+              <th className="th">Ship To</th>
               <th className="th">Package</th>
               <th className="th">SIM Type</th>
               <th className="th">Status</th>
@@ -93,6 +95,9 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                 )}
                 <td className="td text-paper-dim">{row.tx_date}</td>
                 <td className="td font-semibold text-paper">{row.company_name}</td>
+                <td className="td max-w-[220px] truncate text-paper-dim" title={row.address ?? undefined}>
+                  {row.address ?? '—'}
+                </td>
                 <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
                 <td className="td">
                   {row.sim_type === 'esim' ? (

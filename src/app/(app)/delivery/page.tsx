@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 type RawDeliveryRow = {
   id: string
   company_name: string
+  address: string | null
   tx_date: string
   type: 'package' | 'topup'
   package: string | null
@@ -43,7 +44,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
   // handing over a card that's already been sold.
   let query = supabase
     .from('delivery_queue')
-    .select('id, company_name, tx_date, type, package, sim_type, delivery_status, status')
+    .select('id, company_name, address, tx_date, type, package, sim_type, delivery_status, status')
     .neq('status', 'flagged')
     .order('tx_date', { ascending: false })
 

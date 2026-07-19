@@ -10,3 +10,10 @@ export const SIM_SELL_PRICE_RM = 3.5
 export const SIM_MARGIN_RM = SIM_SELL_PRICE_RM - SIM_UNIT_COST_RM
 export const SIM_MIN_ORDER_QTY = 10
 export const SIM_BOX_SIZE = 250
+
+export type SimStockType = 'physical' | 'esim'
+
+export const SIM_TYPE_LABEL: Record<SimStockType, string> = {
+  physical: 'Physical SIM',
+  esim: 'eSIM',
+}

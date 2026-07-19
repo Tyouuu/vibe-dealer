@@ -17,6 +17,17 @@ const REGION_COORDS: Record<string, { x: number; y: number }> = {
   'Teluk Intan': { x: 73.5, y: 83.2 },
 }
 
+// Onboarding suggests region names outside this map's real coverage box too
+// (KL, Johor, Klang, Melaka, Seremban, Kuantan — all south of where this
+// crop ends) — those can't get an honest pin here (fabricating a position
+// for a town this map doesn't actually depict would be worse than omitting
+// it), but callers rendering a region legend alongside this map should use
+// this to show an unmapped region differently rather than implying every
+// legend entry has a matching dot.
+export function hasMapPin(region: string): boolean {
+  return region in REGION_COORDS
+}
+
 const MAP_VIEWBOX = '0 0 200 340'
 
 const MAINLAND_PATH =

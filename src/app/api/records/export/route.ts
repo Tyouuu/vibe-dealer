@@ -51,9 +51,14 @@ export async function GET(request: NextRequest) {
   if (dealerId) query = query.eq('dealer_id', dealerId)
   const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {
+    // Matches /records' own search exactly (dealer name OR note OR
+    // flag_reason) — previously name-only here, so a search that matched a
+    // flag/adjustment reason on screen exported an empty file.
     const { data: matchingDealers } = await supabase.from('dealers').select('id').ilike('company_name', `%${safeQ}%`)
     const dealerIds = (matchingDealers ?? []).map((d) => d.id)
-    query = query.in('dealer_id', dealerIds.length ? dealerIds : ['00000000-0000-0000-0000-000000000000'])
+    const orParts = [`note.ilike.%${safeQ}%`, `flag_reason.ilike.%${safeQ}%`]
+    if (dealerIds.length) orParts.push(`dealer_id.in.(${dealerIds.join(',')})`)
+    query = query.or(orParts.join(','))
   }
 
   const { data: rows } = await query
@@ -75,10 +80,15 @@ export async function GET(request: NextRequest) {
         csvCell(tx.tx_date),
         csvCell(dealerName),
         csvCell(tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'),
-        csvCell(tx.money_rm),
-        csvCell(tx.points),
+        // Number(...) — these arrive over PostgREST as numeric-typed JSON
+        // strings, not real numbers, despite TxRow's type claiming otherwise.
+        // Passed raw, a negative amount (any adjustment correction) hits
+        // csvCell's string-only formula-injection guard and gets corrupted
+        // into text ('-50.10) instead of staying a real negative number.
+        csvCell(Number(tx.money_rm)),
+        csvCell(Number(tx.points)),
         csvCell(tx.rate != null ? `${tx.rate}%` : ''),
-        csvCell(tx.commission_rm),
+        csvCell(Number(tx.commission_rm)),
         csvCell(DELIVERY_LABEL[tx.delivery_status] ?? tx.delivery_status),
         csvCell(tx.status),
       ].join(',')

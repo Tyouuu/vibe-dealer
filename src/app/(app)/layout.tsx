@@ -34,9 +34,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isFinance = user.role === 'master' || user.role === 'accountant'
 
-  const [{ count: dealerCount }, { count: pendingCount }, creditBalance, builtNotifications] = await Promise.all([
+  const [{ count: dealerCount }, { count: pendingCount }, { count: pendingDeliveryCount }, creditBalance, builtNotifications] = await Promise.all([
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending'),
     getAvailablePointsBalance(supabase),
     buildNotifications(supabase, user.id, user.role),
   ])
@@ -46,7 +47,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     href: item.href,
     label: item.label,
     group: item.group,
-    badge: item.href === '/dealers' ? (dealerCount ?? undefined) : item.href === '/records' ? (pendingCount ?? undefined) : undefined,
+    badge:
+      item.href === '/dealers'
+        ? (dealerCount ?? undefined)
+        : item.href === '/records'
+          ? (pendingCount ?? undefined)
+          : item.href === '/delivery'
+            ? (pendingDeliveryCount ?? undefined)
+            : undefined,
   }))
 
   // The bell dropdown is a short preview (capped at 4) of the same list the

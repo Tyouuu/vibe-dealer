@@ -32,7 +32,9 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
 
   const supabase = await createClient()
   const [{ data: purchases }, { data: verifiedRows }, { data: profiles }, creditBalance] = await Promise.all([
-    supabase.from('credit_purchases').select('id, purchase_date, money_rm, points, note, recorded_by').order('purchase_date', { ascending: false }).limit(200),
+    // No .limit() — Total Bought/Total Cost Paid/Cash Margin below are real
+    // sums over every row, same reasoning as Reconcile/dealer-detail.
+    supabase.from('credit_purchases').select('id, purchase_date, money_rm, points, note, recorded_by').order('purchase_date', { ascending: false }),
     // Cash Margin below is a settled-accounting comparison (same "only
     // verified counts as real money" convention as Reports/Dashboard/
     // Reconcile) — deliberately different scope from the Balance tile, which

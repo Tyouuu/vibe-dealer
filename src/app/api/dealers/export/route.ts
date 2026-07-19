@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { csvCell } from '@/lib/csv'
 import { sanitizeSearchTerm } from '@/lib/search'
 
-const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'package', 'rate', 'status'] as const
+const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'notes', 'package', 'rate', 'status'] as const
 
 export async function GET(request: NextRequest) {
   // Same view every role that can see /dealers can already see — export just
@@ -21,9 +21,13 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   // cs has no SELECT on the dealers base table (0015) — read through
   // dealers_directory instead, which has every column except rate.
+  // id is always fetched (even though it's not one of the exported columns)
+  // so the Needs-Follow-up filter below can match by id like the /dealers
+  // page itself does — matching by company_name instead would wrongly sweep
+  // an unrelated active dealer into the export if two dealers ever share a name.
   let query = supabase
     .from(user.role === 'cs' ? 'dealers_directory' : 'dealers')
-    .select(COLUMNS.join(', '))
+    .select(['id', ...COLUMNS].join(', '))
     .order('company_name', { ascending: true })
 
   if (q) {
@@ -34,15 +38,11 @@ export async function GET(request: NextRequest) {
 
   const { data: rows } = await query
 
-  let filtered = (rows ?? []) as unknown as Record<(typeof COLUMNS)[number], string | number | null>[]
+  let filtered = (rows ?? []) as unknown as (Record<(typeof COLUMNS)[number], string | number | null> & { id: string })[]
   if (view === 'inactive') {
     const { getDealerActivityMap } = await import('@/lib/dealer-activity')
-    const { data: idRows } = await supabase.from('dealers_directory').select('id, company_name').order('company_name')
     const activityMap = await getDealerActivityMap(supabase)
-    const inactiveNames = new Set(
-      (idRows ?? []).filter((d) => activityMap.get(d.id)?.isInactive).map((d) => d.company_name)
-    )
-    filtered = filtered.filter((r) => inactiveNames.has(String(r.company_name)))
+    filtered = filtered.filter((r) => activityMap.get(r.id)?.isInactive)
   }
 
   const lines = [COLUMNS.map(csvCell).join(',')]

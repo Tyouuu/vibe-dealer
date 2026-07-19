@@ -3,7 +3,8 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getAuditEvents, filterAuditEvents, groupByDay, formatEventTime, type AuditKind } from '@/lib/audit-events'
+import { getFilteredAuditEvents, groupByDay, formatEventTime, type AuditKind } from '@/lib/audit-events'
+import { todayInMalaysia } from '@/lib/month'
 import { IconSearch } from '../icons'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
@@ -37,10 +38,18 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const view: View = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
 
   const supabase = await createClient()
-  const { events: pageEvents, hasMore, nextCursor } = await getAuditEvents(supabase, { before })
-  const actors = Array.from(new Set(pageEvents.map((e) => e.actor))).sort()
+  // Walks back through history looking for matches (capped, not unbounded)
+  // rather than filtering just the most-recent page — a search/actor/month
+  // filter with no hits in the last 75 events used to show "no results" even
+  // when real matches existed further back, while the export of the exact
+  // same filters (which does walk full history) correctly found them.
+  const { events: filtered, hasMore, nextCursor } = await getFilteredAuditEvents(supabase, { q, kind: view, actor, month }, { before })
+  // All staff, not just those with an event on the currently-loaded page —
+  // otherwise a staff member whose actions are all further back than what's
+  // loaded couldn't even be selected as a filter option.
+  const { data: profileRows } = await supabase.from('profiles').select('name, email').order('name')
+  const actors = Array.from(new Set((profileRows ?? []).map((p) => p.name ?? p.email ?? '—'))).sort()
 
-  const filtered = filterAuditEvents(pageEvents, { q, kind: view, actor, month })
   const groups = groupByDay(filtered)
 
   function viewHref(v: View) {
@@ -108,7 +117,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           <Listbox name="actor" defaultValue={actor} options={[{ value: 'all', label: 'All actors' }, ...actors.map((a) => ({ value: a, label: a }))]} />
         </div>
         <div className="w-44">
-          <MonthPicker name="month" defaultValue={month} placeholder="All months" allowClear />
+          <MonthPicker name="month" defaultValue={month} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
         </div>
         <button type="submit" className="btn-primary">
           Filter
@@ -171,8 +180,8 @@ export default async function AuditPage({ searchParams }: PageProps) {
           </span>
           <p className="text-sm text-paper-dim">
             {hasFilter
-              ? before
-                ? "No events match those filters on this page — try loading older events, or clear filters to start from the most recent."
+              ? hasMore
+                ? 'No matches in the history searched so far — try Load older to keep searching further back.'
                 : 'No events match those filters.'
               : "Once your team verifies a top-up, saves a reconciliation, or changes a dealer's rate, it'll show up here — permanently, and searchable."}
           </p>
@@ -185,9 +194,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
       )}
 
       <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-        <span className="text-[11.5px] text-paper-dim">
-          {filtered.length} of {pageEvents.length} events on this page
-        </span>
+        <span className="text-[11.5px] text-paper-dim">{filtered.length} events</span>
         {hasMore && (
           <Link href={loadOlderHref} className="btn-ghost text-xs">
             Load older events ↓

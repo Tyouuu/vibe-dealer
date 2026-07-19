@@ -2,24 +2,10 @@
 
 import { useState } from 'react'
 import { PACKAGES } from '@/lib/packages'
+import { REGIONS } from '@/lib/regions'
 import { createDealer, checkDuplicateDealer } from './actions'
 import { IconBuilding, IconPhone, IconMapPin } from '../icons'
 import { Listbox } from '../listbox'
-
-const REGIONS = [
-  'Ipoh',
-  'Penang',
-  'KL',
-  'Johor',
-  'Klang',
-  'Melaka',
-  'Seremban',
-  'Kuantan',
-  'Taiping',
-  'Teluk Intan',
-  'Sitiawan',
-  'Kampar',
-]
 
 export function OnboardForm({ initialError }: { initialError?: string }) {
   const [duplicate, setDuplicate] = useState<{ id: string; company_name: string } | null>(null)
@@ -126,6 +112,10 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
                   })),
                 ]}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="field-label">Notes (optional)</label>
+              <textarea name="notes" rows={2} placeholder="Anything worth remembering about this dealer" className="field-input resize-none" />
             </div>
           </div>
           <button type="submit" disabled={checking || submitting} className="btn-primary mt-2">

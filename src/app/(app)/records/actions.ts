@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { computeAdjustmentDelta } from '@/lib/adjustment'
+import { todayInMalaysia } from '@/lib/month'
 
 function fail(message: string): never {
   redirect('/records?error=' + encodeURIComponent(message))
@@ -124,6 +125,10 @@ export async function adjustTransaction(formData: FormData) {
     status: 'pending',
     recorded_by: user.id,
     note: reason,
+    // Explicit, not the column default — see entry/actions.ts for why a
+    // bare current_date (UTC session default) can misfile anything entered
+    // roughly 12am-8am Malaysia time into the wrong calendar day.
+    tx_date: todayInMalaysia(),
   })
 
   if (error) fail(error.message)

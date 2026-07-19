@@ -5,21 +5,31 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
+import { normalizeRegion } from '@/lib/regions'
+import { sanitizeSearchTerm } from '@/lib/search'
 
 // dealers_directory (0015) is the cs-safe view — cs has no SELECT on the
 // dealers base table, so this is the only way this lookup works for cs too,
 // not just master/accountant. ilike with no wildcards is just a case-
 // insensitive exact match, which is enough to catch "Ipoh Trading" vs.
 // "ipoh trading" without pulling in unrelated partial matches.
-export async function checkDuplicateDealer(companyName: string): Promise<{ id: string; company_name: string } | null> {
+// sanitizeSearchTerm strips %/_ (ilike wildcards) so a company name that
+// happens to contain them (e.g. "100% Mobile Trading") is matched literally
+// instead of as a pattern — previously this exact-match check was the one
+// ilike call in the app that didn't go through it.
+// excludeId lets the dealer-edit form reuse this same check without a save
+// that doesn't change the name false-positiving against itself.
+export async function checkDuplicateDealer(companyName: string, excludeId?: string): Promise<{ id: string; company_name: string } | null> {
   const user = await requireUser()
   if (user.role !== 'cs' && user.role !== 'master') return null
 
-  const trimmed = companyName.trim()
+  const trimmed = sanitizeSearchTerm(companyName)
   if (!trimmed) return null
 
   const supabase = await createClient()
-  const { data } = await supabase.from('dealers_directory').select('id, company_name').ilike('company_name', trimmed).maybeSingle()
+  let query = supabase.from('dealers_directory').select('id, company_name').ilike('company_name', trimmed)
+  if (excludeId) query = query.neq('id', excludeId)
+  const { data } = await query.maybeSingle()
   return data
 }
 
@@ -46,7 +56,12 @@ export async function createDealer(formData: FormData) {
   // backstop against two staff independently onboarding the same dealer.
   const confirmedDuplicate = String(formData.get('confirm_duplicate') ?? '') === 'true'
   if (!confirmedDuplicate) {
-    const { data: existing } = await supabase.from('dealers_directory').select('company_name').ilike('company_name', companyName).maybeSingle()
+    const safeCompanyName = sanitizeSearchTerm(companyName)
+    const { data: existing } = await supabase
+      .from('dealers_directory')
+      .select('company_name')
+      .ilike('company_name', safeCompanyName)
+      .maybeSingle()
     if (existing) {
       redirect('/onboard?error=' + encodeURIComponent(`A dealer named "${existing.company_name}" already exists — resubmit to confirm this is a different dealer.`))
     }
@@ -65,7 +80,8 @@ export async function createDealer(formData: FormData) {
     phone: String(formData.get('phone') ?? '').trim() || null,
     email: String(formData.get('email') ?? '').trim() || null,
     address: String(formData.get('address') ?? '').trim() || null,
-    region: String(formData.get('region') ?? '').trim() || null,
+    region: normalizeRegion(formData.get('region') as string | null),
+    notes: String(formData.get('notes') ?? '').trim() || null,
     package: pkg,
     rate: pkg ? PACKAGES[pkg].rate : null,
     onboarded_by: user.id,

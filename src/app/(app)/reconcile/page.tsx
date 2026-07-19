@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, currentMonth } from '@/lib/month'
+import { monthRange, currentMonth, todayInMalaysia } from '@/lib/month'
 import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
@@ -20,6 +20,7 @@ type BreakdownRow = {
   type: 'package' | 'topup' | 'adjustment'
   package: string | null
   points: number
+  commission_rm: number
   dealers:
     | { company_name: string; package: string | null }
     | { company_name: string; package: string | null }[]
@@ -49,7 +50,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     // Reports runs the identical unbounded query for the same reason.
     supabase
       .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, dealers(company_name, package)')
+      .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name, package)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
@@ -59,9 +60,17 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   const breakdownRows = (verifiedTx as BreakdownRow[] | null) ?? []
   const systemPoints = breakdownRows.reduce((s, t) => s + Number(t.points), 0)
-  const systemProfit = Math.round(systemPoints * 0.02 * 100) / 100
+  // Sums each row's own commission_rm rather than recomputing points*rate —
+  // matches how Reports/Dashboard/dealer-detail all compute "Your 2%", and
+  // avoids the two calculations landing a cent apart under fractional
+  // adjustment amounts (round(sum) vs sum(round) aren't the same operation).
+  const systemProfit = Math.round(breakdownRows.reduce((s, t) => s + Number(t.commission_rm), 0) * 100) / 100
   const companyPoints = statement?.company_total_points ?? null
-  const diff = companyPoints != null ? systemPoints - companyPoints : null
+  // Rounded to whole points before comparing — systemPoints is a float sum
+  // over potentially many fractional-point adjustment rows, so an
+  // honestly-reconciled month could otherwise land on e.g. 4e-13 instead of
+  // exactly 0 and wrongly report "Mismatch found".
+  const diff = companyPoints != null ? Math.round((systemPoints - companyPoints) * 100) / 100 : null
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
@@ -81,7 +90,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           </div>
           <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
             <div className="w-40">
-              <MonthPicker name="month" defaultValue={month} />
+              <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
             </div>
             <button type="submit" className="btn-ghost py-1.5 text-xs">
               View

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
+import { todayInMalaysia } from '@/lib/month'
 
 function fail(message: string): never {
   redirect('/entry?error=' + encodeURIComponent(message))
@@ -90,6 +91,12 @@ export async function createTransaction(formData: FormData) {
     note,
     recorded_by: user.id,
     idempotency_key: idempotencyKey,
+    // Explicit, not the column's own default — that default is a bare
+    // current_date, which reflects the DB session's timezone (UTC on
+    // Supabase) rather than Malaysia's. Anything entered roughly 12am-8am
+    // MYT would otherwise land on the wrong calendar day, filed into the
+    // wrong month's report/reconciliation.
+    tx_date: todayInMalaysia(),
   })
 
   // 23505 = unique_violation. A retry (slow-network resubmit, double-click

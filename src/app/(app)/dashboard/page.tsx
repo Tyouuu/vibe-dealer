@@ -3,11 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
-import { daysSince, getDealerActivityMap, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
+import {
+  daysSince,
+  getDealerActivityMap,
+  DELIVERY_WARN_DAYS_THRESHOLD,
+  DELIVERY_STALLED_DAYS_THRESHOLD,
+  PENDING_REVIEW_STALE_DAYS,
+} from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
-import { GrowthMap } from './growth-map'
+import { GrowthMap, hasMapPin } from './growth-map'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconTruck, ReconciledStamp } from '../icons'
 
@@ -220,7 +226,11 @@ export default async function DashboardPage() {
           {regionGrowth.length ? (
             <div className="flex flex-wrap gap-2.5">
               {regionGrowth.map((r) => (
-                <span key={r.region} className="region-chip">
+                <span
+                  key={r.region}
+                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
+                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
+                >
                   <span className="swatch" style={{ background: r.color }} />
                   {r.region} {r.pct}%
                 </span>
@@ -311,7 +321,13 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
           icon={<IconCheckCircle className="h-4 w-4" />}
           label="Pending Review"
           value={String(pendingCount)}
-          footer={pendingCount ? `Oldest is ${oldestPendingDays}d old` : 'Nothing waiting on you'}
+          footer={
+            pendingCount
+              ? oldestPendingDays >= PENDING_REVIEW_STALE_DAYS
+                ? `Oldest is ${oldestPendingDays}d old`
+                : 'All recently recorded'
+              : 'Nothing waiting on you'
+          }
           href="/records?status=pending"
         />
         <KpiCard
@@ -354,7 +370,11 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
           {regionGrowth.length ? (
             <div className="flex flex-wrap gap-2.5">
               {regionGrowth.map((r) => (
-                <span key={r.region} className="region-chip">
+                <span
+                  key={r.region}
+                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
+                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
+                >
                   <span className="swatch" style={{ background: r.color }} />
                   {r.region} {r.pct}%
                 </span>
@@ -442,7 +462,13 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
           icon={<IconTruck className="h-4 w-4" />}
           label="Pending Deliveries"
           value={String(pendingDeliveryCount ?? 0)}
-          footer={pendingDeliveryCount ? `Oldest is ${oldestDeliveryDays}d old` : 'Nothing waiting on you'}
+          footer={
+            pendingDeliveryCount
+              ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
+                ? `Oldest is ${oldestDeliveryDays}d old`
+                : 'All recently queued'
+              : 'Nothing waiting on you'
+          }
           href="/delivery"
         />
         <KpiCard
@@ -485,7 +511,11 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
           {regionGrowth.length ? (
             <div className="flex flex-wrap gap-2.5">
               {regionGrowth.map((r) => (
-                <span key={r.region} className="region-chip">
+                <span
+                  key={r.region}
+                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
+                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
+                >
                   <span className="swatch" style={{ background: r.color }} />
                   {r.region} {r.pct}%
                 </span>

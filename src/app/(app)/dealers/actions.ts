@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
+import { normalizeRegion } from '@/lib/regions'
+import { sanitizeSearchTerm } from '@/lib/search'
 
 function assertCanManage(role: string) {
   if (role !== 'cs' && role !== 'master') {
@@ -55,6 +57,27 @@ export async function updateDealer(formData: FormData) {
   }
 
   const supabase = await createClient()
+
+  // Defense in depth — the Edit form already checks and asks the user to
+  // confirm client-side, but that's only a UX nicety; this is the real
+  // backstop, same pattern createDealer already uses for onboarding.
+  const confirmedDuplicate = String(formData.get('confirm_duplicate') ?? '') === 'true'
+  if (!confirmedDuplicate) {
+    const safeCompanyName = sanitizeSearchTerm(companyName)
+    const { data: existing } = await supabase
+      .from('dealers_directory')
+      .select('company_name')
+      .ilike('company_name', safeCompanyName)
+      .neq('id', id)
+      .maybeSingle()
+    if (existing) {
+      redirect(
+        `/dealers/${id}?error=` +
+          encodeURIComponent(`A dealer named "${existing.company_name}" already exists — save again to confirm this rename is intentional.`)
+      )
+    }
+  }
+
   const { error } = await supabase.rpc('update_dealer_profile', {
     p_dealer_id: id,
     p_company_name: companyName,
@@ -63,7 +86,8 @@ export async function updateDealer(formData: FormData) {
     p_phone: String(formData.get('phone') ?? '').trim() || null,
     p_email: String(formData.get('email') ?? '').trim() || null,
     p_address: String(formData.get('address') ?? '').trim() || null,
-    p_region: String(formData.get('region') ?? '').trim() || null,
+    p_region: normalizeRegion(formData.get('region') as string | null),
+    p_notes: String(formData.get('notes') ?? '').trim() || null,
   })
 
   if (error) {
@@ -187,6 +211,7 @@ export async function importDealers(formData: FormData) {
     email: string | null
     region: string | null
     address: string | null
+    notes: string | null
     package: PackageCode | null
     rate: number | null
     status: 'active' | 'inactive'
@@ -218,8 +243,9 @@ export async function importDealers(formData: FormData) {
       contact_person: col(r, 'contact_person') || null,
       phone: col(r, 'phone') || null,
       email: col(r, 'email') || null,
-      region: col(r, 'region') || null,
+      region: normalizeRegion(col(r, 'region')),
       address: col(r, 'address') || null,
+      notes: col(r, 'notes') || null,
       package: pkg,
       rate: pkg ? PACKAGES[pkg].rate : null,
       status: col(r, 'status').toLowerCase() === 'inactive' ? 'inactive' : 'active',

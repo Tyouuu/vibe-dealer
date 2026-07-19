@@ -1,12 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Role } from '@/lib/auth/dal'
 
 export type NotificationCategory = 'pending_review' | 'deliveries' | 'credit_reconciliation' | 'dealer_activity'
 
-export const NOTIFICATION_CATEGORIES: { key: NotificationCategory; label: string; description: string }[] = [
-  { key: 'pending_review', label: 'Pending review', description: 'Transactions waiting on you' },
-  { key: 'deliveries', label: 'Deliveries', description: 'SIM delivery queue' },
-  { key: 'credit_reconciliation', label: 'Credit & reconciliation', description: 'Low balance, unreconciled statements' },
-  { key: 'dealer_activity', label: 'Dealer activity', description: 'Needs-follow-up alerts for quiet dealers' },
+// roles mirrors the exact gates notifications/build.ts uses to generate each
+// category (isFinance/isOps/everyone) — kept alongside the label/description
+// here, not duplicated, so the toggle shown to a role and the notifications
+// that role can actually receive can't drift apart. Previously every role
+// saw all 4 toggles regardless of relevance — a cs account had working-
+// looking switches for "Pending review"/"Credit & reconciliation" that were
+// permanent no-ops.
+export const NOTIFICATION_CATEGORIES: { key: NotificationCategory; label: string; description: string; roles: Role[] }[] = [
+  { key: 'pending_review', label: 'Pending review', description: 'Transactions waiting on you', roles: ['master', 'accountant'] },
+  { key: 'deliveries', label: 'Deliveries', description: 'SIM delivery queue', roles: ['master', 'cs'] },
+  { key: 'credit_reconciliation', label: 'Credit & reconciliation', description: 'Low balance, unreconciled statements', roles: ['master', 'accountant'] },
+  { key: 'dealer_activity', label: 'Dealer activity', description: 'Needs-follow-up alerts for quiet dealers', roles: ['master', 'accountant', 'cs'] },
 ]
 
 export type NotificationPrefs = {

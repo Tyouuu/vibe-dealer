@@ -74,8 +74,10 @@ export async function markReconciled(formData: FormData) {
   // Recomputed server-side from a fresh read rather than trusting a diff the
   // client sends — the whole point of this check is to stop a month closing
   // while the numbers disagree, so it can't itself trust client-supplied numbers.
+  // Rounded before comparing — see reconcile/page.tsx for why an honestly-
+  // reconciled month could otherwise land on a nonzero floating-point dust value.
   const systemPoints = (verifiedTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
-  const diff = systemPoints - Number(existing.company_total_points)
+  const diff = Math.round((systemPoints - Number(existing.company_total_points)) * 100) / 100
 
   if (diff !== 0 && !overrideReason) {
     fail(

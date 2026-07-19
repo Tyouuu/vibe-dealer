@@ -106,6 +106,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
     rows = rows.filter((r) => r.isInactive)
   }
 
+  // The header pill below shows `count` (the DB's pre-filter total) for
+  // 'all'/'region', but the inactive view filters client-side afterward —
+  // showing the same `count` there would visibly contradict the table
+  // sitting right below it (and the "Needs Follow-up" KPI card that links here).
+  const displayCount = view === 'inactive' ? rows.length : (count ?? 0)
+
   function viewHref(v: View) {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
@@ -139,7 +145,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       {importError && <div className="alert alert-bad">{importError}</div>}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dealers</h1>
-        <span className="pill pill-neutral">{count ?? 0} dealers</span>
+        <span className="pill pill-neutral">{displayCount} dealers</span>
       </div>
 
       <div className="mb-4 segmented" role="group" aria-label="Saved views">

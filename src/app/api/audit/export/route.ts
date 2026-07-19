@@ -1,29 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getAuditEvents, filterAuditEvents, type AuditEvent, type AuditKind } from '@/lib/audit-events'
+import { getFilteredAuditEvents, type AuditKind } from '@/lib/audit-events'
 import { csvCell } from '@/lib/csv'
 
 // The Audit Log page only ever shows one page (75 merged events) at a time —
 // export is the one place that's supposed to answer "the complete record",
-// so it pages through getAuditEvents itself rather than reusing the UI's
-// single-page fetch, up to a generous cap with an honest truncation notice
-// if even that isn't enough (same pattern as /api/records/export).
+// so it scans much deeper (up to EXPORT_SCAN_CAP raw events, not just
+// AUDIT_PAGE_SIZE's default) looking for up to EXPORT_CAP matches, with an
+// honest truncation notice if even that isn't enough (same pattern as
+// /api/records/export). Filtering happens as part of the same scan (see
+// getFilteredAuditEvents) rather than after a flat unfiltered fetch — a flat
+// cap-then-filter approach means narrowing the filters can't ever reach
+// further back, which made the "narrow your filters and export again"
+// message below actively wrong for a filter matching something older than
+// the raw cap.
 const EXPORT_CAP = 5000
-
-async function getAllAuditEventsForExport(supabase: SupabaseClient): Promise<{ events: AuditEvent[]; truncated: boolean }> {
-  const events: AuditEvent[] = []
-  let before: string | undefined
-  for (;;) {
-    const page = await getAuditEvents(supabase, { before })
-    events.push(...page.events)
-    if (!page.hasMore || events.length >= EXPORT_CAP) {
-      return { events: events.slice(0, EXPORT_CAP), truncated: page.hasMore && events.length >= EXPORT_CAP }
-    }
-    before = page.nextCursor ?? undefined
-  }
-}
+const EXPORT_SCAN_CAP = 50000
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -39,8 +32,11 @@ export async function GET(request: NextRequest) {
   const view: 'all' | AuditKind = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
 
   const supabase = await createClient()
-  const { events: allEvents, truncated } = await getAllAuditEventsForExport(supabase)
-  const events = filterAuditEvents(allEvents, { q, kind: view, actor, month })
+  const { events, hasMore: truncated } = await getFilteredAuditEvents(
+    supabase,
+    { q, kind: view, actor, month },
+    { pageSize: EXPORT_CAP, scanCap: EXPORT_SCAN_CAP }
+  )
 
   const columns = ['Time', 'Actor', 'Event', 'Dealer', 'Amount', 'Status'] as const
   const lines = [columns.map(csvCell).join(',')]

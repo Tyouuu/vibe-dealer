@@ -24,6 +24,7 @@ type Dealer = {
   email: string | null
   address: string | null
   region: string | null
+  notes: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
   status: 'active' | 'inactive'
@@ -194,8 +195,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
       isFinance
-        ? 'id, company_name, company_no, contact_person, phone, email, address, region, package, rate, status, onboarded_by, created_at'
-        : 'id, company_name, company_no, contact_person, phone, email, address, region, package, status, onboarded_by, created_at'
+        ? 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, rate, status, onboarded_by, created_at'
+        : 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, status, onboarded_by, created_at'
     )
     .eq('id', id)
     .single()
@@ -238,10 +239,12 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
     const { data: rateHistoryData } = await supabase
       .from('dealer_rate_history')
+      // No .limit() — same reasoning as the transactions query above: this
+      // table exists specifically as an audit trail, so silently dropping
+      // older rows for a long-lived dealer would defeat its own purpose.
       .select('id, old_package, old_rate, new_package, new_rate, changed_by, created_at')
       .eq('dealer_id', id)
       .order('created_at', { ascending: false })
-      .limit(20)
     rateHistoryRows = (rateHistoryData as RateHistoryRow[] | null) ?? []
 
     // changed_by is a bare uuid column with no FK to profiles (same reason as
@@ -305,6 +308,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   email: typedDealer.email,
                   address: typedDealer.address,
                   region: typedDealer.region,
+                  notes: typedDealer.notes,
                 }}
               />
             )}
@@ -524,6 +528,13 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               <RailField label="Onboarded On" value={typedDealer.created_at ? formatDateTime(typedDealer.created_at) : '—'} last />
             </div>
           </div>
+
+          {typedDealer.notes && (
+            <div className="app-card">
+              <h3 className="mb-1.5 text-sm font-bold text-paper">Notes</h3>
+              <p className="whitespace-pre-wrap text-[12.5px] text-paper-dim">{typedDealer.notes}</p>
+            </div>
+          )}
 
           {isFinance ? (
             (() => {

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { getNotificationPrefs } from '@/lib/notifications/preferences'
+import { getNotificationPrefs, NOTIFICATION_CATEGORIES } from '@/lib/notifications/preferences'
 import { parseUserAgent } from '@/lib/auth/login-events'
 import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
@@ -57,11 +57,16 @@ export default async function AccountPage() {
     when: formatSignInTime(r.created_at),
   }))
   const latest = loginRows?.[0]
+  // login_events has no session identifier, so this is "the most recent
+  // sign-in on record for this user" — not necessarily the device viewing
+  // this page right now (the app supports concurrent multi-device sessions,
+  // so an older-but-still-valid session opening Account Settings would see
+  // someone else's device/time here). Labeled accordingly below rather than
+  // as "This device".
   const currentDevice = latest ? parseUserAgent(latest.user_agent) : 'This browser'
   const since = latest ? formatSignInTime(latest.created_at) : null
-  // history[0] IS the current session's own sign-in row, already surfaced as
-  // "This device" above — drop it from the list below so it isn't shown twice.
   const pastHistory = history.slice(1)
+  const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -73,17 +78,17 @@ export default async function AccountPage() {
           <div>
             <span className="field-label">Name</span>
             <div className="field-disabled">{user.name ?? '—'}</div>
-            <AdminManagedNote />
+            {user.role !== 'master' && <AdminManagedNote />}
           </div>
           <div>
             <span className="field-label">Email</span>
             <div className="field-disabled">{user.email ?? '—'}</div>
-            <AdminManagedNote />
+            {user.role !== 'master' && <AdminManagedNote />}
           </div>
           <div>
             <span className="field-label">Role</span>
             <div className="field-disabled">{ROLE_LABEL[user.role]}</div>
-            <AdminManagedNote />
+            {user.role !== 'master' && <AdminManagedNote />}
           </div>
         </div>
         {user.role === 'master' && (
@@ -95,7 +100,7 @@ export default async function AccountPage() {
 
       <section>
         <h2 className="mb-4 text-[15px] font-extrabold text-paper">Notifications</h2>
-        <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} />
+        <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
       </section>
 
       <section>

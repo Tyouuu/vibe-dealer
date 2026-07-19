@@ -9,9 +9,8 @@
 -- accountant/master (0004), so cs needs a narrow function rather than a
 -- direct .update() call.
 --
--- Deliberately excludes company_no as a "you'll never need to fix this"
--- omission and package/rate as a "goes through its own audited history"
--- omission — this is profile/contact fields only.
+-- Deliberately excludes package/rate — those go through their own audited
+-- change history (dealer_rate_history) rather than a plain overwrite.
 create or replace function update_dealer_profile(
   p_dealer_id uuid,
   p_company_name text,

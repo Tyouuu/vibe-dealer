@@ -77,7 +77,12 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient()
 
   const [{ data: masters }, summary] = await Promise.all([
-    supabase.from('profiles').select('id, email, report_sender_name').eq('role', 'master'),
+    // Ordered — with 2+ masters, whichever row Postgres happened to return
+    // first silently won the "from" name on the shared email before this,
+    // with no ordering guarantee (so not even stable day to day). Oldest
+    // master account wins now — deterministic, if still somewhat arbitrary
+    // with multiple masters.
+    supabase.from('profiles').select('id, email, report_sender_name').eq('role', 'master').order('created_at'),
     getYesterdaySummary(supabase),
   ])
 

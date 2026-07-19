@@ -11,7 +11,16 @@ function formatLabel(value: string): string {
   return `${MONTHS[m - 1]} ${y}`
 }
 
-function currentYearMonth(): [number, number] {
+// today is "YYYY-MM", same shape MonthPicker's own value already uses —
+// callers pass todayInMalaysia().slice(0, 7) from the server. Falls back to
+// the browser's own clock/timezone only if a caller doesn't pass one, which
+// would disagree with every server-computed "today" in the app for a user
+// whose device isn't on Malaysia time.
+function currentYearMonth(today?: string): [number, number] {
+  if (today) {
+    const [y, m] = today.split('-').map(Number)
+    return [y, m - 1]
+  }
   const now = new Date()
   return [now.getFullYear(), now.getMonth()]
 }
@@ -24,15 +33,17 @@ export function MonthPicker({
   defaultValue,
   placeholder = 'Select a month…',
   allowClear = false,
+  today,
 }: {
   name: string
   defaultValue?: string
   placeholder?: string
   allowClear?: boolean
+  today?: string
 }) {
   const [value, setValue] = useState(defaultValue ?? '')
   const [open, setOpen] = useState(false)
-  const [viewYear, setViewYear] = useState(() => (defaultValue ? Number(defaultValue.split('-')[0]) : currentYearMonth()[0]))
+  const [viewYear, setViewYear] = useState(() => (defaultValue ? Number(defaultValue.split('-')[0]) : currentYearMonth(today)[0]))
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,7 +54,7 @@ export function MonthPicker({
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
-  const [todayY, todayM] = currentYearMonth()
+  const [todayY, todayM] = currentYearMonth(today)
   const selY = value ? Number(value.split('-')[0]) : null
   const selM = value ? Number(value.split('-')[1]) - 1 : null
 

@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
+import type { NotificationCategory } from '@/lib/notifications/preferences'
 import { setNotificationsMasterEnabled, setNotificationCategoryEnabled } from './actions'
 
 export function NotificationPrefsForm({
   masterEnabled: initialMasterEnabled,
   categories: initialCategories,
+  visibleCategories,
 }: {
   masterEnabled: boolean
   categories: Record<NotificationCategory, boolean>
+  visibleCategories: { key: NotificationCategory; label: string; description: string }[]
 }) {
   const [masterEnabled, setMasterEnabled] = useState(initialMasterEnabled)
   const [categories, setCategories] = useState(initialCategories)
@@ -40,7 +42,7 @@ export function NotificationPrefsForm({
 
       <div className={masterEnabled ? '' : 'pointer-events-none opacity-40'}>
         <div className="flex flex-col divide-y divide-ink-800 rounded-lg border border-ink-800">
-          {NOTIFICATION_CATEGORIES.map((c) => (
+          {visibleCategories.map((c) => (
             <label key={c.key} className="flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5">
               <span>
                 <span className="block text-[13px] font-semibold text-paper">{c.label}</span>

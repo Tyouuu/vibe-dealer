@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { REGIONS } from '@/lib/regions'
 import { updateDealer } from '../actions'
+import { checkDuplicateDealer } from '../../onboard/actions'
 
 type DealerFields = {
   id: string
@@ -12,10 +14,14 @@ type DealerFields = {
   email: string | null
   address: string | null
   region: string | null
+  notes: string | null
 }
 
 export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
   const [open, setOpen] = useState(false)
+  const [duplicate, setDuplicate] = useState<{ id: string; company_name: string } | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,6 +32,33 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+
+    // Onboarding has always guarded against creating a same-name dealer —
+    // renaming one via Edit had no equivalent check, so a typo could quietly
+    // collide with an existing dealer. excludeId so a save that doesn't
+    // change the name (matching itself) doesn't false-positive.
+    if (!duplicate) {
+      const newName = String(formData.get('company_name') ?? '')
+      if (newName.trim().toLowerCase() !== dealer.company_name.trim().toLowerCase()) {
+        setChecking(true)
+        const existing = await checkDuplicateDealer(newName, dealer.id)
+        setChecking(false)
+        if (existing) {
+          setDuplicate(existing)
+          return
+        }
+      }
+    } else {
+      formData.set('confirm_duplicate', 'true')
+    }
+
+    setSubmitting(true)
+    await updateDealer(formData)
+  }
+
   return (
     <div className="relative inline-block" ref={ref}>
       <button type="button" className="btn-ghost py-1.5 text-xs" onClick={() => setOpen((o) => !o)}>
@@ -34,14 +67,25 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
       {open && (
         <div className="dropdown-panel w-[420px] max-w-[90vw] p-4">
           <p className="mb-3 text-xs font-semibold text-paper">Edit dealer info</p>
-          <form action={updateDealer} className="flex flex-col gap-3">
+          {duplicate && (
+            <div className="alert alert-bad mb-3">
+              A dealer named &quot;{duplicate.company_name}&quot; already exists. Save again to confirm this rename is intentional.
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input type="hidden" name="id" value={dealer.id} />
             <div className="form-grid">
               <div>
                 <label className="field-label">
                   Company Name<span className="req"> *</span>
                 </label>
-                <input name="company_name" defaultValue={dealer.company_name} required className="field-input" />
+                <input
+                  name="company_name"
+                  defaultValue={dealer.company_name}
+                  required
+                  className="field-input"
+                  onChange={() => setDuplicate(null)}
+                />
               </div>
               <div>
                 <label className="field-label">Company No. (SSM)</label>
@@ -65,12 +109,21 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
               </div>
               <div>
                 <label className="field-label">Region</label>
-                <input name="region" defaultValue={dealer.region ?? ''} className="field-input" />
+                <input list="edit-dealer-regions" name="region" defaultValue={dealer.region ?? ''} className="field-input" />
+                <datalist id="edit-dealer-regions">
+                  {REGIONS.map((r) => (
+                    <option key={r} value={r} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="field-label">Notes</label>
+                <textarea name="notes" defaultValue={dealer.notes ?? ''} rows={2} className="field-input resize-none" />
               </div>
             </div>
             <div className="mt-1 flex items-center gap-1.5">
-              <button type="submit" className="btn-primary flex-1">
-                Save Changes
+              <button type="submit" disabled={checking || submitting} className="btn-primary flex-1">
+                {checking ? 'Checking…' : duplicate ? 'Yes, Save Anyway' : 'Save Changes'}
               </button>
               <button type="button" onClick={() => setOpen(false)} className="btn-ghost">
                 Cancel

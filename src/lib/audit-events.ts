@@ -218,6 +218,58 @@ export type AuditFilters = {
   month?: string
 }
 
+// Safety net on how much raw history one request will scan looking for
+// matches — without it, a filter that matches nothing (or matches something
+// far in the past) would walk the entire audit history on every page load.
+const FILTER_SCAN_CAP = 2000
+
+// The page itself used to call getAuditEvents once and filter only that one
+// 75-event page — so a search/actor/month filter with no matches in the
+// most recent 75 events showed "no results" even when real matches existed
+// further back, while /api/audit/export's identical-looking filters (which
+// walk full history) correctly found them. This walks back through history
+// the same way export does, just capped tighter for an interactive request,
+// so the page and its own export agree on what a given filter matches.
+// pageSize/scanCap are overridable so /api/audit/export can reuse this same
+// scan-and-filter loop with export-sized limits (more results, much deeper
+// scan) instead of duplicating it — previously export scanned a flat 5000
+// *raw* events and filtered afterward, so a filter matching something older
+// than that window silently found nothing, and its own truncation notice
+// ("narrow your filters and export again") couldn't actually help — narrowing
+// doesn't reach further back when the raw scan itself is what's capped.
+export async function getFilteredAuditEvents(
+  supabase: SupabaseClient,
+  filters: AuditFilters,
+  opts: { before?: string; pageSize?: number; scanCap?: number } = {}
+): Promise<AuditPage> {
+  const pageSize = opts.pageSize ?? AUDIT_PAGE_SIZE
+  const scanCap = opts.scanCap ?? FILTER_SCAN_CAP
+  const matched: AuditEvent[] = []
+  let before = opts.before
+  let scanned = 0
+  let lastHasMore = false
+  let lastCursor: string | null = null
+
+  for (;;) {
+    const rawPage = await getAuditEvents(supabase, { before })
+    scanned += rawPage.events.length
+    matched.push(...filterAuditEvents(rawPage.events, filters))
+    lastHasMore = rawPage.hasMore
+    lastCursor = rawPage.nextCursor
+
+    if (matched.length >= pageSize || !rawPage.hasMore || scanned >= scanCap) break
+    before = rawPage.nextCursor ?? undefined
+  }
+
+  const page = matched.slice(0, pageSize)
+  const moreMatchedThanShown = matched.length > pageSize
+  return {
+    events: page,
+    hasMore: moreMatchedThanShown || lastHasMore,
+    nextCursor: moreMatchedThanShown ? page[page.length - 1].createdAt : lastCursor,
+  }
+}
+
 export function filterAuditEvents(events: AuditEvent[], filters: AuditFilters): AuditEvent[] {
   return events.filter((e) => {
     if (filters.kind && filters.kind !== 'all' && e.kind !== filters.kind) return false

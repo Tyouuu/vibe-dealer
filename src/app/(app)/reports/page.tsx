@@ -51,7 +51,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       .lte('tx_date', end),
     supabase
       .from('transactions')
-      .select('points, money_rm, commission_rm')
+      .select('dealer_id, points, money_rm, commission_rm')
       .eq('status', 'verified')
       .gte('tx_date', prevStart)
       .lte('tx_date', prevEnd),
@@ -92,6 +92,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const prevTotalPoints = (prevRows ?? []).reduce((s, t) => s + Number(t.points), 0)
   const prevTotalCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
   const prevTxCount = prevRows?.length ?? 0
+  const prevActiveDealers = new Set((prevRows ?? []).map((t) => t.dealer_id)).size
 
   return (
     <div className="flex flex-col gap-5">
@@ -104,7 +105,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
           <form className="flex items-center gap-3" action="/reports" method="GET">
             <div className="w-44">
-              <MonthPicker name="month" defaultValue={month} />
+              <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
             </div>
             <button type="submit" className="btn-primary">
               View
@@ -138,7 +139,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           <div className="p-4 sm:p-5">
             <div className="text-[13px] font-semibold text-paper-dim">Active Dealers</div>
             <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
-            <div className="mt-1 text-[11px] font-semibold text-paper-dim">vs {formatMonthLabel(prevMonth)}</div>
+            <Delta current={breakdown.length} prior={prevActiveDealers} />
           </div>
         </div>
       </div>

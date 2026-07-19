@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange } from '@/lib/month'
+import { monthRange, todayInMalaysia } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
-import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
+import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { VerifyButton } from './verify-button'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
@@ -66,33 +66,22 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   }
 
   const supabase = await createClient()
-  let query = supabase
-    .from('transactions')
-    .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
-      { count: 'exact' }
-    )
-    .order('tx_date', { ascending: sortAscending })
-    .order('created_at', { ascending: sortAscending })
-    .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1)
-
-  if (status !== 'all') {
-    query = query.eq('status', status)
-  }
-
-  if (month) {
-    const { start, end } = monthRange(month)
-    query = query.gte('tx_date', start).lte('tx_date', end)
-  }
 
   let dealerFilterName: string | null = null
   if (dealerId) {
     const { data: d } = await supabase.from('dealers').select('company_name').eq('id', dealerId).maybeSingle()
     dealerFilterName = d?.company_name ?? null
-    query = query.eq('dealer_id', dealerId)
   }
 
+  // Resolved once, up front, so both the main page query and the 3 status-
+  // breakdown count queries below apply the exact same month/dealer/search
+  // scope without re-querying dealers 3 extra times or risking the two
+  // drifting apart. Plain values (a date range + an .or() string), not a
+  // shared query-builder function — Supabase's builder type doesn't narrow
+  // cleanly through a generic helper without reaching for `any`.
+  const monthWindow = month ? monthRange(month) : null
   const safeQ = sanitizeSearchTerm(q)
+  let searchOrFilter: string | null = null
   if (safeQ) {
     // Matches dealer name (resolved to ids first, since it's a joined table)
     // OR the transaction's own note/flag_reason text — previously name-only,
@@ -103,14 +92,45 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     const dealerIds = (matchingDealers ?? []).map((d) => d.id)
     const orParts = [`note.ilike.%${safeQ}%`, `flag_reason.ilike.%${safeQ}%`]
     if (dealerIds.length) orParts.push(`dealer_id.in.(${dealerIds.join(',')})`)
-    query = query.or(orParts.join(','))
+    searchOrFilter = orParts.join(',')
   }
 
-  const { data: rows, count } = await query
+  let query = supabase
+    .from('transactions')
+    .select(
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
+      { count: 'exact' }
+    )
+  if (monthWindow) query = query.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
+  if (dealerId) query = query.eq('dealer_id', dealerId)
+  if (searchOrFilter) query = query.or(searchOrFilter)
+  if (status !== 'all') query = query.eq('status', status)
+  const pagedQuery = query
+    .order('tx_date', { ascending: sortAscending })
+    .order('created_at', { ascending: sortAscending })
+    .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1)
+
+  // True counts across every matching row (month/dealer/search — not the
+  // status dropdown, and not just the current page) — previously computed
+  // via pageRows.filter(), which silently became "counts on this page only"
+  // once real pagination replaced the old flat 200-row cap. "Your 2% on
+  // this page" below is the only figure that's *meant* to be page-scoped,
+  // and already says so.
+  function statusCountQuery(statusValue: 'pending' | 'verified' | 'flagged') {
+    let q = supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', statusValue)
+    if (monthWindow) q = q.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
+    if (dealerId) q = q.eq('dealer_id', dealerId)
+    if (searchOrFilter) q = q.or(searchOrFilter)
+    return q
+  }
+
+  const [{ data: rows, count }, { count: pendingCount }, { count: verifiedCount }, { count: flaggedCount }] = await Promise.all([
+    pagedQuery,
+    statusCountQuery('pending'),
+    statusCountQuery('verified'),
+    statusCountQuery('flagged'),
+  ])
   const pageRows = (rows as unknown as TxRow[] | null) ?? []
-  const pendingCount = pageRows.filter((r) => r.status === 'pending').length
-  const verifiedCount = pageRows.filter((r) => r.status === 'verified').length
-  const flaggedCount = pageRows.filter((r) => r.status === 'flagged').length
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
   const totalCount = count ?? 0
@@ -202,7 +222,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             />
           </div>
           <div className="w-44">
-            <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear />
+            <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
           </div>
           {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
           <input type="hidden" name="sort" value={sort} />
@@ -237,15 +257,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       <div className="txn-summary">
         <span className="txn-summary-item">
           <span className="status-dot" style={{ background: 'var(--color-brass-bright)' }} />
-          Pending <b>{pendingCount}</b>
+          Pending <b>{pendingCount ?? 0}</b>
         </span>
         <span className="txn-summary-item">
           <span className="status-dot" style={{ background: 'var(--color-jade-bright)' }} />
-          Verified <b>{verifiedCount}</b>
+          Verified <b>{verifiedCount ?? 0}</b>
         </span>
         <span className="txn-summary-item">
           <span className="status-dot" style={{ background: 'var(--color-clay-bright)' }} />
-          Flagged <b>{flaggedCount}</b>
+          Flagged <b>{flaggedCount ?? 0}</b>
         </span>
         <span className="txn-summary-item accent">
           Your 2% on this page <b>RM {pageCommission.toLocaleString()}</b>
@@ -275,7 +295,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               const dealerPackage = dealerRel?.package ?? null
               const statusColor =
                 tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
-              const statusLabel = tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'
+              const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
+              const pendingStale = tx.status === 'pending' && pendingDays >= PENDING_REVIEW_STALE_DAYS
+              const statusLabel =
+                tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : pendingStale ? `Pending·${pendingDays}d` : 'Pending'
               const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
               const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
               return (

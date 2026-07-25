@@ -174,6 +174,34 @@ export function IconLock({ className = th }: IconProps) {
   )
 }
 
+export function IconMail({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" />
+      <path d="m3 5.5 7 5.5 7-5.5" />
+    </svg>
+  )
+}
+
+export function IconEye({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" />
+      <circle cx="10" cy="10" r="2.25" />
+    </svg>
+  )
+}
+
+export function IconEyeOff({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2.5 2.5l15 15" />
+      <path d="M8.3 4.2A8.4 8.4 0 0 1 10 4c5.5 0 8.5 6 8.5 6a14.5 14.5 0 0 1-3.15 3.9M5.2 5.7C3 7.2 1.5 10 1.5 10s3 6 8.5 6a8 8 0 0 0 2.75-.5" />
+      <path d="M8.1 8.1a2.25 2.25 0 0 0 3.18 3.18" />
+    </svg>
+  )
+}
+
 export function IconPaperclip({ className = th }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>

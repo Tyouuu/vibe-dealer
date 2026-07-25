@@ -4,12 +4,11 @@ import { useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { LogoutButton } from './logout-button'
 import { setPreviewRole } from './preview-role-actions'
-import type { Notification } from './types'
+import { ROLE_LABEL, type Notification } from './types'
 import type { Role } from '@/lib/auth/dal'
 
 type NavItem = { href: string; label: string }
 
-const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
 // Below md: the rail nav, search trigger, and topbar icon menus don't fit a

@@ -3,16 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { buildNotifications } from '@/lib/notifications/build'
 import { RailNav, type RailItem } from './rail-nav'
-import type { Notification } from './types'
+import { ROLE_LABEL, type Notification } from './types'
 import { MobileNav } from './mobile-nav'
 import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
-
-const ROLE_LABEL = {
-  master: 'Master',
-  accountant: 'Accountant',
-  cs: 'CS',
-} as const
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },

@@ -216,11 +216,11 @@ body {
   }
 
   .btn-jade {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-jade/12 px-3 py-1.5 text-xs font-bold text-jade-bright transition-all duration-150 ease-out hover:bg-jade/20 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-jade/12 px-3 py-1.5 text-xs font-bold text-jade-bright transition-all duration-150 ease-out hover:bg-jade/20 active:scale-[0.97] disabled:opacity-40;
   }
 
   .btn-clay {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-clay/12 px-3 py-1.5 text-xs font-bold text-clay-bright transition-all duration-150 ease-out hover:bg-clay/20 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-clay/12 px-3 py-1.5 text-xs font-bold text-clay-bright transition-all duration-150 ease-out hover:bg-clay/20 active:scale-[0.97] disabled:opacity-40;
   }
 
   .pill {

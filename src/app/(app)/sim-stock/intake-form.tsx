@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { recordSimIntake } from './actions'
 import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 
 export function IntakeForm() {
   const [simType, setSimType] = useState<SimStockType>('physical')
+  const [pending, startTransition] = useTransition()
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    startTransition(() => {
+      recordSimIntake(formData)
+    })
+  }
 
   return (
-    <form action={recordSimIntake} className="flex flex-col gap-3.5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
       <div>
         <label className="field-label">SIM Type</label>
         <input type="hidden" name="sim_type" value={simType} />
@@ -36,8 +45,8 @@ export function IntakeForm() {
         <label className="field-label">Note (optional)</label>
         <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
       </div>
-      <button type="submit" className="btn-primary w-full">
-        Save Intake
+      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60">
+        {pending ? 'Saving…' : 'Save Intake'}
       </button>
     </form>
   )

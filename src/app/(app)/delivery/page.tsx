@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { IconInfo, IconTruck } from '../icons'
@@ -31,7 +33,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
   const showAll = all === '1'
 
   if (user.role !== 'cs' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view SIM delivery.</div>
+    return <PermissionDenied role={user.role} action="view SIM delivery" />
   }
 
   const supabase = await createClient()
@@ -71,12 +73,12 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
         <h1 className="text-[26px] font-extrabold tracking-tight text-paper">SIM Delivery</h1>
         <div className="flex items-center gap-3">
           <div className="segmented">
-            <a href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
+            <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
               Show pending only
-            </a>
-            <a href="/delivery?all=1" className={`segmented-btn ${showAll ? 'active' : ''}`}>
+            </Link>
+            <Link href="/delivery?all=1" className={`segmented-btn ${showAll ? 'active' : ''}`}>
               Show all
-            </a>
+            </Link>
           </div>
           <span className="pill pill-neutral">{typed.length} items</span>
         </div>

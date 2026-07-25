@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { MonthPicker } from '../month-picker'
@@ -34,7 +35,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const { month = currentMonth() } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view monthly reports.</div>
+    return <PermissionDenied role={user.role} action="view monthly reports" />
   }
 
   const { start, end } = monthRange(month)

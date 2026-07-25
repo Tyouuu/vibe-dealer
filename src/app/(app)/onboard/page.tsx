@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { OnboardForm } from './onboard-form'
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export default async function OnboardPage({ searchParams }: PageProps) {
   const { error } = await searchParams
 
   if (user.role !== 'cs' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to onboard dealers.</div>
+    return <PermissionDenied role={user.role} action="onboard dealers" />
   }
 
   return <OnboardForm initialError={error} />

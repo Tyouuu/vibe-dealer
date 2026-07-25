@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, todayInMalaysia } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
@@ -64,7 +65,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view transactions.</div>
+    return <PermissionDenied role={user.role} action="view transactions" />
   }
 
   const supabase = await createClient()

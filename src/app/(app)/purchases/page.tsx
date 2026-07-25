@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { COMMISSION_RATE } from '@/lib/packages'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
@@ -27,7 +28,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   const { error, saved } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view credit purchases.</div>
+    return <PermissionDenied role={user.role} action="view credit purchases" />
   }
 
   const supabase = await createClient()

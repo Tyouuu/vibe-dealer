@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { getFilteredAuditEvents, groupByDay, formatEventTime, type AuditKind } from '@/lib/audit-events'
 import { todayInMalaysia } from '@/lib/month'
@@ -31,7 +32,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const user = await requireUser()
 
   if (user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view the audit log.</div>
+    return <PermissionDenied role={user.role} action="view the audit log" />
   }
 
   const { q = '', view: rawView = 'all', actor = 'all', month = '', before } = await searchParams

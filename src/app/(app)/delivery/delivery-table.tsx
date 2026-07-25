@@ -63,6 +63,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                 <th className="th w-8">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 accent-primary"
                     checked={pendingRows.every((r) => selected.has(r.id))}
                     onChange={toggleAll}
                     aria-label="Select all pending"
@@ -86,6 +87,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                     {row.delivery_status === 'pending' && (
                       <input
                         type="checkbox"
+                        className="h-4 w-4 accent-primary"
                         checked={selected.has(row.id)}
                         onChange={() => toggle(row.id)}
                         aria-label={`Select ${row.company_name}`}

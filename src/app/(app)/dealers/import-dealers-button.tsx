@@ -1,13 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { importDealers } from './actions'
 
 export function ImportDealersButton() {
   const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [])
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    startTransition(() => {
+      importDealers(formData)
+    })
+  }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button type="button" className="btn-ghost" onClick={() => setOpen((o) => !o)}>
         ⇧ Import
       </button>
@@ -18,10 +36,10 @@ export function ImportDealersButton() {
             region, address, package, status. Export the current list first to see the exact format. Duplicate company
             names are skipped.
           </p>
-          <form action={importDealers} className="flex flex-col gap-2">
-            <input type="file" name="file" accept=".csv,text/csv" required className="field-input" />
-            <button type="submit" className="btn-primary">
-              Upload &amp; Import
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+            <input type="file" name="file" accept=".csv,text/csv" required disabled={pending} className="field-input" />
+            <button type="submit" disabled={pending} className="btn-primary disabled:opacity-60">
+              {pending ? 'Importing…' : 'Upload & Import'}
             </button>
           </form>
         </div>

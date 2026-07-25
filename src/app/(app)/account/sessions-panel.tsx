@@ -25,7 +25,7 @@ export function SessionsPanel({ currentDevice, since, history }: { currentDevice
             {since ? ` · since ${since}` : ''}
           </div>
         </div>
-        <button onClick={handleSignOutOthers} disabled={pending} className="text-xs font-bold text-clay-bright hover:underline disabled:opacity-50">
+        <button onClick={handleSignOutOthers} disabled={pending} className="btn-clay shrink-0">
           {pending ? 'Signing out…' : 'Sign out of all other sessions'}
         </button>
       </div>

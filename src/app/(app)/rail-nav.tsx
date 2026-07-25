@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
 import { setPreviewRole } from './preview-role-actions'
-import type { Notification } from './types'
+import { ROLE_LABEL, type Notification } from './types'
 import type { Role } from '@/lib/auth/dal'
 import {
   LogoMark,
@@ -40,7 +40,6 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/audit': IconShield,
 }
 
-const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
 type Panel = 'profile' | null

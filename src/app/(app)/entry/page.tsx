@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
@@ -18,7 +19,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
   const { error, dealer } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to enter transactions.</div>
+    return <PermissionDenied role={user.role} action="enter transactions" />
   }
 
   const supabase = await createClient()

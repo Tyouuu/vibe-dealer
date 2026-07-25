@@ -99,6 +99,7 @@ export function DealersTable({
                     <th className="th w-8">
                       <input
                         type="checkbox"
+                        className="h-4 w-4 accent-primary"
                         checked={rows.every((r) => selected.has(r.id))}
                         onChange={() => toggleAll(rows.map((r) => r.id))}
                         aria-label="Select all"
@@ -143,7 +144,13 @@ export function DealersTable({
                   <tr key={d.id} className="tr-row group relative">
                     {canManage && (
                       <td className="td">
-                        <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)} aria-label={`Select ${d.company_name}`} />
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={selected.has(d.id)}
+                          onChange={() => toggle(d.id)}
+                          aria-label={`Select ${d.company_name}`}
+                        />
                       </td>
                     )}
                     <td className="td">

@@ -72,7 +72,7 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
               A dealer named &quot;{duplicate.company_name}&quot; already exists. Save again to confirm this rename is intentional.
             </div>
           )}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
             <input type="hidden" name="id" value={dealer.id} />
             <div className="form-grid">
               <div>
@@ -107,7 +107,7 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
                 <label className="field-label">Address</label>
                 <input name="address" defaultValue={dealer.address ?? ''} className="field-input" />
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="field-label">Region</label>
                 <input list="edit-dealer-regions" name="region" defaultValue={dealer.region ?? ''} className="field-input" />
                 <datalist id="edit-dealer-regions">

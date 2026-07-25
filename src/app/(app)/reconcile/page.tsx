@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth, todayInMalaysia } from '@/lib/month'
 import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
@@ -36,7 +37,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const { month = currentMonth(), error, saved } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view reconciliation.</div>
+    return <PermissionDenied role={user.role} action="view reconciliation" />
   }
 
   const { start, end } = monthRange(month)

@@ -7,17 +7,12 @@ import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
-import { IconInfo } from '../icons'
+import { IconInfo, IconUsers, IconBell, IconDevices, IconLock } from '../icons'
+import { ROLE_LABEL } from '../types'
 
 export const metadata: Metadata = {
   title: 'Account — DealerHub',
 }
-
-const ROLE_LABEL = {
-  master: 'Master',
-  accountant: 'Accountant',
-  cs: 'CS',
-} as const
 
 function formatSignInTime(iso: string): string {
   return new Date(iso).toLocaleString('en-MY', {
@@ -73,7 +68,13 @@ export default async function AccountPage() {
       <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
 
       <section>
-        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Profile</h2>
+        <div className="form-section-head">
+          <span className="tile">
+            <IconUsers />
+          </span>
+          <span>Profile</span>
+          <span className="rule" />
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <span className="field-label">Name</span>
@@ -99,17 +100,35 @@ export default async function AccountPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Notifications</h2>
+        <div className="form-section-head">
+          <span className="tile">
+            <IconBell />
+          </span>
+          <span>Notifications</span>
+          <span className="rule" />
+        </div>
         <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
       </section>
 
       <section>
-        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Sessions</h2>
+        <div className="form-section-head">
+          <span className="tile">
+            <IconDevices />
+          </span>
+          <span>Sessions</span>
+          <span className="rule" />
+        </div>
         <SessionsPanel currentDevice={currentDevice} since={since} history={pastHistory} />
       </section>
 
       <section>
-        <h2 className="mb-4 text-[15px] font-extrabold text-paper">Security</h2>
+        <div className="form-section-head">
+          <span className="tile">
+            <IconLock />
+          </span>
+          <span>Security</span>
+          <span className="rule" />
+        </div>
         <ChangePasswordForm />
       </section>
     </div>

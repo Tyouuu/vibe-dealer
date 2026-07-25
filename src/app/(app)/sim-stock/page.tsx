@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
+import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { markSimOrderSent } from './actions'
 import { OrderForm } from './order-form'
 import { IntakeForm } from './intake-form'
+import { IconInfo } from '../icons'
 
 export const metadata: Metadata = {
   title: 'SIM Card Stock — DealerHub',
@@ -50,7 +52,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const isFinance = user.role === 'accountant' || user.role === 'master'
 
   if (user.role !== 'cs' && !isFinance) {
-    return <div className="app-card text-sm text-paper-dim">Your role ({user.role}) does not have permission to view SIM stock.</div>
+    return <PermissionDenied role={user.role} action="view SIM stock" />
   }
 
   const supabase = await createClient()
@@ -99,12 +101,15 @@ export default async function SimStockPage({ searchParams }: PageProps) {
     <div className="flex flex-col gap-5">
       <div className="app-card">
         <h1 className="mb-1 text-[26px] font-extrabold tracking-tight text-paper">SIM Card Stock</h1>
-        <p className="mb-4 text-[12.5px] text-paper-dim">
-          SIM cards — physical, eSIM, or eSIM with no number — bought from Vibe Mobile in bulk (a box is {SIM_BOX_SIZE}),
-          resold to dealers in batches. Same system across all three, each its own stock pool; only physical has a
-          real shipment. Kept separate from the points/topup ledger — this is a flat per-card margin, not a %-rate
-          commission.
-        </p>
+        <div className="info-strip mb-4">
+          <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
+          <span>
+            SIM cards — physical, physical with no number, or eSIM — bought from Vibe Mobile in bulk (a box is{' '}
+            {SIM_BOX_SIZE}), resold to dealers in batches. Same system across all three, each its own stock pool; only
+            physical has a real shipment. Kept separate from the points/topup ledger — this is a flat per-card
+            margin, not a %-rate commission.
+          </span>
+        </div>
 
         {error && <div className="alert alert-bad">{error}</div>}
         {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
@@ -112,20 +117,22 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
         <div className="grid gap-3 sm:grid-cols-3">
           {balances.map((b) => (
-            <div key={b.sim_type} className="rounded-2xl border border-ink-800 p-4">
+            <div key={b.sim_type} className="app-tile">
               <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">{SIM_TYPE_LABEL[b.sim_type]}</div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <div className="text-[10.5px] font-semibold text-paper-dim">Available</div>
-                  <div className={`mt-1 text-lg font-semibold ${b.available <= 0 ? 'text-clay-bright' : ''}`}>{b.available.toLocaleString()}</div>
+                  <div className={`figure mt-1 text-lg font-semibold ${b.available <= 0 ? 'text-clay-bright' : 'text-paper'}`}>
+                    {b.available.toLocaleString()}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[10.5px] font-semibold text-paper-dim">Bought In</div>
-                  <div className="mt-1 text-lg font-semibold text-paper">{b.total_intake.toLocaleString()}</div>
+                  <div className="figure mt-1 text-lg font-semibold text-paper">{b.total_intake.toLocaleString()}</div>
                 </div>
                 <div>
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Sold Out</div>
-                  <div className="mt-1 text-lg font-semibold text-paper">{b.total_sold.toLocaleString()}</div>
+                  <div className="text-[10.5px] font-semibold text-paper-dim">Total Sold</div>
+                  <div className="figure mt-1 text-lg font-semibold text-paper">{b.total_sold.toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -157,7 +164,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   <tr>
                     <th className="th">Date</th>
                     <th className="th">Dealer</th>
-                    <th className="th">Type</th>
+                    <th className="th">SIM Type</th>
                     <th className="th text-right">Qty</th>
                     <th className="th text-right">Paid (RM)</th>
                     {isFinance && <th className="th text-right">Margin (RM)</th>}
@@ -233,7 +240,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         </div>
 
         <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">New Order</h3>
+          <h3 className="mb-3.5 text-sm font-bold text-paper">Place Order</h3>
           <OrderForm
             dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
             availableByType={availableByType}
@@ -251,7 +258,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   <thead>
                     <tr>
                       <th className="th">Date</th>
-                      <th className="th">Type</th>
+                      <th className="th">SIM Type</th>
                       <th className="th text-right">Qty</th>
                       <th className="th text-right">Cost/Unit</th>
                       <th className="th text-right">Total Cost</th>

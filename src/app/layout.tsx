@@ -17,6 +17,8 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "DealerHub — Vibe Mobile Dealer System",
   description: "Vibe Mobile master dealer bookkeeping + reports + dashboard",
+  // Staff-only, no self-signup — this should never turn up in search results.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

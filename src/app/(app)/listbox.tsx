@@ -27,6 +27,7 @@ export function Listbox({
   const value = isControlled ? controlledValue : internalValue
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -36,28 +37,42 @@ export function Listbox({
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
   function pick(v: string) {
     if (!isControlled) setInternalValue(v)
     onChange?.(v)
-    setOpen(false)
+    closePanel()
   }
 
   const selected = options.find((o) => o.value === value)
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
       {name && <input type="hidden" name={name} value={value} />}
-      <button type="button" className={`trigger-btn ${open ? 'open' : ''}`} onClick={() => setOpen((o) => !o)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`trigger-btn ${open ? 'open' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
         {selected?.dotColor && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: selected.dotColor }} />}
         <span className="truncate">{selected?.label ?? 'Select…'}</span>
         <IconChevronDown className={`ml-auto h-3.5 w-3.5 shrink-0 text-paper-dim transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="dropdown-panel w-full min-w-full p-1.5">
+        <div role="listbox" className="dropdown-panel w-full min-w-full p-1.5">
           {options.map((o) => (
             <button
               key={o.value}
               type="button"
+              role="option"
+              aria-selected={value === o.value}
               onClick={() => pick(o.value)}
               className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-colors hover:bg-primary-soft ${
                 value === o.value ? 'bg-primary-soft text-paper' : 'text-paper'

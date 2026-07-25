@@ -35,6 +35,7 @@ export function Combobox({
   const [query, setQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -50,6 +51,11 @@ export function Combobox({
     requestAnimationFrame(() => searchRef.current?.focus())
   }
 
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
@@ -59,9 +65,16 @@ export function Combobox({
   const selected = options.find((o) => o.value === value)
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
       {name && <input type="hidden" name={name} value={value} />}
-      <button type="button" className={`trigger-btn ${open ? 'open' : ''}`} onClick={() => (open ? setOpen(false) : openPanel())}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`trigger-btn ${open ? 'open' : ''}`}
+        onClick={() => (open ? closePanel() : openPanel())}
+      >
         {selected?.avatarName && <Avatar name={selected.avatarName} package={selected.avatarPackage} size={22} />}
         <span className={`truncate ${selected ? '' : 'text-paper-dim'}`}>{selected ? selected.label : placeholder}</span>
         <IconChevronDown className={`ml-auto h-3.5 w-3.5 shrink-0 text-paper-dim transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -79,15 +92,17 @@ export function Combobox({
               className="w-full bg-transparent text-[13.5px] text-paper outline-none placeholder:text-paper-dim/70"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto p-1.5">
+          <div role="listbox" className="max-h-64 overflow-y-auto p-1.5">
             {filtered.length ? (
               filtered.map((o) => (
                 <button
                   key={o.value}
                   type="button"
+                  role="option"
+                  aria-selected={value === o.value}
                   onClick={() => {
                     onChange(o.value)
-                    setOpen(false)
+                    closePanel()
                   }}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-primary-soft ${
                     value === o.value ? 'bg-primary-soft' : ''

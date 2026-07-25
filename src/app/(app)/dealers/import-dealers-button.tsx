@@ -7,6 +7,7 @@ export function ImportDealersButton() {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -15,6 +16,11 @@ export function ImportDealersButton() {
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
   }, [])
+
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -25,8 +31,8 @@ export function ImportDealersButton() {
   }
 
   return (
-    <div className="relative" ref={ref}>
-      <button type="button" className="btn-ghost" onClick={() => setOpen((o) => !o)}>
+    <div className="relative" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
+      <button ref={triggerRef} type="button" className="btn-ghost" onClick={() => setOpen((o) => !o)}>
         ⇧ Import
       </button>
       {open && (

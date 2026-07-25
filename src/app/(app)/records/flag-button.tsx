@@ -8,6 +8,7 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
   const [reason, setReason] = useState('')
   const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -17,9 +18,14 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
   return (
-    <div className="relative inline-block" ref={ref}>
-      <button type="button" className="btn-clay" onClick={() => setOpen((o) => !o)}>
+    <div className="relative inline-block" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
+      <button ref={triggerRef} type="button" className="btn-clay" onClick={() => setOpen((o) => !o)}>
         Flag ✕
       </button>
       {open && (
@@ -49,7 +55,7 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
               <button type="submit" disabled={!reason.trim() || pending} className="btn-clay flex-1">
                 {pending ? 'Flagging…' : 'Confirm Flag'}
               </button>
-              <button type="button" onClick={() => setOpen(false)} className="btn-ghost">
+              <button type="button" onClick={closePanel} className="btn-ghost">
                 Cancel
               </button>
             </div>

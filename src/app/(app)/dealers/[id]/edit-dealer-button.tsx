@@ -23,6 +23,7 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
   const [checking, setChecking] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -31,6 +32,11 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
   }, [])
+
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -60,8 +66,8 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
   }
 
   return (
-    <div className="relative inline-block" ref={ref}>
-      <button type="button" className="btn-ghost py-1.5 text-xs" onClick={() => setOpen((o) => !o)}>
+    <div className="relative inline-block" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
+      <button ref={triggerRef} type="button" className="btn-ghost py-1.5 text-xs" onClick={() => setOpen((o) => !o)}>
         Edit
       </button>
       {open && (
@@ -125,7 +131,7 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
               <button type="submit" disabled={checking || submitting} className="btn-primary flex-1">
                 {checking ? 'Checking…' : duplicate ? 'Yes, Save Anyway' : 'Save Changes'}
               </button>
-              <button type="button" onClick={() => setOpen(false)} className="btn-ghost">
+              <button type="button" onClick={closePanel} className="btn-ghost">
                 Cancel
               </button>
             </div>

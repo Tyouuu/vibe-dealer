@@ -64,6 +64,7 @@ export function RailNav({
   const [open, setOpen] = useState<Panel>(null)
   const [pending, startTransition] = useTransition()
   const wrapRef = useRef<HTMLDivElement>(null)
+  const profileTriggerRef = useRef<HTMLButtonElement>(null)
 
   // Close whatever panel is open on navigation — clicking a nav link is a
   // click "inside" the rail (the outside-click handler below only closes on
@@ -82,6 +83,11 @@ export function RailNav({
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
   }, [])
+
+  function closeProfilePanel() {
+    setOpen(null)
+    profileTriggerRef.current?.focus()
+  }
 
   function pickPreviewRole(r: Role) {
     startTransition(async () => {
@@ -138,11 +144,13 @@ export function RailNav({
         </Link>
 
         {actualRole === 'master' ? (
-          <div className="relative">
+          <div className="relative" onKeyDown={(e) => e.key === 'Escape' && closeProfilePanel()}>
             <button
+              ref={profileTriggerRef}
               type="button"
               className="rail-item"
               onClick={() => setOpen((p) => (p === 'profile' ? null : 'profile'))}
+              aria-haspopup="true"
               aria-expanded={open === 'profile'}
             >
               <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[9.5px] font-bold text-primary-deep">

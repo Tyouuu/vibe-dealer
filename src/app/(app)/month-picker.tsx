@@ -45,6 +45,7 @@ export function MonthPicker({
   const [open, setOpen] = useState(false)
   const [viewYear, setViewYear] = useState(() => (defaultValue ? Number(defaultValue.split('-')[0]) : currentYearMonth(today)[0]))
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -58,15 +59,27 @@ export function MonthPicker({
   const selY = value ? Number(value.split('-')[0]) : null
   const selM = value ? Number(value.split('-')[1]) - 1 : null
 
+  function closePanel() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
   function pick(monthIdx: number) {
     setValue(`${viewYear}-${String(monthIdx + 1).padStart(2, '0')}`)
-    setOpen(false)
+    closePanel()
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
       <input type="hidden" name={name} value={value} />
-      <button type="button" className={`trigger-btn ${open ? 'open' : ''}`} onClick={() => setOpen((o) => !o)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        className={`trigger-btn ${open ? 'open' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[15px] w-[15px] shrink-0 text-paper-dim">
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <path d="M16 2v4M8 2v4M3 10h18" />
@@ -77,11 +90,21 @@ export function MonthPicker({
       {open && (
         <div className="dropdown-panel w-[260px] p-0">
           <div className="flex items-center justify-between px-3 py-2.5">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-md border border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper" onClick={() => setViewYear((y) => y - 1)}>
+            <button
+              type="button"
+              aria-label="Previous year"
+              className="grid h-6 w-6 place-items-center rounded-md border border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper"
+              onClick={() => setViewYear((y) => y - 1)}
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m15 18-6-6 6-6" /></svg>
             </button>
             <span className="text-[13px] font-extrabold text-paper">{viewYear}</span>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-md border border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper" onClick={() => setViewYear((y) => y + 1)}>
+            <button
+              type="button"
+              aria-label="Next year"
+              className="grid h-6 w-6 place-items-center rounded-md border border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper"
+              onClick={() => setViewYear((y) => y + 1)}
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
@@ -109,7 +132,7 @@ export function MonthPicker({
           </div>
           <div className="flex items-center justify-between border-t border-ink-800 px-3 py-2 text-xs font-bold">
             {allowClear ? (
-              <button type="button" className="text-paper-dim hover:underline" onClick={() => { setValue(''); setOpen(false) }}>
+              <button type="button" className="text-paper-dim hover:underline" onClick={() => { setValue(''); closePanel() }}>
                 Clear
               </button>
             ) : (
@@ -121,7 +144,7 @@ export function MonthPicker({
               onClick={() => {
                 setViewYear(todayY)
                 setValue(`${todayY}-${String(todayM + 1).padStart(2, '0')}`)
-                setOpen(false)
+                closePanel()
               }}
             >
               This month

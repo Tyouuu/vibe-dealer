@@ -146,7 +146,7 @@ export function DealersTable({
                       <td className="td">
                         <input
                           type="checkbox"
-                          className="relative h-4 w-4 accent-primary"
+                          className="relative z-10 h-4 w-4 accent-primary"
                           checked={selected.has(d.id)}
                           onChange={() => toggle(d.id)}
                           aria-label={`Select ${d.company_name}`}

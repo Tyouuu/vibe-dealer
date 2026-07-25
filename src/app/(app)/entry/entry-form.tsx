@@ -255,7 +255,7 @@ export function EntryForm({
                 required
                 className="field-input"
               />
-              <span className="hint">When the sale actually happened, not when you&apos;re entering it</span>
+              <span className="hint">When the sale actually happened, not when you&apos;re entering it.</span>
             </div>
           </div>
 
@@ -319,7 +319,7 @@ export function EntryForm({
                   placeholder={preview ? String(preview.points) : 'Auto-calculated from rate, editable'}
                   className="field-input"
                 />
-                <span className="hint">Auto-calculated from rate — editable</span>
+                <span className="hint">Auto-calculated from rate — editable.</span>
               </div>
               <div className="sm:col-span-2">
                 <label className="field-label">Coupon Amount (RM, optional)</label>
@@ -336,7 +336,9 @@ export function EntryForm({
                 <span className="hint">
                   Portion of the amount above issued as RM{COUPON_DENOMINATION_RM} coupons instead of straight to the
                   dealer&apos;s phone — leave blank if this whole top-up is direct.
-                  {Number(couponRm) > 0 ? ` = ${Number(couponRm) / COUPON_DENOMINATION_RM} coupon(s)` : ''}
+                  {Number(couponRm) > 0
+                    ? ` (${Number(couponRm) / COUPON_DENOMINATION_RM} coupon${Number(couponRm) / COUPON_DENOMINATION_RM === 1 ? '' : 's'})`
+                    : ''}
                 </span>
               </div>
             </div>

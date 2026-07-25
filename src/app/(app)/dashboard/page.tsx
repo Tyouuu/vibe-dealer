@@ -15,7 +15,7 @@ import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { GrowthMap, hasMapPin } from './growth-map'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
-import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconTruck, ReconciledStamp } from '../icons'
+import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconAlertCircle, IconTruck, ReconciledStamp } from '../icons'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
 // skip rendering the chg badge rather than show a divide-by-zero NaN/Infinity.
@@ -318,7 +318,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
       <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          icon={<IconCheckCircle className="h-4 w-4" />}
+          icon={<IconAlertCircle className="h-4 w-4" />}
           label="Pending Review"
           value={String(pendingCount)}
           footer={

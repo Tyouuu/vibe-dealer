@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { adjustTransaction } from './actions'
 
 export function AdjustButton({
@@ -16,6 +16,7 @@ export function AdjustButton({
   const [points, setPoints] = useState(String(currentPoints))
   const [moneyRm, setMoneyRm] = useState(String(currentMoneyRm))
   const [reason, setReason] = useState('')
+  const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,7 +41,16 @@ export function AdjustButton({
             Currently on record: {currentPoints.toLocaleString()} pts · RM {currentMoneyRm.toLocaleString()}. This posts a new, linked
             correction — the original row stays untouched.
           </p>
-          <form action={adjustTransaction} className="flex flex-col gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              startTransition(() => {
+                adjustTransaction(formData)
+              })
+            }}
+            className="flex flex-col gap-2"
+          >
             <input type="hidden" name="original_id" value={transactionId} />
             <div className="flex gap-2">
               <label className="flex-1">
@@ -80,8 +90,8 @@ export function AdjustButton({
               onChange={(e) => setReason(e.target.value)}
             />
             <div className="flex items-center gap-1.5">
-              <button type="submit" disabled={!reason.trim() || unchanged} className="btn-primary flex-1">
-                Save Correction
+              <button type="submit" disabled={!reason.trim() || unchanged || pending} className="btn-primary flex-1">
+                {pending ? 'Saving…' : 'Save Correction'}
               </button>
               <button type="button" onClick={() => setOpen(false)} className="btn-ghost">
                 Cancel

@@ -1,0 +1,32 @@
+function Bone({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-ink-800 ${className}`} />
+}
+
+export default function AuditLoading() {
+  return (
+    <div className="app-card">
+      <div className="mb-4 flex items-center justify-between">
+        <Bone className="h-8 w-32" />
+        <Bone className="h-9 w-24 rounded-lg" />
+      </div>
+      <Bone className="mb-4 h-10 w-full rounded-xl" />
+      <div className="mb-4 flex gap-3">
+        <Bone className="h-9 w-64 rounded-lg" />
+        <Bone className="h-9 w-40 rounded-lg" />
+        <Bone className="h-9 w-40 rounded-lg" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Bone className="h-4 w-14" />
+            <Bone className="h-4 w-24" />
+            <Bone className="h-4 flex-1 max-w-40" />
+            <Bone className="h-4 w-28" />
+            <Bone className="h-4 w-20" />
+            <Bone className="h-5 w-16 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

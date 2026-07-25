@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { flagTransaction } from './actions'
 
 export function FlagButton({ transactionId }: { transactionId: string }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
+  const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,7 +25,16 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
       {open && (
         <div className="dropdown-panel w-72 p-3">
           <p className="mb-2 text-xs font-semibold text-paper">Why are you flagging this transaction?</p>
-          <form action={flagTransaction} className="flex flex-col gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              startTransition(() => {
+                flagTransaction(formData)
+              })
+            }}
+            className="flex flex-col gap-2"
+          >
             <input type="hidden" name="id" value={transactionId} />
             <textarea
               name="reason"
@@ -36,8 +46,8 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
               onChange={(e) => setReason(e.target.value)}
             />
             <div className="flex items-center gap-1.5">
-              <button type="submit" disabled={!reason.trim()} className="btn-clay flex-1">
-                Confirm Flag
+              <button type="submit" disabled={!reason.trim() || pending} className="btn-clay flex-1">
+                {pending ? 'Flagging…' : 'Confirm Flag'}
               </button>
               <button type="button" onClick={() => setOpen(false)} className="btn-ghost">
                 Cancel

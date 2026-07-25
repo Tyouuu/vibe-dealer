@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { markReconciled } from './actions'
 
 // diff !== 0 needs a typed override reason before this can submit — Mark
@@ -8,10 +8,20 @@ import { markReconciled } from './actions'
 // could be closed while the system and Vibe totals visibly disagreed.
 export function MarkReconciledForm({ month, hasStatement, diff }: { month: string; hasStatement: boolean; diff: number | null }) {
   const [reason, setReason] = useState('')
+  const [pending, startTransition] = useTransition()
   const mismatched = diff != null && diff !== 0
 
   return (
-    <form action={markReconciled} className="w-full">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
+        startTransition(() => {
+          markReconciled(formData)
+        })
+      }}
+      className="w-full"
+    >
       <input type="hidden" name="month" value={month} />
       {mismatched && (
         <div className="mb-2.5">
@@ -26,8 +36,12 @@ export function MarkReconciledForm({ month, hasStatement, diff }: { month: strin
           />
         </div>
       )}
-      <button type="submit" disabled={!hasStatement || (mismatched && !reason.trim())} className="btn-primary w-full">
-        {mismatched ? 'Mark Reconciled Anyway ✓' : 'Mark Reconciled ✓'}
+      <button
+        type="submit"
+        disabled={!hasStatement || (mismatched && !reason.trim()) || pending}
+        className="btn-primary w-full disabled:opacity-60"
+      >
+        {pending ? 'Marking…' : mismatched ? 'Mark Reconciled Anyway ✓' : 'Mark Reconciled ✓'}
       </button>
     </form>
   )

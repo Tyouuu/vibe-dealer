@@ -68,7 +68,7 @@ export function TopbarMenus({
           aria-expanded={open === 'profile'}
           className="flex items-center gap-2.5 rounded-lg border border-ink-800 bg-ink-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-ink-850"
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-amber-200 to-orange-300 text-[13px] font-bold text-orange-900">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-[13px] font-bold text-primary-deep">
             {initials}
           </span>
           <span className="hidden text-left leading-tight sm:block">

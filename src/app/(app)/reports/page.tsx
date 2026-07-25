@@ -164,10 +164,19 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td font-semibold text-paper">{t.label}</td>
                   <td className="td text-right text-paper-dim">{t.count}</td>
                   <td className="td figure-points text-right">{t.points.toLocaleString()} pts</td>
-                  <td className="td figure text-right text-paper-dim">RM {t.money.toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {t.money.toLocaleString()}</td>
                   <td className="td figure-money text-right">RM {t.commission.toLocaleString()}</td>
                 </tr>
               ))}
+              {typeBreakdown.length > 0 && (
+                <tr className="border-t-2 border-paper bg-ink-850/60 font-extrabold">
+                  <td className="td text-paper">Total</td>
+                  <td className="td text-right text-paper">{typeBreakdown.reduce((s, t) => s + t.count, 0)}</td>
+                  <td className="td figure-points text-right">{typeBreakdown.reduce((s, t) => s + t.points, 0).toLocaleString()} pts</td>
+                  <td className="td figure-money text-right">RM {typeBreakdown.reduce((s, t) => s + t.money, 0).toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {typeBreakdown.reduce((s, t) => s + t.commission, 0).toLocaleString()}</td>
+                </tr>
+              )}
               {!typeBreakdown.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
@@ -203,13 +212,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     <td className="td font-semibold text-paper">
                       <a
                         href={`/records?month=${month}&status=verified&dealer=${d.id}`}
-                        className="after:absolute after:inset-0 after:content-[''] hover:text-primary"
+                        className="after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
                       >
                         {d.name}
                       </a>
                     </td>
                     <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
-                    <td className="td figure relative text-right text-paper-dim">
+                    <td className="td figure-money relative text-right">
                       <span className="absolute -left-1.5 bottom-[3px] top-[3px] rounded-md bg-primary-soft" style={{ width: `${pct}%` }} />
                       <span className="relative">RM {d.money.toLocaleString()}</span>
                     </td>
@@ -222,7 +231,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td" />
                   <td className="td text-paper">Total</td>
                   <td className="td figure-points text-right">{totalPoints.toLocaleString()} pts</td>
-                  <td className="td figure text-right text-paper">RM {totalMoney.toLocaleString()}</td>
+                  <td className="td figure-money text-right">RM {totalMoney.toLocaleString()}</td>
                   <td className="td figure-money text-right">RM {totalCommission.toLocaleString()}</td>
                 </tr>
               )}

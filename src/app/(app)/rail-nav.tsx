@@ -146,7 +146,7 @@ export function RailNav({
               onClick={() => setOpen((p) => (p === 'profile' ? null : 'profile'))}
               aria-expanded={open === 'profile'}
             >
-              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[9.5px] font-bold text-primary-deep">
                 {initials}
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
@@ -180,7 +180,7 @@ export function RailNav({
           </div>
         ) : (
           <div className="rail-item cursor-default hover:bg-transparent hover:text-paper-dim">
-            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-gradient-to-br from-amber-200 to-orange-300 text-[9.5px] font-bold text-orange-900">
+            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[9.5px] font-bold text-primary-deep">
               {initials}
             </span>
             <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">

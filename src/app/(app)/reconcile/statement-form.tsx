@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { saveStatement } from './actions'
 import { IconUpload } from '../icons'
 
@@ -20,6 +20,7 @@ export function StatementForm({
   const [fileName, setFileName] = useState<string | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
 
   async function handleFile(file: File) {
     setFileName(file.name)
@@ -47,7 +48,16 @@ export function StatementForm({
   }
 
   return (
-    <form action={saveStatement} className="flex flex-col gap-3.5">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
+        startTransition(() => {
+          saveStatement(formData)
+        })
+      }}
+      className="flex flex-col gap-3.5"
+    >
       <input type="hidden" name="month" value={month} />
       <label className="upload-box">
         <IconUpload />
@@ -95,8 +105,9 @@ export function StatementForm({
         <label className="field-label">Note</label>
         <input name="note" type="text" defaultValue={initialNote} className="field-input" />
       </div>
-      <button type="submit" className="btn-primary w-full">
-        Save &amp; Compare
+      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60">
+        {pending ? 'Saving…' : 'Save & Compare'}
+        {}
       </button>
     </form>
   )

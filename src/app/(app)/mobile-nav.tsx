@@ -1,30 +1,53 @@
 'use client'
 
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { LogoutButton } from './logout-button'
-import type { Notification } from './topbar-menus'
+import { setPreviewRole } from './preview-role-actions'
+import type { Notification } from './types'
+import type { Role } from '@/lib/auth/dal'
 
 type NavItem = { href: string; label: string }
 
+const ROLE_LABEL: Record<Role, string> = { master: 'Master', accountant: 'Accountant', cs: 'CS' }
+const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
+
 // Below md: the rail nav, search trigger, and topbar icon menus don't fit a
 // phone-width header, so they all collapse into this one hamburger panel —
-// including notifications, since there's no separate bell icon on mobile.
+// including notifications and the role-preview switcher, since there's no
+// separate bell/profile icon on mobile. This used to be split across this
+// component AND TopbarMenus rendered side by side in the header, which
+// meant a real phone screen showed the unread dot twice, Credit Balance
+// twice, and Logout reachable from two different menus at once. One panel
+// now, not two.
 export function MobileNav({
   items,
   roleLabel,
   email,
   notifications,
   creditBalance,
+  role,
+  actualRole,
 }: {
   items: NavItem[]
   roleLabel: string
   email: string | null
   notifications: Notification[]
   creditBalance?: { available: number; low: boolean }
+  role: Role
+  actualRole: Role
 }) {
   const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
   const pathname = usePathname()
+  const router = useRouter()
+
+  function pickPreviewRole(r: Role) {
+    startTransition(async () => {
+      await setPreviewRole(r)
+      router.refresh()
+    })
+  }
 
   // Close the panel on navigation. Adjusted during render (React's supported
   // pattern for "reset state when a prop changes") rather than in an effect,
@@ -110,9 +133,33 @@ export function MobileNav({
             </a>
           </nav>
 
+          {actualRole === 'master' && (
+            <div className="mt-3 border-t border-ink-800 pt-3">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+              <div className="flex gap-1.5">
+                {PREVIEW_ROLES.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => pickPreviewRole(r)}
+                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
+                      role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
+                    }`}
+                  >
+                    {ROLE_LABEL[r]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3">
             <div className="flex flex-col gap-1">
-              <span className="pill pill-neutral w-fit">{roleLabel}</span>
+              <span className="flex items-center gap-1.5">
+                <span className="pill pill-neutral w-fit">{roleLabel}</span>
+                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9.5px] font-bold text-primary-deep">Preview</span>}
+              </span>
               {email && <span className="text-[11px] text-paper-dim">{email}</span>}
             </div>
             <LogoutButton />

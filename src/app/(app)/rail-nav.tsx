@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
 import { setPreviewRole } from './preview-role-actions'
-import type { Notification } from './topbar-menus'
+import type { Notification } from './types'
 import type { Role } from '@/lib/auth/dal'
 import {
   LogoMark,

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { buildNotifications } from '@/lib/notifications/build'
 import { RailNav, type RailItem } from './rail-nav'
-import { TopbarMenus, type Notification } from './topbar-menus'
+import type { Notification } from './types'
 import { MobileNav } from './mobile-nav'
 import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
@@ -92,13 +92,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               roleLabel={ROLE_LABEL[user.role]}
               email={user.email}
               notifications={notifications}
+              role={user.role}
+              actualRole={user.actualRole}
               creditBalance={
                 isFinance ? { available: creditBalance.available, low: creditBalance.available < LOW_BALANCE_THRESHOLD } : undefined
               }
             />
           </div>
 
-          <header className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:px-8">
+          {/* Credit balance card only — notifications/profile/role-preview
+              live in the rail on md+ and in MobileNav's panel below md, so
+              this header has nothing left to show on mobile. */}
+          <header className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:flex md:px-8">
             {isFinance && (
               <a
                 href="/purchases"
@@ -126,17 +131,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </div>
               </a>
             )}
-            {/* Search/notifications/help/account live in the rail on md+; below
-                md there's no rail, so this is the only place they can go. */}
-            <div className="md:hidden">
-              <TopbarMenus
-                notifications={notifications}
-                userName={user.name ?? user.email ?? 'User'}
-                roleLabel={ROLE_LABEL[user.role]}
-                role={user.role}
-                actualRole={user.actualRole}
-              />
-            </div>
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 md:overflow-y-auto">

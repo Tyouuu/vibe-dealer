@@ -172,6 +172,12 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   if (sort !== 'desc') clearDealerParams.set('sort', sort)
   const clearDealerHref = `/records${clearDealerParams.toString() ? `?${clearDealerParams.toString()}` : ''}`
 
+  const hasFilter = status !== 'all' || !!month || !!q
+  const clearFiltersParams = new URLSearchParams()
+  if (dealerId) clearFiltersParams.set('dealer', dealerId)
+  if (sort !== 'desc') clearFiltersParams.set('sort', sort)
+  const clearFiltersHref = `/records${clearFiltersParams.toString() ? `?${clearFiltersParams.toString()}` : ''}`
+
   return (
     <div className="app-card">
       {submitted && (
@@ -364,8 +370,18 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             })}
             {!rows?.length && (
               <tr>
-                <td colSpan={10} className="px-3 py-8 text-center text-paper-dim">
-                  No matching transactions.
+                <td colSpan={10} className="p-0">
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">
+                      <IconSearch className="h-5 w-5" />
+                    </span>
+                    <p className="text-sm text-paper-dim">{hasFilter ? 'No transactions match those filters.' : 'No transactions yet.'}</p>
+                    {hasFilter && (
+                      <Link href={clearFiltersHref} className="btn-ghost text-xs">
+                        Clear filters
+                      </Link>
+                    )}
+                  </div>
                 </td>
               </tr>
             )}

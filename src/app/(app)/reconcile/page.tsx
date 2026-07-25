@@ -105,16 +105,20 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         <h2 className="mb-3 text-sm font-bold text-paper">This Month&apos;s Comparison</h2>
         <div className="grid grid-cols-2 gap-3">
           <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-paper-dim">
-              <IconBuilding className="h-3.5 w-3.5" />
-              Your System (verified)
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Your System (verified)</div>
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+                <IconBuilding className="h-3.5 w-3.5" />
+              </span>
             </div>
             <div className="figure-points mt-1.5 text-xl font-semibold">{systemPoints.toLocaleString()} pts</div>
           </div>
           <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-paper-dim">
-              <IconDocument className="h-3.5 w-3.5" />
-              Vibe&apos;s Statement
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Vibe&apos;s Statement</div>
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+                <IconDocument className="h-3.5 w-3.5" />
+              </span>
             </div>
             {companyPoints != null ? (
               <div className="figure-points mt-1.5 text-xl font-semibold">{Number(companyPoints).toLocaleString()} pts</div>

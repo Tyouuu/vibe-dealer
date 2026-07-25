@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconCheckCircle, IconChevronDown } from '../icons'
 import { setDealerStatus, bulkSetDealerStatus } from './actions'
 
 export type DealerRow = {
@@ -88,7 +88,7 @@ export function DealersTable({
           <details key={region || 'flat'} open className="mb-3 last:mb-0">
             {groupByRegion && (
               <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-xs font-bold uppercase tracking-wide text-paper-dim">
-                <span className="inline-block transition-transform [details[open]_&]:rotate-90">▸</span>
+                <IconChevronDown className="h-3.5 w-3.5 -rotate-90 transition-transform [details[open]_&]:rotate-0" />
                 {region} <span className="pill pill-neutral">{rows.length}</span>
               </summary>
             )}
@@ -146,7 +146,7 @@ export function DealersTable({
                       <td className="td">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 accent-primary"
+                          className="relative h-4 w-4 accent-primary"
                           checked={selected.has(d.id)}
                           onChange={() => toggle(d.id)}
                           aria-label={`Select ${d.company_name}`}
@@ -158,7 +158,10 @@ export function DealersTable({
                         <Avatar name={d.company_name} package={d.package} />
                         <div>
                           <div className="flex items-center gap-2">
-                            <Link href={`/dealers/${d.id}`} className="font-semibold text-paper hover:text-jade-bright">
+                            <Link
+                              href={`/dealers/${d.id}`}
+                              className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                            >
                               {d.company_name}
                             </Link>
                             {d.isInactive && (
@@ -195,7 +198,7 @@ export function DealersTable({
                               await setDealerStatus(d.id, d.status === 'active' ? 'inactive' : 'active')
                             })
                           }
-                          className={`pill cursor-pointer transition-opacity hover:opacity-70 disabled:opacity-40 ${
+                          className={`pill relative cursor-pointer transition-opacity hover:opacity-70 disabled:opacity-40 ${
                             d.status === 'active' ? 'pill-jade' : 'pill-neutral'
                           }`}
                           title="Click to toggle status"

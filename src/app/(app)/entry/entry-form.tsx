@@ -334,8 +334,9 @@ export function EntryForm({
                   className="field-input"
                 />
                 <span className="hint">
-                  Portion of the amount above issued as RM{COUPON_DENOMINATION_RM} coupons instead of straight to the
-                  dealer&apos;s phone — leave blank if this whole top-up is direct.
+                  Portion of the amount above issued as RM{COUPON_DENOMINATION_RM}
+                  {' '}
+                  coupons instead of straight to the dealer&apos;s phone — leave blank if this whole top-up is direct.
                   {Number(couponRm) > 0
                     ? ` (${Number(couponRm) / COUPON_DENOMINATION_RM} coupon${Number(couponRm) / COUPON_DENOMINATION_RM === 1 ? '' : 's'})`
                     : ''}

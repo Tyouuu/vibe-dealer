@@ -1,23 +1,19 @@
 import type { Metadata } from 'next'
-import { LoginForm } from './login-form'
+import { ForgotPasswordForm } from './forgot-password-form'
 import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
-  title: 'Sign In — DealerHub',
+  title: 'Reset Password — DealerHub',
 }
 
 type PageProps = {
-  searchParams: Promise<{ reset?: string }>
+  searchParams: Promise<{ error?: string }>
 }
 
-export default async function LoginPage({ searchParams }: PageProps) {
-  const { reset } = await searchParams
+export default async function ForgotPasswordPage({ searchParams }: PageProps) {
+  const { error } = await searchParams
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden bg-ink-950 px-4">
-      {/* Two soft brand-colored glows, not a new palette entry — same
-          primary/primary-deep tokens the logo tile itself uses. Purely
-          composition; the flat single-tone background this replaced read as
-          an afterthought next to every other page's more considered layout. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full opacity-[0.16] blur-3xl"
@@ -36,15 +32,12 @@ export default async function LoginPage({ searchParams }: PageProps) {
               <LogoMark className="h-12 w-12" />
             </span>
             <div>
-              <p className="text-lg font-extrabold tracking-tight text-paper">DealerHub</p>
-              <p className="mt-0.5 text-xs font-medium text-paper-dim">Vibe Mobile · Master Ledger</p>
+              <p className="text-lg font-extrabold tracking-tight text-paper">Reset your password</p>
+              <p className="mt-0.5 text-xs font-medium text-paper-dim">We&apos;ll email you a link to set a new one.</p>
             </div>
           </div>
-          <LoginForm resetSuccess={reset === '1'} />
+          <ForgotPasswordForm initialError={error} />
         </div>
-        <p className="mt-5 text-center text-[11.5px] text-paper-dim">
-          Staff access only — accounts are set up by your admin, no self-signup.
-        </p>
       </div>
     </div>
   )

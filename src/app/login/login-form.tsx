@@ -1,15 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signIn } from './actions'
 import { IconMail, IconLock, IconEye, IconEyeOff } from '../(app)/icons'
 
-export function LoginForm() {
+export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -18,7 +20,7 @@ export function LoginForm() {
     setPending(true)
     setError(null)
 
-    const { error } = await signIn(email, password)
+    const { error } = await signIn(email, password, rememberMe)
 
     if (error) {
       setError(error)
@@ -32,6 +34,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {resetSuccess && <div className="alert alert-ok">Password updated — sign in with your new password.</div>}
       {error && <div className="alert alert-bad">{error}</div>}
 
       <div>
@@ -79,11 +82,21 @@ export function LoginForm() {
         </div>
       </div>
 
+      <label className="flex items-center gap-2 text-[12.5px] font-medium text-paper-dim">
+        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-primary" />
+        Remember me on this device
+      </label>
+
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
         {pending ? 'Signing in…' : 'Sign In'}
       </button>
 
-      <p className="text-center text-[11.5px] text-paper-dim">Forgot your password? Contact your admin.</p>
+      <p className="text-center text-[11.5px] text-paper-dim">
+        <Link href="/forgot-password" className="text-primary-deep hover:underline">
+          Forgot your password?
+        </Link>{' '}
+        · No account? Contact your admin.
+      </p>
     </form>
   )
 }

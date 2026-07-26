@@ -1,6 +1,7 @@
 'use server'
 
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { getCurrentUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 
@@ -18,9 +19,28 @@ function clientIp(h: Headers): string | null {
 // which structurally cannot be httpOnly, leaving the session token readable
 // by any future XSS. Also the one place brute-force protection can actually
 // live, since it has to hold regardless of which client calls it.
-export async function signIn(email: string, password: string): Promise<{ error: string | null }> {
-  const supabase = await createClient()
+//
+// A one-off client instead of the shared createClient() helper: it's the
+// only call site that needs to touch the cookie's own maxAge (for
+// rememberMe), which the shared helper doesn't expose.
+export async function signIn(email: string, password: string, rememberMe: boolean): Promise<{ error: string | null }> {
+  const cookieStore = await cookies()
   const h = await headers()
+
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          // Unchecked "remember me" = a session cookie that disappears when
+          // the browser fully closes, instead of Supabase's own long-lived
+          // default — the only axis this toggle actually controls.
+          const finalOptions = rememberMe ? options : { ...options, maxAge: undefined, expires: undefined }
+          cookieStore.set(name, value, { ...finalOptions, secure: process.env.NODE_ENV === 'production' })
+        })
+      },
+    },
+  })
 
   const { data: allowed } = await supabase.rpc('check_rate_limit', {
     p_key: `login:${email.trim().toLowerCase()}`,

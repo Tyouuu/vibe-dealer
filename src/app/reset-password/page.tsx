@@ -1,23 +1,14 @@
 import type { Metadata } from 'next'
-import { LoginForm } from './login-form'
+import { ResetPasswordForm } from './reset-password-form'
 import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
-  title: 'Sign In — DealerHub',
+  title: 'Set New Password — DealerHub',
 }
 
-type PageProps = {
-  searchParams: Promise<{ reset?: string }>
-}
-
-export default async function LoginPage({ searchParams }: PageProps) {
-  const { reset } = await searchParams
+export default function ResetPasswordPage() {
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden bg-ink-950 px-4">
-      {/* Two soft brand-colored glows, not a new palette entry — same
-          primary/primary-deep tokens the logo tile itself uses. Purely
-          composition; the flat single-tone background this replaced read as
-          an afterthought next to every other page's more considered layout. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full opacity-[0.16] blur-3xl"
@@ -36,15 +27,12 @@ export default async function LoginPage({ searchParams }: PageProps) {
               <LogoMark className="h-12 w-12" />
             </span>
             <div>
-              <p className="text-lg font-extrabold tracking-tight text-paper">DealerHub</p>
-              <p className="mt-0.5 text-xs font-medium text-paper-dim">Vibe Mobile · Master Ledger</p>
+              <p className="text-lg font-extrabold tracking-tight text-paper">Set a new password</p>
+              <p className="mt-0.5 text-xs font-medium text-paper-dim">Choose something you haven&apos;t used before.</p>
             </div>
           </div>
-          <LoginForm resetSuccess={reset === '1'} />
+          <ResetPasswordForm />
         </div>
-        <p className="mt-5 text-center text-[11.5px] text-paper-dim">
-          Staff access only — accounts are set up by your admin, no self-signup.
-        </p>
       </div>
     </div>
   )

@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
 // The dealer network is Northern Malaysia only — Perak/Penang/Kedah, from
 // Tanjung Malim (the network's actual southern edge) up to the Thai border —
 // so the map is cropped to that real coverage box rather than showing the
@@ -36,7 +40,80 @@ const MAINLAND_PATH =
 const PENANG_ISLAND_PATH =
   'M 70.7,136.85 L 68.8,138.46 L 67.26,138.46 L 66.08,139.13 L 64.56,137.72 L 63.66,137.86 L 63.56,137.17 L 62.53,137.67 L 63.4,139.58 L 62.69,141.63 L 63.81,141.96 L 63.97,143.35 L 64.57,143.54 L 63.9,143.64 L 63.48,146.72 L 64.6,151.15 L 64.72,153.93 L 63.2,154.49 L 63.39,155.53 L 62.77,156.83 L 63.5,158.36 L 63.9,156.93 L 67.18,157.01 L 67.35,156.37 L 67.84,156.29 L 68.89,156.73 L 69.47,157.67 L 69.8,157.11 L 71.01,157.17 L 71.78,157.72 L 72.5,159.28 L 73.26,159.21 L 73.22,158.14 L 74.09,157.01 L 73.85,156.4 L 74.45,155.75 L 76.16,151.11 L 76.76,148.75 L 76.7,146.63 L 78.35,144.93 L 77.99,144.65 L 78.44,144.89 L 78.87,144.44 L 78.76,143.93 L 79.44,143.7 L 79.62,142.9 L 77.78,142.43 L 76.04,141.12 L 75.77,140.62 L 76.36,139.91 L 76.38,138.8 L 74.24,138.11 L 72.85,138.26 L 72.49,137.23 L 70.95,136.79 Z'
 
-export function GrowthMap({ regions }: { regions: { region: string; pct: number; color: string }[] }) {
+type Region = { region: string; pct: number; color: string }
+
+// One shared, self-contained card: the map's pins and the chip legend both
+// drive the same selection state, so this can't be split into two
+// independently-rendered pieces without lifting that state up into all
+// three call sites (master/accountant/cs dashboards) separately. Escape
+// clears the selection from anywhere on the page, not just while a pin has
+// focus — a client is as likely to hit Escape right after clicking as while
+// still hovering it.
+export function RegionGrowthCard({ regions }: { regions: Region[] }) {
+  const [selected, setSelected] = useState<string | null>(null)
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelected(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  function toggle(region: string) {
+    setSelected((s) => (s === region ? null : region))
+  }
+
+  const active = regions.find((r) => r.region === selected) ?? null
+
+  return (
+    <div className="app-card">
+      <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
+      <p className="mb-3.5 text-xs text-paper-dim">
+        {active ? (
+          <>
+            <span className="font-semibold" style={{ color: active.color }}>
+              {active.region}
+            </span>{' '}
+            — {active.pct}% of this month&apos;s verified top-up points.{' '}
+            <button type="button" onClick={() => setSelected(null)} className="font-semibold text-primary-deep hover:underline">
+              Show all regions
+            </button>
+          </>
+        ) : (
+          <>
+            Share of this month&apos;s verified top-up points, top {regions.length || 0} region{regions.length === 1 ? '' : 's'}.{' '}
+            {regions.length > 0 && <span className="text-paper-dim/70">Click a region to focus it — Esc to clear.</span>}
+          </>
+        )}
+      </p>
+      {regions.length ? (
+        <div className="flex flex-wrap gap-2.5">
+          {regions.map((r) => (
+            <button
+              type="button"
+              key={r.region}
+              onClick={() => toggle(r.region)}
+              className={`region-chip transition-all ${hasMapPin(r.region) ? '' : 'opacity-60'} ${
+                selected && selected !== r.region ? 'opacity-40' : ''
+              } ${selected === r.region ? 'ring-2 ring-offset-1' : ''}`}
+              style={selected === r.region ? ({ '--tw-ring-color': r.color } as React.CSSProperties) : undefined}
+              title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
+            >
+              <span className="swatch" style={{ background: r.color }} />
+              {r.region} {r.pct}%
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
+      )}
+      <GrowthMap regions={regions} selected={selected} onToggle={toggle} />
+    </div>
+  )
+}
+
+function GrowthMap({ regions, selected, onToggle }: { regions: Region[]; selected: string | null; onToggle: (region: string) => void }) {
   return (
     <div className="relative mx-auto mt-1 aspect-[10/17] w-full max-w-[220px]">
       <svg viewBox={MAP_VIEWBOX} className="h-full w-full" aria-hidden="true">
@@ -46,17 +123,30 @@ export function GrowthMap({ regions }: { regions: { region: string; pct: number;
       {regions.map((r) => {
         const coord = REGION_COORDS[r.region]
         if (!coord) return null
+        const isSelected = selected === r.region
+        const isDimmed = selected !== null && !isSelected
         return (
-          <div
+          <button
+            type="button"
             key={r.region}
-            className="group absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${coord.x}%`, top: `${coord.y}%` }}
+            onClick={() => onToggle(r.region)}
+            aria-pressed={isSelected}
+            aria-label={`${r.region}, ${r.pct}% of this month's top-up`}
+            className="group absolute -translate-x-1/2 -translate-y-1/2 transition-opacity"
+            style={{ left: `${coord.x}%`, top: `${coord.y}%`, opacity: isDimmed ? 0.35 : 1 }}
           >
-            <span className="block h-3 w-3 rounded-full shadow ring-2 ring-white" style={{ background: r.color }} />
-            <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+            <span
+              className={`block rounded-full shadow ring-2 ring-white transition-all ${isSelected ? 'h-4 w-4 ring-[3px]' : 'h-3 w-3'}`}
+              style={{ background: r.color }}
+            />
+            <span
+              className={`pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-[10px] font-semibold text-white shadow-lg transition-opacity ${
+                isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+            >
               {r.region} {r.pct}%
             </span>
-          </div>
+          </button>
         )
       })}
     </div>

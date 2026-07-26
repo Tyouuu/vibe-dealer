@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { getDealerRankingMap, type DealerRanking } from '@/lib/dealer-ranking'
 import { sanitizeSearchTerm } from '@/lib/search'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
@@ -22,7 +23,6 @@ type Dealer = {
   region: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
-  status: 'active' | 'inactive'
 }
 
 type View = 'all' | 'region' | 'inactive'
@@ -59,6 +59,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // rate is a commission figure (PROJECT_SPEC.md section 4: "CS 看不到财务") —
   // strip it from the data sent to the client, not just hide it in the UI.
   const showRate = user.role !== 'cs'
+  // Same boundary as rate: ranking is derived from transactions.points, and
+  // cs has no SELECT on transactions at all (0001) — querying it would just
+  // come back empty under RLS, silently showing everyone as unranked rather
+  // than actually failing, so skip the query and the columns entirely.
+  const showRanking = user.role !== 'cs'
 
   const supabase = await createClient()
 
@@ -68,8 +73,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // instead, which has every column except rate.
   let query = supabase
     .from(showRate ? 'dealers' : 'dealers_directory')
-    .select(showRate ? 'id, company_name, company_no, contact_person, phone, region, package, rate, status' : 'id, company_name, company_no, contact_person, phone, region, package, status', { count: 'exact' })
-    .order('company_name', { ascending: true })
+    .select(showRate ? 'id, company_name, company_no, contact_person, phone, region, package, rate' : 'id, company_name, company_no, contact_person, phone, region, package', { count: 'exact' })
 
   if (q) {
     // Strip characters with special meaning in PostgREST's .or() filter syntax
@@ -83,19 +87,23 @@ export default async function DealersPage({ searchParams }: PageProps) {
     query = query.eq('region', region)
   }
 
-  const [{ data: dealers, count }, { data: regionRows }, activityMap] = await Promise.all([
+  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap] = await Promise.all([
     query,
     supabase.from('dealers_directory').select('region').not('region', 'is', null),
     getDealerActivityMap(supabase),
+    showRanking ? getDealerRankingMap(supabase) : Promise.resolve(new Map<string, DealerRanking>()),
   ])
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
   let rows: DealerRow[] = ((dealers as (Dealer & { rate?: number | null })[] | null) ?? []).map((d) => {
     const activity = activityMap.get(d.id)
+    const ranking = rankingMap.get(d.id)
     return {
       ...d,
       rate: showRate ? (d.rate ?? null) : null,
+      totalPoints: ranking?.totalPoints ?? 0,
+      rank: ranking?.rank ?? null,
       isInactive: activity?.isInactive ?? false,
       isSeverelyInactive: activity?.isSeverelyInactive ?? false,
       daysSinceLastActivity: activity?.daysSinceLastActivity ?? null,
@@ -105,6 +113,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
   if (view === 'inactive') {
     rows = rows.filter((r) => r.isInactive)
   }
+
+  // Dealers who've actually topped up rank to the top by volume; dealers
+  // with nothing recorded yet sink to the bottom, alphabetically among
+  // themselves — replaces the old manually-toggled Active/Inactive status.
+  rows.sort((a, b) => b.totalPoints - a.totalPoints || a.company_name.localeCompare(b.company_name))
 
   // The header pill below shows `count` (the DB's pre-filter total) for
   // 'all'/'region', but the inactive view filters client-side afterward —
@@ -191,7 +204,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       </form>
 
       {rows.length ? (
-        <DealersTable dealers={rows} groupByRegion={view === 'region'} canManage={canManage} showRate={showRate} />
+        <DealersTable dealers={rows} groupByRegion={view === 'region'} showRate={showRate} showRanking={showRanking} />
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">

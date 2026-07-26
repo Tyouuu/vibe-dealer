@@ -10,41 +10,16 @@ import { sanitizeSearchTerm } from '@/lib/search'
 
 function assertCanManage(role: string) {
   if (role !== 'cs' && role !== 'master') {
-    throw new Error('Not authorized to change dealer status.')
+    throw new Error('Not authorized to manage dealers.')
   }
-}
-
-export async function setDealerStatus(id: string, status: 'active' | 'inactive') {
-  const user = await requireUser()
-  assertCanManage(user.role)
-
-  // dealers UPDATE is RLS-restricted to accountant/master (0004) — cs (who
-  // this action also serves) goes through this narrow SECURITY DEFINER
-  // function instead of a direct .update(), which would silently no-op for cs.
-  const supabase = await createClient()
-  await supabase.rpc('set_dealer_status', { p_dealer_id: id, p_status: status })
-
-  revalidatePath('/dealers')
-  revalidatePath(`/dealers/${id}`)
-}
-
-export async function bulkSetDealerStatus(ids: string[], status: 'active' | 'inactive') {
-  const user = await requireUser()
-  assertCanManage(user.role)
-  if (!ids.length) return
-
-  const supabase = await createClient()
-  await Promise.all(ids.map((id) => supabase.rpc('set_dealer_status', { p_dealer_id: id, p_status: status })))
-
-  revalidatePath('/dealers')
 }
 
 // cs/master only, matching who can onboard a dealer in the first place —
 // editing contact/profile info is roster management, not a finance action,
-// same split the page already draws for status toggling and CSV import.
-// Routes through update_dealer_profile (0021) unconditionally, same as
-// setDealerStatus, rather than branching cs through the RPC and master
-// through a direct .update() — one code path, no drift between them.
+// same split the page already draws for CSV import. Routes through
+// update_dealer_profile (0021) unconditionally rather than branching cs
+// through an RPC and master through a direct .update() — one code path,
+// no drift between them.
 export async function updateDealer(formData: FormData) {
   const id = String(formData.get('id') ?? '')
   const user = await requireUser()

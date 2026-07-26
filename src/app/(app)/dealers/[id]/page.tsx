@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
+import { getDealerRankingMap } from '@/lib/dealer-ranking'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { markDelivered } from '../../delivery/actions'
 import { deleteDealer } from '../actions'
@@ -28,7 +29,6 @@ type Dealer = {
   notes: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
-  status: 'active' | 'inactive'
   onboarded_by: string | null
   created_at: string | null
 }
@@ -197,8 +197,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
       isFinance
-        ? 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, rate, status, onboarded_by, created_at'
-        : 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, status, onboarded_by, created_at'
+        ? 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, rate, onboarded_by, created_at'
+        : 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, onboarded_by, created_at'
     )
     .eq('id', id)
     .single()
@@ -219,6 +219,9 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     onboardedByName = onboardedByProfile?.name ?? onboardedByProfile?.email ?? null
   }
   const activity = (await getDealerActivityMap(supabase)).get(id)
+  // Same RLS boundary as the transactions query below — cs has no SELECT on
+  // transactions at all, so ranking (derived from it) is finance-only too.
+  const ranking = isFinance ? (await getDealerRankingMap(supabase)).get(id) : undefined
 
   let txRows: TxRow[] = []
   let deliveryRows: DeliveryRow[] = []
@@ -296,9 +299,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             </div>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className={typedDealer.status === 'active' ? 'pill pill-jade' : 'pill pill-neutral'}>
-              {typedDealer.status === 'active' ? 'Active' : 'Inactive'}
-            </span>
+            {isFinance && (
+              <span className={`pill ${ranking ? (ranking.rank <= 3 ? 'pill-brass' : 'pill-neutral') : 'pill-neutral'}`}>
+                {ranking ? `#${ranking.rank} by top-up` : 'No top-up yet'}
+              </span>
+            )}
             {canManage && (
               <EditDealerButton
                 dealer={{

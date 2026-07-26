@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
@@ -78,8 +79,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div className="flex min-h-screen flex-1 flex-col md:min-h-0">
           <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
-            <LogoMark className="h-8 w-8 shrink-0" />
-            <span className="text-sm font-bold text-paper">DealerHub</span>
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <LogoMark className="h-8 w-8 shrink-0" />
+              <span className="text-sm font-bold text-paper">DealerHub</span>
+            </Link>
             <div className="flex-1" />
             <MobileNav
               items={navItems}

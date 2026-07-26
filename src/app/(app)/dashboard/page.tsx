@@ -13,7 +13,7 @@ import {
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
-import { GrowthMap, hasMapPin } from './growth-map'
+import { RegionGrowthCard } from './growth-map'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconAlertCircle, IconTruck, ReconciledStamp } from '../icons'
 
@@ -220,27 +220,7 @@ export default async function DashboardPage() {
           <MonthlyTrendChart rows={trendRows} regions={regions} />
         </div>
 
-        <div className="app-card">
-          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
-          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
-          {regionGrowth.length ? (
-            <div className="flex flex-wrap gap-2.5">
-              {regionGrowth.map((r) => (
-                <span
-                  key={r.region}
-                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
-                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
-                >
-                  <span className="swatch" style={{ background: r.color }} />
-                  {r.region} {r.pct}%
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
-          )}
-          <GrowthMap regions={regionGrowth} />
-        </div>
+        <RegionGrowthCard regions={regionGrowth} />
       </div>
 
       <div className="app-card">
@@ -364,27 +344,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
           <MonthlyTrendChart rows={trendRows} regions={regions} />
         </div>
 
-        <div className="app-card">
-          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
-          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
-          {regionGrowth.length ? (
-            <div className="flex flex-wrap gap-2.5">
-              {regionGrowth.map((r) => (
-                <span
-                  key={r.region}
-                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
-                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
-                >
-                  <span className="swatch" style={{ background: r.color }} />
-                  {r.region} {r.pct}%
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
-          )}
-          <GrowthMap regions={regionGrowth} />
-        </div>
+        <RegionGrowthCard regions={regionGrowth} />
       </div>
 
       <div className="app-card">
@@ -506,27 +466,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
           )}
         </div>
 
-        <div className="app-card">
-          <h3 className="mb-1 text-sm font-bold text-paper">Growth by Region</h3>
-          <p className="mb-3.5 text-xs text-paper-dim">Share of this month&apos;s verified top-up points, top {regionGrowth.length || 0} region{regionGrowth.length === 1 ? '' : 's'}.</p>
-          {regionGrowth.length ? (
-            <div className="flex flex-wrap gap-2.5">
-              {regionGrowth.map((r) => (
-                <span
-                  key={r.region}
-                  className={`region-chip ${hasMapPin(r.region) ? '' : 'opacity-60'}`}
-                  title={hasMapPin(r.region) ? undefined : `${r.region} is outside this map's coverage area — no pin shown below`}
-                >
-                  <span className="swatch" style={{ background: r.color }} />
-                  {r.region} {r.pct}%
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-paper-dim">No verified transactions this month yet.</p>
-          )}
-          <GrowthMap regions={regionGrowth} />
-        </div>
+        <RegionGrowthCard regions={regionGrowth} />
       </div>
     </div>
   )

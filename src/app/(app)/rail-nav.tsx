@@ -107,10 +107,10 @@ export function RailNav({
 
   return (
     <aside className="rail" ref={wrapRef}>
-      <div className="mb-1.5 flex items-center gap-2.5 px-1.5 pb-4 pt-1.5">
+      <Link href="/dashboard" className="mb-1.5 flex items-center gap-2.5 px-1.5 pb-4 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
         <span className="overflow-hidden whitespace-nowrap text-base font-extrabold tracking-tight text-paper">DealerHub</span>
-      </div>
+      </Link>
 
       {[...groups.entries()].map(([group, groupItems]) => (
         <div key={group}>

@@ -7,6 +7,7 @@ import { createTransaction } from './actions'
 import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
+import { DatePicker } from '../date-picker'
 
 // Mirrors /api/reconcile/extract's limits — this upload previously had none
 // at all, client-side or bucket-level, unlike the OCR route which validates
@@ -103,6 +104,12 @@ export function EntryForm({
   }, [type, pkg, dealer, moneyCollected, pointsOverride])
 
   const insufficientBalance = preview != null && preview.points > availableBalance
+  // Checked live (not just on submit) — typing past the amount collected
+  // used to give no feedback at all until Submit, so a CS entering 2500
+  // collected could type 10000 into Coupon Amount and see nothing wrong
+  // until the form rejected the whole submission.
+  const couponAmount = Number(couponRm) || 0
+  const couponExceedsMoney = type === 'topup' && couponAmount > 0 && couponAmount > (Number(moneyCollected) || 0)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -245,15 +252,7 @@ export function EntryForm({
 
             <div>
               <label className="field-label">Date</label>
-              <input
-                name="tx_date"
-                type="date"
-                value={txDate}
-                max={today}
-                onChange={(e) => setTxDate(e.target.value)}
-                required
-                className="field-input"
-              />
+              <DatePicker name="tx_date" value={txDate} onChange={setTxDate} max={today} todayIso={today} required />
               <span className="hint">When the sale actually happened, not when you&apos;re entering it.</span>
             </div>
           </div>
@@ -327,18 +326,16 @@ export function EntryForm({
                   type="number"
                   step={COUPON_DENOMINATION_RM}
                   min="0"
+                  max={moneyCollected || undefined}
                   value={couponRm}
                   onChange={(e) => setCouponRm(e.target.value)}
                   placeholder="0"
-                  className="field-input"
+                  className={`field-input ${couponExceedsMoney ? 'border-clay-bright' : ''}`}
                 />
-                <span className="hint">
-                  Portion of the amount above issued as RM{COUPON_DENOMINATION_RM}
-                  {' '}
-                  coupons instead of straight to the dealer&apos;s phone — leave blank if this whole top-up is direct.
-                  {Number(couponRm) > 0
-                    ? ` (${Number(couponRm) / COUPON_DENOMINATION_RM} coupon${Number(couponRm) / COUPON_DENOMINATION_RM === 1 ? '' : 's'})`
-                    : ''}
+                <span className={`hint ${couponExceedsMoney ? 'font-semibold text-clay-bright' : ''}`}>
+                  {couponExceedsMoney
+                    ? `Can't exceed the RM ${(Number(moneyCollected) || 0).toLocaleString()} collected above.`
+                    : `Portion of the amount above issued as RM${COUPON_DENOMINATION_RM} coupons instead of straight to the dealer's phone — leave blank if this whole top-up is direct.`}
                 </span>
               </div>
             </div>
@@ -399,6 +396,13 @@ export function EntryForm({
             <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
             <Row label="Rate" value={`${preview.rate}%`} />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
+            {type === 'topup' && couponAmount > 0 && (
+              <Row
+                label="Coupons"
+                value={`${couponAmount / COUPON_DENOMINATION_RM} × RM${COUPON_DENOMINATION_RM}`}
+                warn={couponExceedsMoney}
+              />
+            )}
             <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
             <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
           </div>
@@ -416,7 +420,7 @@ export function EntryForm({
         <button
           type="submit"
           form="entry-form"
-          disabled={uploading || submitting || insufficientBalance}
+          disabled={uploading || submitting || insufficientBalance || couponExceedsMoney}
           className="btn-primary mt-4 w-full"
         >
           {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}

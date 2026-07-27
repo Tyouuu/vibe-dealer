@@ -6,6 +6,8 @@ import { COMMISSION_RATE } from '@/lib/packages'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { recordCreditPurchase } from './actions'
 import { IconCoin, IconTrendUp, IconDocument, IconCheckCircle } from '../icons'
+import { DatePicker } from '../date-picker'
+import { todayInMalaysia } from '@/lib/month'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — DealerHub',
@@ -32,6 +34,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
     return <PermissionDenied role={user.role} action="view credit purchases" />
   }
 
+  const today = todayInMalaysia()
   const supabase = await createClient()
   const [{ data: purchases }, { data: verifiedRows }, { data: profiles }, creditBalance] = await Promise.all([
     // No .limit() — Total Bought/Total Cost Paid/Cash Margin below are real
@@ -165,7 +168,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         <form action={recordCreditPurchase} className="flex flex-col gap-3.5">
           <div>
             <label className="field-label">Date</label>
-            <input name="purchase_date" type="date" required className="field-input" />
+            <DatePicker name="purchase_date" max={today} todayIso={today} required />
           </div>
           <div>
             <label className="field-label">Amount Paid (RM)</label>

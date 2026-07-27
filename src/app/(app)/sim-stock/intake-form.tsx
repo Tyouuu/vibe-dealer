@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { recordSimIntake } from './actions'
 import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
+import { DatePicker } from '../date-picker'
 
 export function IntakeForm() {
   const [simType, setSimType] = useState<SimStockType>('physical')
@@ -31,7 +32,7 @@ export function IntakeForm() {
       </div>
       <div>
         <label className="field-label">Intake Date</label>
-        <input name="intake_date" type="date" required className="field-input" />
+        <DatePicker name="intake_date" required />
       </div>
       <div>
         <label className="field-label">Quantity (cards)</label>

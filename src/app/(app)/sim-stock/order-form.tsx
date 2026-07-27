@@ -6,6 +6,7 @@ import { createSimOrder } from './actions'
 import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { IconUpload } from '../icons'
 import { Combobox } from '../combobox'
+import { DatePicker } from '../date-picker'
 
 // Mirrors the sim-shipping-invoices bucket limits (migration 0024).
 const INVOICE_MAX_BYTES = 10 * 1024 * 1024
@@ -96,7 +97,7 @@ export function OrderForm({
       </div>
       <div>
         <label className="field-label">Order Date</label>
-        <input name="order_date" type="date" required className="field-input" />
+        <DatePicker name="order_date" required />
       </div>
       <div>
         <label className="field-label">Quantity (min {SIM_MIN_ORDER_QTY})</label>

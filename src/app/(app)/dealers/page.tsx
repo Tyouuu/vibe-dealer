@@ -171,7 +171,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <Link
           href={viewHref('inactive')}
           className={`segmented-btn ${view === 'inactive' ? 'active' : ''}`}
-          title="Dealers with no verified top-up in 30+ days — independent of the Active/Inactive status field"
+          title="Dealers with no verified top-up in 30+ days — independent of the top-up ranking above"
         >
           Needs Follow-up
         </Link>

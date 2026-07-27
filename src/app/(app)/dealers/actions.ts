@@ -189,7 +189,6 @@ export async function importDealers(formData: FormData) {
     notes: string | null
     package: PackageCode | null
     rate: number | null
-    status: 'active' | 'inactive'
     onboarded_by: string
   }[] = []
 
@@ -223,7 +222,6 @@ export async function importDealers(formData: FormData) {
       notes: col(r, 'notes') || null,
       package: pkg,
       rate: pkg ? PACKAGES[pkg].rate : null,
-      status: col(r, 'status').toLowerCase() === 'inactive' ? 'inactive' : 'active',
       onboarded_by: user.id,
     })
   }

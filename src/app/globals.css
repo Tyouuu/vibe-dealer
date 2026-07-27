@@ -226,6 +226,15 @@ body {
   .pill {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide;
   }
+  /* Same color classes as .pill (pill-jade/pill-slate/etc, combined as
+     `tag pill-slate`), but rounded-md instead of rounded-full — a label
+     that's genuinely more than a word or two (e.g. "Physical SIM (With
+     Number)") wraps to 2-3 lines inside a fully-rounded pill and the
+     border-radius stretches into an oval/blob shape as the box gets taller;
+     a modest fixed corner radius doesn't have that failure mode. */
+  .tag {
+    @apply inline-flex max-w-[150px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold leading-tight;
+  }
   .pill-jade {
     @apply bg-jade/12 text-jade-bright;
   }

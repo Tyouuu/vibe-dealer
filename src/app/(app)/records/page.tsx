@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
 }
 
-const PAGE_SIZE = 200
+const PAGE_SIZE = 50
 
 type TxRow = {
   id: string

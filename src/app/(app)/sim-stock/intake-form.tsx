@@ -4,18 +4,30 @@ import { useState, useTransition } from 'react'
 import { recordSimIntake } from './actions'
 import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 import { DatePicker } from '../date-picker'
+import { Modal } from '../modal'
 
 export function IntakeForm() {
   const [simType, setSimType] = useState<SimStockType>('physical')
   const [pending, startTransition] = useTransition()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    setPendingFormData(new FormData(e.currentTarget))
+    setConfirmOpen(true)
+  }
+
+  function doSubmit() {
+    if (!pendingFormData) return
+    setConfirmOpen(false)
     startTransition(() => {
-      recordSimIntake(formData)
+      recordSimIntake(pendingFormData)
     })
   }
+
+  const quantity = pendingFormData ? Number(pendingFormData.get('quantity')) : 0
+  const costPerUnit = pendingFormData ? Number(pendingFormData.get('cost_per_unit_rm')) : 0
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
@@ -49,6 +61,32 @@ export function IntakeForm() {
       <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60">
         {pending ? 'Saving…' : 'Save Intake'}
       </button>
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <p className="text-sm font-bold text-paper">Confirm this stock intake</p>
+        <div className="mt-3 flex flex-col text-sm">
+          <div className="docket-row">
+            <span className="text-paper-dim">SIM Type</span>
+            <b className="text-paper">{SIM_TYPE_LABEL[simType]}</b>
+          </div>
+          <div className="docket-row">
+            <span className="text-paper-dim">Quantity</span>
+            <b className="figure text-paper">{quantity.toLocaleString()} cards</b>
+          </div>
+          <div className="docket-row">
+            <span className="text-paper-dim">Total Cost</span>
+            <b className="figure-money text-paper">RM {(quantity * costPerUnit).toLocaleString()}</b>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">
+            Back
+          </button>
+          <button type="button" onClick={doSubmit} disabled={pending} className="btn-primary flex-1">
+            {pending ? 'Saving…' : 'Confirm & Save'}
+          </button>
+        </div>
+      </Modal>
     </form>
   )
 }

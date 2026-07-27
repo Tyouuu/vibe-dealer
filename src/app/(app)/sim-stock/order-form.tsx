@@ -7,6 +7,7 @@ import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, 
 import { IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { DatePicker } from '../date-picker'
+import { Modal } from '../modal'
 
 // Mirrors the sim-shipping-invoices bucket limits (migration 0024).
 const INVOICE_MAX_BYTES = 10 * 1024 * 1024
@@ -28,8 +29,10 @@ export function OrderForm({
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
 
@@ -38,8 +41,15 @@ export function OrderForm({
       return
     }
 
+    setPendingFormData(new FormData(e.currentTarget))
+    setConfirmOpen(true)
+  }
+
+  async function doSubmit() {
+    if (!pendingFormData) return
+    setConfirmOpen(false)
     setSubmitting(true)
-    const formData = new FormData(e.currentTarget)
+    const formData = pendingFormData
 
     // eSIM (either variant) has no physical shipment — only upload/attach an
     // invoice for a physical order, regardless of whether the field was
@@ -153,6 +163,32 @@ export function OrderForm({
       <button type="submit" disabled={submitting} className="btn-primary w-full">
         {uploading ? 'Uploading invoice…' : submitting ? 'Saving…' : 'Save Order'}
       </button>
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <p className="text-sm font-bold text-paper">Confirm this order</p>
+        <div className="mt-3 flex flex-col text-sm">
+          <div className="docket-row">
+            <span className="text-paper-dim">Dealer</span>
+            <b className="text-paper">{selectedDealer?.company_name ?? '—'}</b>
+          </div>
+          <div className="docket-row">
+            <span className="text-paper-dim">SIM Type</span>
+            <b className="text-paper">{SIM_TYPE_LABEL[simType]}</b>
+          </div>
+          <div className="docket-row">
+            <span className="text-paper-dim">Quantity</span>
+            <b className="figure text-paper">{(Number(pendingFormData?.get('quantity')) || 0).toLocaleString()} cards</b>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">
+            Back
+          </button>
+          <button type="button" onClick={doSubmit} disabled={submitting} className="btn-primary flex-1">
+            {uploading ? 'Uploading invoice…' : submitting ? 'Saving…' : 'Confirm & Save'}
+          </button>
+        </div>
+      </Modal>
     </form>
   )
 }

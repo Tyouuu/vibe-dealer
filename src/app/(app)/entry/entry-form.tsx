@@ -8,6 +8,7 @@ import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
 import { DatePicker } from '../date-picker'
+import { Modal } from '../modal'
 
 // Mirrors /api/reconcile/extract's limits — this upload previously had none
 // at all, client-side or bucket-level, unlike the OCR route which validates
@@ -69,6 +70,8 @@ export function EntryForm({
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
   const dealer = dealers.find((d) => d.id === dealerId)
 
@@ -147,9 +150,19 @@ export function EntryForm({
       }
     }
 
+    // Validation passed — confirm the summary before actually committing a
+    // financial record, rather than posting straight from the form. doSubmit
+    // runs the real upload + createTransaction once the modal is confirmed.
+    setPendingFormData(new FormData(e.currentTarget))
+    setConfirmOpen(true)
+  }
+
+  async function doSubmit() {
+    if (!pendingFormData) return
+    setConfirmOpen(false)
     setSubmitting(true)
 
-    const formData = new FormData(e.currentTarget)
+    const formData = pendingFormData
 
     if (receiptFile) {
       setUploading(true)
@@ -427,6 +440,28 @@ export function EntryForm({
         </button>
         <p className="note-strip">Buying a package automatically updates the dealer&apos;s rate for future transactions.</p>
       </div>
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <p className="text-sm font-bold text-paper">Confirm this transaction</p>
+        {preview && (
+          <div className="mt-3 flex flex-col text-sm">
+            <Row label="Dealer" value={dealer?.company_name ?? '—'} />
+            <Row label="Type" value={type === 'package' ? `Buy Package ${pkg}` : 'Regular Top-up'} />
+            <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
+            <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
+            <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
+          </div>
+        )}
+        <p className="mt-3 text-[11px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>
+        <div className="mt-4 flex items-center gap-2">
+          <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">
+            Back
+          </button>
+          <button type="button" onClick={doSubmit} disabled={uploading || submitting} className="btn-primary flex-1">
+            {uploading ? 'Uploading receipt…' : submitting ? 'Saving…' : 'Confirm & Submit'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

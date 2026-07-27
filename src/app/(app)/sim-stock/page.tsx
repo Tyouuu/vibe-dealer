@@ -157,9 +157,28 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="app-card">
           <h3 className="mb-3.5 text-sm font-bold text-paper">Dealer Orders</h3>
+          {/* This table lives in the 1.4fr side of a 1.4fr/1fr split (Place
+              Order takes the rest), not the full page width — a colgroup
+              sized as if it had the whole page to itself would squeeze
+              Dealer down to almost nothing and the columns would visually
+              run into each other. min-w-[940px] + the overflow-x-auto
+              wrapper below means a narrow container scrolls horizontally
+              instead of destroying the layout. */}
           {orders.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full min-w-[940px] table-fixed border-collapse text-sm">
+                <colgroup>
+                  <col className="w-[90px]" />
+                  <col className="w-36" />
+                  <col className="w-32" />
+                  <col className="w-14" />
+                  <col className="w-20" />
+                  {isFinance && <col className="w-20" />}
+                  <col className="w-[70px]" />
+                  <col className="w-24" />
+                  <col className="w-[70px]" />
+                  <col className="w-28" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th className="th">Date</th>
@@ -185,7 +204,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                         <td className="td text-paper-dim">{o.order_date}</td>
                         <td className="td font-semibold text-paper">{dealerName}</td>
                         <td className="td">
-                          <span className={`pill ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
+                          <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
                         </td>
                         <td className="td text-right">{o.quantity.toLocaleString()}</td>
                         <td className="td figure-money text-right">RM {paid.toLocaleString()}</td>
@@ -206,7 +225,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                               <span className="text-paper-dim/50">—</span>
                             )
                           ) : o.esim_codes ? (
-                            <span className="max-w-[160px] truncate text-paper-dim" title={o.esim_codes}>
+                            <span className="block truncate text-paper-dim" title={o.esim_codes}>
                               {o.esim_codes}
                             </span>
                           ) : (
@@ -254,7 +273,16 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             <h3 className="mb-3.5 text-sm font-bold text-paper">Stock Intake History</h3>
             {intakes.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+                <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+                  <colgroup>
+                    <col className="w-[90px]" />
+                    <col className="w-32" />
+                    <col className="w-14" />
+                    <col className="w-20" />
+                    <col className="w-24" />
+                    <col className="w-36" />
+                    <col className="w-28" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th className="th">Date</th>

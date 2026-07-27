@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth, todayInMalaysia } from '@/lib/month'
-import { ReconciledStamp, IconCheckCircle, IconAlertCircle, IconBuilding, IconDocument } from '../icons'
+import { ReconciledStamp, IconCheckCircle, IconAlertCircle } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
@@ -13,6 +14,8 @@ import { MonthPicker } from '../month-picker'
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
 }
+
+const PAGE_SIZE = 50
 
 type BreakdownRow = {
   id: string
@@ -26,12 +29,13 @@ type BreakdownRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; error?: string; saved?: string }>
+  searchParams: Promise<{ month?: string; error?: string; saved?: string; page?: string }>
 }
 
 export default async function ReconcilePage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month = currentMonth(), error, saved } = await searchParams
+  const { month = currentMonth(), error, saved, page } = await searchParams
+  const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view reconciliation" />
@@ -45,7 +49,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     // this month, and Your 2% Due is computed from it. A cap here would
     // silently under-count both once the month passes that many rows (this
     // is company-wide, not per-dealer, so 242 dealers gets there fast).
-    // Reports runs the identical unbounded query for the same reason.
+    // Reports runs the identical unbounded query for the same reason. The
+    // list below (pure display, not an input to any total) is paginated in
+    // memory off this same array instead of a second query.
     supabase
       .from('transactions')
       .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name)')
@@ -70,106 +76,112 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   // exactly 0 and wrongly report "Mismatch found".
   const diff = companyPoints != null ? Math.round((systemPoints - companyPoints) * 100) / 100 : null
 
+  const totalPages = Math.max(1, Math.ceil(breakdownRows.length / PAGE_SIZE))
+  const currentPage = Math.min(pageNum, totalPages)
+  const pagedRows = breakdownRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  function pageHref(p: number) {
+    const params = new URLSearchParams({ month })
+    if (p > 1) params.set('page', String(p))
+    return `/reconcile?${params.toString()}`
+  }
+
   return (
     <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
-      <div className="app-card relative overflow-visible">
-        {statement?.reconciled && (
-          <div className="pointer-events-none absolute -right-3 -top-5">
-            <ReconciledStamp sub={month} />
-          </div>
-        )}
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Reconciliation · {month}</h1>
-            <p className="mt-1 text-[12.5px] text-paper-dim">
-              Compare what your system recorded against Vibe&apos;s official statement before confirming this month&apos;s
-              commission.
-            </p>
-          </div>
-          <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
-            <div className="w-40">
-              <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
+      <div className="flex flex-col gap-5">
+        <div className="app-card relative overflow-visible">
+          {statement?.reconciled && (
+            <div className="pointer-events-none absolute -right-3 -top-5">
+              <ReconciledStamp sub={month} />
             </div>
-            <button type="submit" className="btn-ghost py-1.5 text-xs">
-              View
-            </button>
-          </form>
-        </div>
-
-        {error && <div className="alert alert-bad">{error}</div>}
-        {saved && <div className="alert alert-ok">Saved.</div>}
-
-        <h2 className="mb-3 text-sm font-bold text-paper">This Month&apos;s Comparison</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Your System (verified)</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
-                <IconBuilding className="h-3.5 w-3.5" />
-              </span>
+          )}
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Reconciliation · {month}</h1>
+              <p className="mt-1 text-[12.5px] text-paper-dim">
+                Compare what your system recorded against Vibe&apos;s official statement before confirming this
+                month&apos;s commission.
+              </p>
             </div>
-            <div className="figure-points mt-1.5 text-xl font-semibold">{systemPoints.toLocaleString()} pts</div>
+            <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
+              <div className="w-40">
+                <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
+              </div>
+              <button type="submit" className="btn-ghost py-1.5 text-xs">
+                View
+              </button>
+            </form>
           </div>
-          <div className={`app-tile ${diff === 0 ? 'border-jade/30 bg-jade/10' : ''}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Vibe&apos;s Statement</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
-                <IconDocument className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            {companyPoints != null ? (
-              <div className="figure-points mt-1.5 text-xl font-semibold">{Number(companyPoints).toLocaleString()} pts</div>
-            ) : (
-              <div className="mt-1.5 text-sm text-paper-dim">Not entered yet</div>
-            )}
-          </div>
-        </div>
 
-        <div
-          className={`mt-3 flex items-center gap-3 rounded-xl px-4 py-3.5 ${
-            diff == null ? 'bg-ink-850/60' : diff === 0 ? 'bg-jade/10' : 'bg-clay/10'
-          }`}
-        >
-          <span
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${
-              diff == null ? 'bg-ink-800 text-paper-dim' : diff === 0 ? 'bg-jade/15 text-jade-bright' : 'bg-clay/15 text-clay-bright'
+          {error && <div className="alert alert-bad">{error}</div>}
+          {saved && <div className="alert alert-ok">Saved.</div>}
+
+          {/* The difference is the one number that actually answers "are we
+              square with Vibe this month" — leading with two side-by-side
+              tiles made the reader do that subtraction themselves. This
+              leads with the answer, then shows the two source figures
+              underneath for whoever wants to check the math. */}
+          <div
+            className={`rounded-2xl border p-5 ${
+              diff == null ? 'border-ink-800 bg-ink-850/40' : diff === 0 ? 'border-jade/30 bg-jade/10' : 'border-clay/30 bg-clay/10'
             }`}
           >
-            {diff === 0 ? <IconCheckCircle className="h-5 w-5" /> : <IconAlertCircle className="h-5 w-5" />}
-          </span>
-          <div>
-            <div
-              className={`text-sm font-bold ${
-                diff == null ? 'text-paper-dim' : diff === 0 ? 'text-jade-bright' : 'text-clay-bright'
-              }`}
-            >
-              {diff == null ? 'Awaiting Vibe statement' : diff === 0 ? 'Matches exactly' : 'Mismatch found'}
+            <div className="flex items-center gap-3">
+              <span
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${
+                  diff == null ? 'bg-ink-800 text-paper-dim' : diff === 0 ? 'bg-jade/15 text-jade-bright' : 'bg-clay/15 text-clay-bright'
+                }`}
+              >
+                {diff == null ? <IconAlertCircle className="h-5 w-5" /> : diff === 0 ? <IconCheckCircle className="h-5 w-5" /> : <IconAlertCircle className="h-5 w-5" />}
+              </span>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">
+                  {diff == null ? 'Waiting on Vibe’s statement' : 'Difference vs Vibe’s statement'}
+                </div>
+                <div
+                  className={`figure-points text-2xl font-extrabold ${
+                    diff == null ? 'text-paper-dim' : diff === 0 ? 'text-jade-bright' : 'text-clay-bright'
+                  }`}
+                >
+                  {diff == null ? 'No statement yet' : diff === 0 ? 'Matches exactly' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts`}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-paper-dim">
-              {diff == null
-                ? 'Enter the Vibe statement to compare.'
-                : diff === 0
-                  ? 'System and Vibe totals agree for this month.'
-                  : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts difference`}
-            </div>
+
+            {diff == null ? (
+              <div className="mt-4 rounded-xl border border-dashed border-ink-800 bg-ink-900 px-3.5 py-3 text-[12.5px] text-paper-dim">
+                Your system has <b className="text-paper">{systemPoints.toLocaleString()} pts</b> verified this month. Enter Vibe&apos;s own
+                total in the panel on the right and this card will instantly show whether the two agree, and by how much if not.
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-ink-900 px-3.5 py-2.5">
+                  <div className="text-[10.5px] font-semibold text-paper-dim">Your System (verified)</div>
+                  <div className="figure-points mt-0.5 text-base font-bold text-paper">{systemPoints.toLocaleString()} pts</div>
+                </div>
+                <div className="rounded-xl bg-ink-900 px-3.5 py-2.5">
+                  <div className="text-[10.5px] font-semibold text-paper-dim">Vibe&apos;s Statement</div>
+                  <div className="figure-points mt-0.5 text-base font-bold text-paper">{Number(companyPoints).toLocaleString()} pts</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2.5">
+            <span className="text-sm font-semibold text-paper">Your 2% Due</span>
+            <b className="figure-money text-lg text-primary-deep">RM {systemProfit.toLocaleString()}</b>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <MarkReconciledForm month={month} hasStatement={!!statement} diff={diff} />
           </div>
         </div>
 
-        <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2.5">
-          <span className="text-sm font-semibold text-paper">Your 2% Due</span>
-          <b className="figure-money text-lg text-primary-deep">RM {systemProfit.toLocaleString()}</b>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3">
-          <MarkReconciledForm month={month} hasStatement={!!statement} diff={diff} />
-        </div>
-
-        <div className="mt-5 border-t border-ink-800 pt-4">
+        <div className="app-card">
           <div className="mb-2.5 flex items-center justify-between">
             <h2 className="text-sm font-bold text-paper">Verified Transactions Behind This Total</h2>
-            <span className="pill pill-neutral">Most recent</span>
+            <span className="pill pill-neutral">{breakdownRows.length} transaction{breakdownRows.length === 1 ? '' : 's'}</span>
           </div>
-          {breakdownRows.length ? (
+          {pagedRows.length ? (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
@@ -182,7 +194,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {breakdownRows.slice(0, 8).map((tx) => {
+                  {pagedRows.map((tx) => {
                     const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
                     const dealerName = dealerRel?.company_name
                     return (
@@ -219,6 +231,29 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           ) : (
             <p className="text-sm text-paper-dim">No verified transactions in this period yet.</p>
           )}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+              <span className="text-[11.5px] text-paper-dim">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                {currentPage > 1 ? (
+                  <Link href={pageHref(currentPage - 1)} className="btn-ghost py-1.5 text-xs">
+                    ← Prev
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                )}
+                {currentPage < totalPages ? (
+                  <Link href={pageHref(currentPage + 1)} className="btn-ghost py-1.5 text-xs">
+                    Next →
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                )}
+              </div>
+            </div>
+          )}
           <div className="mt-3 text-center">
             <a href={`/records?month=${month}&status=verified`} className="text-[11.5px] font-semibold text-primary hover:underline">
               View all in Transactions →
@@ -227,7 +262,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="app-card">
+      <div className="app-card lg:sticky lg:top-5 lg:self-start">
         <h3 className="mb-3.5 text-sm font-bold text-paper">Enter Vibe Statement</h3>
         <StatementForm
           month={month}

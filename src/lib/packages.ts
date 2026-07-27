@@ -11,6 +11,14 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 
 export const COMMISSION_RATE = 0.02
 
+// What master effectively pays Vibe per point: the same 8% total margin
+// baked into every dealer sale (6% dealer rate + 2% master commission,
+// PROJECT_SPEC.md section 3.2's "8% dealer buys 1000 points -> pays RM920")
+// applies one level up too — money_rm = points x (1 - 8%). Confirmed with
+// the client 2026-07-28: there's only ever been this one rate, not a
+// separately-negotiated wholesale price.
+export const CREDIT_PURCHASE_RATE = PACKAGES.A.rate / 100 + COMMISSION_RATE
+
 // A top-up's money can be issued partly or fully as fixed-denomination
 // coupons instead of straight to the dealer's phone — same points/rate/2%
 // math either way (coupon_rm is purely a fulfillment-method annotation on

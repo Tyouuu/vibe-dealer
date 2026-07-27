@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
@@ -42,13 +43,17 @@ type OrderRow = {
 
 type BalanceRow = { sim_type: SimStockType; total_intake: number; total_sold: number; available: number }
 
+const PAGE_SIZE = 50
+
 type PageProps = {
-  searchParams: Promise<{ error?: string; intake_saved?: string; order_saved?: string }>
+  searchParams: Promise<{ error?: string; intake_saved?: string; order_saved?: string; orders_page?: string; intake_page?: string }>
 }
 
 export default async function SimStockPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error, intake_saved, order_saved } = await searchParams
+  const { error, intake_saved, order_saved, orders_page, intake_page } = await searchParams
+  const ordersPageNum = Math.max(1, Math.trunc(Number(orders_page)) || 1)
+  const intakePageNum = Math.max(1, Math.trunc(Number(intake_page)) || 1)
   const isFinance = user.role === 'accountant' || user.role === 'master'
 
   if (user.role !== 'cs' && !isFinance) {
@@ -96,6 +101,26 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const totalIntakeCost = intakes.reduce((s, r) => s + r.quantity * Number(r.cost_per_unit_rm), 0)
   const totalOrderRevenue = orders.reduce((s, o) => s + o.quantity * Number(o.unit_price_rm), 0)
   const totalOrderMargin = isFinance ? orders.reduce((s, o) => s + o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)), 0) : 0
+
+  // Sliced in memory rather than a second .range() query per list — unlike
+  // Records/Dealers this data doesn't grow across a whole customer base, just
+  // one master dealer's own order/intake history, so fetching the full set
+  // once (already needed for the totals above) and paginating the *render*
+  // is simpler without meaningfully changing what gets sent over the wire.
+  const ordersTotalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE))
+  const ordersPage = Math.min(ordersPageNum, ordersTotalPages)
+  const pagedOrders = orders.slice((ordersPage - 1) * PAGE_SIZE, ordersPage * PAGE_SIZE)
+
+  const intakesTotalPages = Math.max(1, Math.ceil(intakes.length / PAGE_SIZE))
+  const intakesPage = Math.min(intakePageNum, intakesTotalPages)
+  const pagedIntakes = intakes.slice((intakesPage - 1) * PAGE_SIZE, intakesPage * PAGE_SIZE)
+
+  function ordersPageHref(p: number) {
+    return `/sim-stock${p > 1 ? `?orders_page=${p}` : ''}#dealer-orders`
+  }
+  function intakePageHref(p: number) {
+    return `/sim-stock${p > 1 ? `?intake_page=${p}` : ''}#stock-intake-history`
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -155,8 +180,11 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Dealer Orders</h3>
+        <div className="app-card" id="dealer-orders">
+          <div className="mb-3.5 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
+            <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
+          </div>
           {/* This table lives in the 1.4fr side of a 1.4fr/1fr split (Place
               Order takes the rest), not the full page width — a colgroup
               sized as if it had the whole page to itself would squeeze
@@ -194,7 +222,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((o) => {
+                  {pagedOrders.map((o) => {
                     const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
                     const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
                     const paid = o.quantity * Number(o.unit_price_rm)
@@ -256,6 +284,29 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           ) : (
             <p className="text-sm text-paper-dim">No orders recorded yet.</p>
           )}
+          {ordersTotalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+              <span className="text-[11.5px] text-paper-dim">
+                Page {ordersPage} of {ordersTotalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                {ordersPage > 1 ? (
+                  <Link href={ordersPageHref(ordersPage - 1)} className="btn-ghost py-1.5 text-xs">
+                    ← Prev
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                )}
+                {ordersPage < ordersTotalPages ? (
+                  <Link href={ordersPageHref(ordersPage + 1)} className="btn-ghost py-1.5 text-xs">
+                    Next →
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="app-card">
@@ -269,8 +320,11 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
       {isFinance && (
         <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-          <div className="app-card">
-            <h3 className="mb-3.5 text-sm font-bold text-paper">Stock Intake History</h3>
+          <div className="app-card" id="stock-intake-history">
+            <div className="mb-3.5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-paper">Stock Intake History</h3>
+              <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
+            </div>
             {intakes.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
@@ -295,11 +349,11 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {intakes.map((r) => (
+                    {pagedIntakes.map((r) => (
                       <tr key={r.id} className="tr-row">
                         <td className="td text-paper-dim">{r.intake_date}</td>
                         <td className="td">
-                          <span className={`pill ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
+                          <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
                         </td>
                         <td className="td text-right">{r.quantity.toLocaleString()}</td>
                         <td className="td figure-money text-right">RM {Number(r.cost_per_unit_rm).toFixed(2)}</td>
@@ -313,6 +367,29 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               </div>
             ) : (
               <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>
+            )}
+            {intakesTotalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+                <span className="text-[11.5px] text-paper-dim">
+                  Page {intakesPage} of {intakesTotalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  {intakesPage > 1 ? (
+                    <Link href={intakePageHref(intakesPage - 1)} className="btn-ghost py-1.5 text-xs">
+                      ← Prev
+                    </Link>
+                  ) : (
+                    <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                  )}
+                  {intakesPage < intakesTotalPages ? (
+                    <Link href={intakePageHref(intakesPage + 1)} className="btn-ghost py-1.5 text-xs">
+                      Next →
+                    </Link>
+                  ) : (
+                    <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 

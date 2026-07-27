@@ -72,7 +72,24 @@ export function DealersTable({
               {region} <span className="pill pill-neutral">{rows.length}</span>
             </summary>
           )}
-          <table className="w-full border-collapse text-sm">
+          {/* table-fixed + an explicit colgroup, identical across every region
+              group's own <table> — table-layout:auto (the default) sizes
+              each column from that one table's own content, so a region with
+              short names/phones ends up with different column widths than
+              one with long ones, and the columns visibly stop lining up as
+              you scroll past a group boundary. Fixed widths shared by every
+              group is what actually keeps them aligned. */}
+          <table className="w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              {showRanking && <col className="w-14" />}
+              <col />
+              <col className="w-28" />
+              <col className="w-32" />
+              <col className="w-36" />
+              <col className="w-20" />
+              {showRate && <col className="w-16" />}
+              {showRanking && <col className="w-28" />}
+            </colgroup>
             <thead>
               <tr>
                 {showRanking && <th className="th w-12">Rank</th>}

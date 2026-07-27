@@ -324,17 +324,32 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                 + Record Transaction
               </a>
             )}
-            {user.role === 'master' && isFinance && txRows.length === 0 && (
-              <form action={deleteDealer}>
-                <input type="hidden" name="id" value={id} />
-                <ConfirmSubmitButton
-                  className="btn-clay py-1.5 text-xs"
-                  confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
+            {user.role === 'master' &&
+              isFinance &&
+              (txRows.length === 0 ? (
+                <form action={deleteDealer}>
+                  <input type="hidden" name="id" value={id} />
+                  <ConfirmSubmitButton
+                    className="btn-clay py-1.5 text-xs"
+                    confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
+                  >
+                    Delete Dealer
+                  </ConfirmSubmitButton>
+                </form>
+              ) : (
+                // Same button, always present, so it never reads as "some
+                // dealers just don't have this option" — disabled with the
+                // reason on hover instead of silently disappearing once a
+                // dealer has real transaction history to lose.
+                <button
+                  type="button"
+                  disabled
+                  className="btn-clay cursor-not-allowed py-1.5 text-xs opacity-40"
+                  title="Only a dealer with zero transactions can be deleted — this one has real history, so deleting it isn't offered."
                 >
                   Delete Dealer
-                </ConfirmSubmitButton>
-              </form>
-            )}
+                </button>
+              ))}
           </div>
         </div>
         <div className="mt-3.5 flex flex-wrap gap-2">

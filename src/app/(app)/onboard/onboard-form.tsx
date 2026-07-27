@@ -43,7 +43,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-[1.3fr_1fr]">
+    <div className="mx-auto max-w-2xl">
       <div className="app-card">
         <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">Onboard Dealer</h1>
 
@@ -114,6 +114,10 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
               />
             </div>
             <div className="sm:col-span-2">
+              <label className="field-label">Address</label>
+              <input name="address" placeholder="Unit, street, postcode, city — used for SIM delivery" className="field-input" />
+            </div>
+            <div className="sm:col-span-2">
               <label className="field-label">Notes (optional)</label>
               <textarea name="notes" rows={2} placeholder="Anything worth remembering about this dealer" className="field-input resize-none" />
             </div>
@@ -122,15 +126,6 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
             {checking ? 'Checking for duplicates…' : duplicate ? 'Yes, Onboard This Dealer' : 'Onboard Dealer'}
           </button>
         </form>
-      </div>
-
-      <div className="app-card">
-        <h3 className="mb-2 text-sm font-bold text-paper">Why onboarding happens here</h3>
-        <p className="note-strip mt-0">
-          New dealers are added directly by CS or Master so the ledger has a single source of truth for company
-          details, region, and starting package — no separate spreadsheet to keep in sync. Once onboarded, the
-          dealer immediately appears in the Dealers list and can be selected in New Transaction.
-        </p>
       </div>
     </div>
   )

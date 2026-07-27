@@ -27,6 +27,8 @@ type Dealer = {
 
 type View = 'all' | 'region' | 'inactive'
 
+const PAGE_SIZE = 50
+
 type PageProps = {
   searchParams: Promise<{
     q?: string
@@ -38,6 +40,7 @@ type PageProps = {
     skipped_dup?: string
     skipped_invalid?: string
     import_error?: string
+    page?: string
   }>
 }
 
@@ -53,6 +56,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     skipped_dup: skippedDup,
     skipped_invalid: skippedInvalid,
     import_error: importError,
+    page,
   } = await searchParams
   const view: View = rawView === 'region' || rawView === 'inactive' ? rawView : 'all'
   const canManage = user.role === 'cs' || user.role === 'master'
@@ -125,11 +129,30 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // sitting right below it (and the "Needs Follow-up" KPI card that links here).
   const displayCount = view === 'inactive' ? rows.length : (count ?? 0)
 
+  // Sliced in JS rather than via .range() on the query (the pattern /records
+  // uses) — rank comes from transactions.points aggregated separately, not a
+  // column the DB query can .order() by, so the full filtered set has to be
+  // fetched and sorted before pagination can mean "page 1 = the top-ranked
+  // dealers" instead of an arbitrary slice re-sorted page-by-page.
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
+  const pageNum = Math.min(totalPages, Math.max(1, Math.trunc(Number(page)) || 1))
+  const pageRows = rows.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE)
+
   function viewHref(v: View) {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
     if (region !== 'all') params.set('region', region)
     if (v !== 'all') params.set('view', v)
+    const qs = params.toString()
+    return `/dealers${qs ? `?${qs}` : ''}`
+  }
+
+  function pageHref(p: number) {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (region !== 'all') params.set('region', region)
+    if (view !== 'all') params.set('view', view)
+    if (p > 1) params.set('page', String(p))
     const qs = params.toString()
     return `/dealers${qs ? `?${qs}` : ''}`
   }
@@ -204,7 +227,32 @@ export default async function DealersPage({ searchParams }: PageProps) {
       </form>
 
       {rows.length ? (
-        <DealersTable dealers={rows} groupByRegion={view === 'region'} showRate={showRate} showRanking={showRanking} />
+        <>
+          <DealersTable dealers={pageRows} groupByRegion={view === 'region'} showRate={showRate} showRanking={showRanking} />
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+              <span className="text-[11.5px] text-paper-dim">
+                Page {pageNum} of {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                {pageNum > 1 ? (
+                  <Link href={pageHref(pageNum - 1)} className="btn-ghost py-1.5 text-xs">
+                    ← Prev
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                )}
+                {pageNum < totalPages ? (
+                  <Link href={pageHref(pageNum + 1)} className="btn-ghost py-1.5 text-xs">
+                    Next →
+                  </Link>
+                ) : (
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">

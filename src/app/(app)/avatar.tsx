@@ -1,10 +1,10 @@
 import { avatarHex, avatarInitials } from '@/lib/avatar'
 
-export function Avatar({ name, size = 28, package: pkg }: { name: string; size?: number; package?: string | null }) {
+export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
   return (
     <span
       className="grid shrink-0 place-items-center rounded-[8px] text-[11px] font-extrabold text-white"
-      style={{ width: size, height: size, background: avatarHex(pkg) }}
+      style={{ width: size, height: size, background: avatarHex(name) }}
     >
       {avatarInitials(name)}
     </span>

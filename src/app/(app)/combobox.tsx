@@ -9,7 +9,6 @@ export type ComboboxOption = {
   label: string
   sublabel?: string
   avatarName?: string
-  avatarPackage?: string | null
 }
 
 // Controlled (value/onChange), unlike Listbox/MonthPicker — entry-form needs
@@ -75,7 +74,7 @@ export function Combobox({
         className={`trigger-btn ${open ? 'open' : ''}`}
         onClick={() => (open ? closePanel() : openPanel())}
       >
-        {selected?.avatarName && <Avatar name={selected.avatarName} package={selected.avatarPackage} size={22} />}
+        {selected?.avatarName && <Avatar name={selected.avatarName} size={22} />}
         <span className={`truncate ${selected ? '' : 'text-paper-dim'}`}>{selected ? selected.label : placeholder}</span>
         <IconChevronDown className={`ml-auto h-3.5 w-3.5 shrink-0 text-paper-dim transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -108,7 +107,7 @@ export function Combobox({
                     value === o.value ? 'bg-primary-soft' : ''
                   }`}
                 >
-                  {o.avatarName && <Avatar name={o.avatarName} package={o.avatarPackage} size={26} />}
+                  {o.avatarName && <Avatar name={o.avatarName} size={26} />}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-bold text-paper">{o.label}</span>
                     {o.sublabel && <span className="block truncate text-[11.5px] text-paper-dim">{o.sublabel}</span>}

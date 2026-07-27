@@ -126,7 +126,7 @@ export default async function DashboardPage() {
     supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     supabase
       .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name, package)')
+      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
       .order('created_at', { ascending: false })
       .limit(10),
   ])
@@ -159,7 +159,7 @@ export default async function DashboardPage() {
   // filter below is client-side (see recent-transactions-table.tsx) since
   // it's just narrowing this already-fetched small batch, not a new query.
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
-    const rel = t.dealers as { company_name: string; package: string | null } | { company_name: string; package: string | null }[] | null
+    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
     const dealerRel = Array.isArray(rel) ? rel[0] : rel
     return {
       id: t.id,
@@ -171,7 +171,6 @@ export default async function DashboardPage() {
       status: t.status as 'pending' | 'verified' | 'flagged',
       dealerName: dealerRel?.company_name ?? '—',
       dealerId: t.dealer_id as string | null,
-      dealerPackage: dealerRel?.package ?? null,
     }
   })
 
@@ -258,7 +257,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
         .lte('tx_date', today),
       supabase
         .from('transactions')
-        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name, package)')
+        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
         .order('created_at', { ascending: false })
         .limit(10),
     ])
@@ -277,7 +276,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
 
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
-    const rel = t.dealers as { company_name: string; package: string | null } | { company_name: string; package: string | null }[] | null
+    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
     const dealerRel = Array.isArray(rel) ? rel[0] : rel
     return {
       id: t.id,
@@ -289,7 +288,6 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
       status: t.status as 'pending' | 'verified' | 'flagged',
       dealerName: dealerRel?.company_name ?? '—',
       dealerId: t.dealer_id as string | null,
-      dealerPackage: dealerRel?.package ?? null,
     }
   })
 

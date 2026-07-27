@@ -38,10 +38,7 @@ type TxRow = {
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
   recorded_by: string | null
-  dealers:
-    | { company_name: string; package: string | null }
-    | { company_name: string; package: string | null }[]
-    | null
+  dealers: { company_name: string } | { company_name: string }[] | null
 }
 
 type PageProps = {
@@ -101,7 +98,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name, package)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
   if (monthWindow) query = query.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
@@ -301,7 +298,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             {pageRows.map((tx) => {
               const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
               const dealerName = dealerRel?.company_name
-              const dealerPackage = dealerRel?.package ?? null
               const statusColor =
                 tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
               const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
@@ -315,7 +311,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   <td className="td text-paper-dim">{tx.tx_date}</td>
                   <td className="td">
                     <div className="flex items-center gap-2.5">
-                      <Avatar name={dealerName ?? '?'} size={24} package={dealerPackage} />
+                      <Avatar name={dealerName ?? '?'} size={24} />
                       <a
                         href={`/dealers/${tx.dealer_id}`}
                         className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"

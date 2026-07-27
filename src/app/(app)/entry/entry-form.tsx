@@ -217,7 +217,6 @@ export function EntryForm({
                 label: d.company_name,
                 sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'No package',
                 avatarName: d.company_name,
-                avatarPackage: d.package,
               }))}
             />
           </div>

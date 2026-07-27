@@ -22,10 +22,7 @@ type BreakdownRow = {
   package: string | null
   points: number
   commission_rm: number
-  dealers:
-    | { company_name: string; package: string | null }
-    | { company_name: string; package: string | null }[]
-    | null
+  dealers: { company_name: string } | { company_name: string }[] | null
 }
 
 type PageProps = {
@@ -51,7 +48,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     // Reports runs the identical unbounded query for the same reason.
     supabase
       .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name, package)')
+      .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
@@ -188,13 +185,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                   {breakdownRows.slice(0, 8).map((tx) => {
                     const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
                     const dealerName = dealerRel?.company_name
-                    const dealerPackage = dealerRel?.package ?? null
                     return (
                       <tr key={tx.id} className="tr-row relative">
                         <td className="td text-paper-dim">{tx.tx_date}</td>
                         <td className="td">
                           <div className="flex items-center gap-2.5">
-                            <Avatar name={dealerName ?? '?'} size={24} package={dealerPackage} />
+                            <Avatar name={dealerName ?? '?'} size={24} />
                             {tx.dealer_id ? (
                               <a
                                 href={`/dealers/${tx.dealer_id}`}

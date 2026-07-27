@@ -23,6 +23,7 @@ type Dealer = {
   company_no: string | null
   contact_person: string | null
   phone: string | null
+  whatsapp: string | null
   email: string | null
   address: string | null
   region: string | null
@@ -197,8 +198,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
       isFinance
-        ? 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, rate, onboarded_by, created_at'
-        : 'id, company_name, company_no, contact_person, phone, email, address, region, notes, package, onboarded_by, created_at'
+        ? 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, rate, onboarded_by, created_at'
+        : 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, onboarded_by, created_at'
     )
     .eq('id', id)
     .single()
@@ -312,6 +313,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   company_no: typedDealer.company_no,
                   contact_person: typedDealer.contact_person,
                   phone: typedDealer.phone,
+                  whatsapp: typedDealer.whatsapp,
                   email: typedDealer.email,
                   address: typedDealer.address,
                   region: typedDealer.region,
@@ -551,6 +553,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             <div className="mt-2.5">
               <RailField label="Contact Person" value={typedDealer.contact_person ?? '—'} />
               <RailField label="Phone" value={typedDealer.phone ?? '—'} />
+              <RailField label="WhatsApp" value={typedDealer.whatsapp ?? typedDealer.phone ?? '—'} />
               <RailField label="Email" value={typedDealer.email ?? '—'} />
               <RailField label="Address" value={typedDealer.address ?? '—'} />
               <RailField label="Onboarded By" value={onboardedByName ?? '—'} />

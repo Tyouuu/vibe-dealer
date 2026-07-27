@@ -12,6 +12,7 @@ type DealerFields = {
   company_no: string | null
   contact_person: string | null
   phone: string | null
+  whatsapp: string | null
   email: string | null
   address: string | null
   region: string | null
@@ -106,7 +107,11 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
                 <label className="field-label">Phone Number</label>
                 <input name="phone" defaultValue={dealer.phone ?? ''} className="field-input" />
               </div>
-              <div className="sm:col-span-2">
+              <div>
+                <label className="field-label">WhatsApp Number</label>
+                <input name="whatsapp" defaultValue={dealer.whatsapp ?? ''} placeholder="Leave blank if same as phone" className="field-input" />
+              </div>
+              <div>
                 <label className="field-label">Email</label>
                 <input name="email" type="email" defaultValue={dealer.email ?? ''} className="field-input" />
               </div>

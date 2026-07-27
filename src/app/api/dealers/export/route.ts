@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { csvCell } from '@/lib/csv'
 import { sanitizeSearchTerm } from '@/lib/search'
 
-const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'email', 'region', 'address', 'notes', 'package', 'rate'] as const
+const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'whatsapp', 'email', 'region', 'address', 'notes', 'package', 'rate'] as const
 
 export async function GET(request: NextRequest) {
   // Same view every role that can see /dealers can already see — export just

@@ -78,7 +78,8 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
           <div className="form-grid">
             <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
             <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
-            <div className="sm:col-span-2">
+            <Field label="WhatsApp Number" name="whatsapp" placeholder="Leave blank if same as phone" />
+            <div>
               <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
             </div>
           </div>

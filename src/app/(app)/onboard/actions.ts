@@ -78,6 +78,7 @@ export async function createDealer(formData: FormData) {
     company_no: String(formData.get('company_no') ?? '').trim() || null,
     contact_person: String(formData.get('contact_person') ?? '').trim() || null,
     phone: String(formData.get('phone') ?? '').trim() || null,
+    whatsapp: String(formData.get('whatsapp') ?? '').trim() || null,
     email: String(formData.get('email') ?? '').trim() || null,
     address: String(formData.get('address') ?? '').trim() || null,
     region: normalizeRegion(formData.get('region') as string | null),

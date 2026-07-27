@@ -63,6 +63,7 @@ export async function updateDealer(formData: FormData) {
     p_address: String(formData.get('address') ?? '').trim() || null,
     p_region: normalizeRegion(formData.get('region') as string | null),
     p_notes: String(formData.get('notes') ?? '').trim() || null,
+    p_whatsapp: String(formData.get('whatsapp') ?? '').trim() || null,
   })
 
   if (error) {
@@ -183,6 +184,7 @@ export async function importDealers(formData: FormData) {
     company_no: string | null
     contact_person: string | null
     phone: string | null
+    whatsapp: string | null
     email: string | null
     region: string | null
     address: string | null
@@ -216,6 +218,7 @@ export async function importDealers(formData: FormData) {
       company_no: col(r, 'company_no') || null,
       contact_person: col(r, 'contact_person') || null,
       phone: col(r, 'phone') || null,
+      whatsapp: col(r, 'whatsapp') || null,
       email: col(r, 'email') || null,
       region: normalizeRegion(col(r, 'region')),
       address: col(r, 'address') || null,

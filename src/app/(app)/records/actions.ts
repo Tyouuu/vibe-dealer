@@ -21,6 +21,15 @@ export async function verifyTransaction(formData: FormData) {
   if (!id) return
 
   const supabase = await createClient()
+
+  // Real gate, not just the VerifyButton UI state above it — a correction is
+  // the one entry type with no formula/receipt behind it, so the person who
+  // posted it can't also be the one who signs off on it.
+  const { data: tx } = await supabase.from('transactions').select('type, recorded_by').eq('id', id).maybeSingle()
+  if (tx?.type === 'adjustment' && tx.recorded_by === user.id) {
+    fail('You posted this correction — a different accountant or master needs to verify it.')
+  }
+
   await supabase
     .from('transactions')
     .update({ status: 'verified', verified_by: user.id })

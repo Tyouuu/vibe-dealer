@@ -349,14 +349,22 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                       </div>
                     )}
                   </td>
-                  <td className="td">
+                  {/* relative z-10 — the dealer-name link's stretched ::after
+                      (after:absolute after:inset-0) covers the whole row for
+                      click-to-open-dealer, and without their own stacking
+                      context these buttons sit underneath it: a click aimed
+                      at Verify/Flag/Adjust would hit the overlay instead and
+                      navigate to the dealer page rather than firing the
+                      button, since plain static-positioned elements paint
+                      below an absolutely-positioned sibling by default. */}
+                  <td className="td relative z-10">
                     {tx.status === 'pending' ? (
                       <div className="flex items-center gap-1.5">
-                        <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} />
+                        <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
                         <FlagButton transactionId={tx.id} />
                       </div>
                     ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
-                      <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} />
+                      <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
                     ) : (
                       <span className="text-paper-dim/50">—</span>
                     )}

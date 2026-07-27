@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { StatusDot } from '../status-dot'
 import { markDelivered, bulkMarkDelivered } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
+import { Modal } from '../modal'
 
 export type DeliveryRow = {
   id: string
@@ -20,6 +21,7 @@ export type DeliveryRow = {
 
 export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
   const pendingRows = rows.filter((r) => r.delivery_status === 'pending')
@@ -44,8 +46,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
   }
 
   function runBulk() {
-    const count = selected.size
-    if (!confirm(`Mark ${count} SIM${count === 1 ? '' : 's'} as sent? This cannot be undone.`)) return
+    setConfirmOpen(false)
     const ids = [...selected]
     startTransition(async () => {
       await bulkMarkDelivered(ids)
@@ -136,18 +137,32 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
       </div>
 
       {selected.size > 0 && (
-        <div className="sticky bottom-4 z-20 mt-3 flex items-center gap-3 rounded-xl border border-ink-800 bg-paper px-4 py-3 text-white shadow-2xl">
-          <span className="text-sm font-bold">{selected.size} selected</span>
+        <div className="sticky bottom-4 z-20 mt-3 flex items-center gap-3 rounded-xl border border-primary bg-primary-soft px-4 py-3 shadow-2xl">
+          <span className="text-sm font-bold text-primary-deep">{selected.size} selected</span>
           <div className="ml-auto flex items-center gap-2">
-            <button type="button" disabled={pending} onClick={runBulk} className="btn-jade">
+            <button type="button" disabled={pending} onClick={() => setConfirmOpen(true)} className="btn-jade">
               Mark {selected.size} as Sent
             </button>
-            <button type="button" onClick={() => setSelected(new Set())} className="text-xs font-semibold text-white/60 hover:text-white">
+            <button type="button" onClick={() => setSelected(new Set())} className="text-xs font-semibold text-primary-deep/70 hover:text-primary-deep">
               Clear
             </button>
           </div>
         </div>
       )}
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <p className="text-sm font-semibold text-paper">
+          Mark {selected.size} SIM{selected.size === 1 ? '' : 's'} as sent? This cannot be undone.
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost">
+            Cancel
+          </button>
+          <button type="button" onClick={runBulk} className="btn-jade">
+            Confirm
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

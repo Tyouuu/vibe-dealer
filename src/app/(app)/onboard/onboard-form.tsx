@@ -6,6 +6,7 @@ import { REGIONS } from '@/lib/regions'
 import { createDealer, checkDuplicateDealer } from './actions'
 import { IconBuilding, IconPhone, IconMapPin } from '../icons'
 import { Listbox } from '../listbox'
+import { TextAutocomplete } from '../text-autocomplete'
 
 export function OnboardForm({ initialError }: { initialError?: string }) {
   const [duplicate, setDuplicate] = useState<{ id: string; company_name: string } | null>(null)
@@ -92,12 +93,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
           <div className="form-grid">
             <div>
               <label className="field-label">Region</label>
-              <input list="regions" name="region" placeholder="Select or type a region" className="field-input" />
-              <datalist id="regions">
-                {REGIONS.map((r) => (
-                  <option key={r} value={r} />
-                ))}
-              </datalist>
+              <TextAutocomplete name="region" suggestions={REGIONS} placeholder="Select or type a region" />
             </div>
             <div>
               <label className="field-label">Initial Package (optional, can change later)</label>

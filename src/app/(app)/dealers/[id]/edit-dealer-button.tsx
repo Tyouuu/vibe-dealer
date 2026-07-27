@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { REGIONS } from '@/lib/regions'
 import { updateDealer } from '../actions'
+import { TextAutocomplete } from '../../text-autocomplete'
 import { checkDuplicateDealer } from '../../onboard/actions'
 
 type DealerFields = {
@@ -115,12 +116,7 @@ export function EditDealerButton({ dealer }: { dealer: DealerFields }) {
               </div>
               <div className="sm:col-span-2">
                 <label className="field-label">Region</label>
-                <input list="edit-dealer-regions" name="region" defaultValue={dealer.region ?? ''} className="field-input" />
-                <datalist id="edit-dealer-regions">
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r} />
-                  ))}
-                </datalist>
+                <TextAutocomplete name="region" defaultValue={dealer.region ?? ''} suggestions={REGIONS} />
               </div>
               <div className="sm:col-span-2">
                 <label className="field-label">Notes</label>

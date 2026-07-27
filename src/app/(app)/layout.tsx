@@ -77,7 +77,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
         </div>
 
-        <div className="flex min-h-screen flex-1 flex-col md:min-h-0">
+        {/* md:pl-[248px] reserves the space the now position:fixed .rail no
+            longer occupies in normal flow (it used to be sticky, still
+            flex-flow-participating) — without this the content would start
+            at x:0, hidden under the rail. */}
+        <div className="flex min-h-screen flex-1 flex-col md:min-h-0 md:pl-[248px]">
           <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
             <Link href="/dashboard" className="flex items-center gap-3">
               <LogoMark className="h-8 w-8 shrink-0" />

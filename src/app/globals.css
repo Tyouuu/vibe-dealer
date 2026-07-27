@@ -380,8 +380,16 @@ body {
   /* Fixed-width sidebar, icon + label always visible — replaces the old
      top nav row entirely on md+ screens. Below md, RailNav isn't rendered
      at all; MobileNav (the existing hamburger panel) covers phones instead. */
+  /* position:fixed, not sticky — this rail never actually needs to "stick"
+     since the page itself doesn't scroll (only <main> does, see layout.tsx);
+     sticky was reported to occasionally collapse to a sliver at 100% browser
+     zoom (not reproducible locally at several viewport widths/zoom levels via
+     Playwright, but fixed removes the whole class of sticky-positioning +
+     subpixel/zoom interaction bugs regardless of the exact trigger). The
+     layout's own md:pl-[248px] (see layout.tsx) reserves the space this no
+     longer occupies in normal flow. */
   .rail {
-    @apply sticky top-0 flex h-full w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
+    @apply fixed inset-y-0 left-0 z-20 flex h-screen w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
   .rail-group-label {
     @apply px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim/70 first:pt-1;

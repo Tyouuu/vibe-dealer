@@ -9,7 +9,13 @@ const CHART_W = 640
 const CHART_H = 180
 const PAD_L = 8
 const PAD_R = 8
-const PAD_T = 12
+// Tall enough to leave room for the peak-value label above the highest
+// point — that label sits 10px above its point (see the last.points <text>
+// below) and is itself ~11px tall, so a point at exactly the chart's own
+// top (niceMax, common whenever the latest month is also the peak, as it
+// usually is) needs ~24px of clearance above y=0 or the label's top edge
+// gets clipped by the SVG's own viewBox boundary.
+const PAD_T = 26
 const PAD_B = 28
 
 export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions: string[] }) {
@@ -137,7 +143,17 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
           })}
 
         {hasData && last && (
-          <text x={xFor(series.length - 1)} y={yFor(last.points) - 10} textAnchor="end" fontSize={11} fontWeight={700} fill="var(--color-jade-bright)">
+          // Math.max clamps this defensively even if PAD_T above ever drifts
+          // out of sync with this label's own offset/font-size again — the
+          // label's top edge should never be able to reach y=0.
+          <text
+            x={xFor(series.length - 1)}
+            y={Math.max(yFor(last.points) - 10, 14)}
+            textAnchor="end"
+            fontSize={11}
+            fontWeight={700}
+            fill="var(--color-jade-bright)"
+          >
             {last.points.toLocaleString()}
           </text>
         )}

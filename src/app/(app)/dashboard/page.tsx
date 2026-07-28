@@ -522,7 +522,7 @@ function KpiCard({
             width dips slightly, which happens between 80%/100% browser zoom
             on the same window since zoom changes the CSS px this row gets. */}
         <span className="min-w-0 truncate text-[13px] font-semibold text-paper-dim">{label}</span>
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary">{icon}</span>
+        <span className="stat-tile-icon">{icon}</span>
       </div>
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="text-[26px] font-extrabold tracking-tight text-paper tabular-nums">{value}</span>

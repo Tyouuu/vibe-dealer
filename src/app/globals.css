@@ -112,6 +112,15 @@ body {
       0 16px 30px -10px rgba(20, 20, 43, 0.16);
   }
 
+  /* The small colored icon square that leads a stat tile (Dashboard's KPI
+     cards, Credit Purchases' Balance/Total Bought/etc.) — each page used to
+     hand-type its own copy of this and drifted apart (28px on one page,
+     36px on another) purely because nothing forced them to match. One
+     shared class is the only way that doesn't happen again. */
+  .stat-tile-icon {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary;
+  }
+
   .icon-badge {
     @apply grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-800 bg-ink-900;
   }

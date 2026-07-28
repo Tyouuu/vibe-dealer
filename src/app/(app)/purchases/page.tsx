@@ -101,7 +101,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+              <span className="stat-tile-icon">
                 <IconCoin className="h-3.5 w-3.5" />
               </span>
             </div>
@@ -119,7 +119,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+              <span className="stat-tile-icon">
                 <IconTrendUp className="h-3.5 w-3.5" />
               </span>
             </div>
@@ -128,7 +128,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+              <span className="stat-tile-icon">
                 <IconDocument className="h-3.5 w-3.5" />
               </span>
             </div>
@@ -137,7 +137,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+              <span className="stat-tile-icon">
                 <IconCheckCircle className="h-3.5 w-3.5" />
               </span>
             </div>

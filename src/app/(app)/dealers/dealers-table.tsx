@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Avatar } from '../avatar'
 import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown } from '../icons'
+import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 
 export type DealerRow = {
   id: string
@@ -18,12 +19,6 @@ export type DealerRow = {
   isInactive: boolean
   isSeverelyInactive: boolean
   daysSinceLastActivity: number | null
-}
-
-const PACKAGE_STYLE: Record<string, string> = {
-  A: 'pill-neutral',
-  B: 'pill-jade',
-  C: 'pill-brass',
 }
 
 function RankBadge({ rank }: { rank: number | null }) {
@@ -165,7 +160,7 @@ export function DealersTable({
                   <td className="td text-paper-dim">{d.contact_person ?? '—'}</td>
                   <td className="td">
                     {d.package ? (
-                      <span className={`pill ${PACKAGE_STYLE[d.package]}`}>{d.package}</span>
+                      <span className={`pill ${PACKAGE_PILL_CLASS[d.package]}`}>{d.package}</span>
                     ) : (
                       <span className="text-paper-dim/50">—</span>
                     )}

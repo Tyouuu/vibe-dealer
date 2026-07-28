@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PACKAGE_PILL_CLASS, type PackageCode } from '@/lib/packages'
 
 export type AuditRowData = {
   id: string
@@ -12,8 +13,19 @@ export type AuditRowData = {
   // Money and points are different units — kept separate so the cell can
   // show both stacked instead of picking one and hiding the other.
   points: string | null
+  // A package assignment has no money or points value — rendered as
+  // colored tier pills next to the event instead of falling back to
+  // `amount`'s plain "Not set → B" text, which only ever existed to give
+  // the Amount/Points column *something* to show and read like a broken
+  // currency figure sitting in a numeric, right-aligned column.
+  packageChange: { before: PackageCode | null; after: PackageCode | null } | null
   status: 'verified' | 'flagged' | 'pending' | null
   detail: { label: string; value: string }[]
+}
+
+function PackagePill({ code }: { code: PackageCode | null }) {
+  if (!code) return <span className="pill pill-neutral">Not set</span>
+  return <span className={`pill ${PACKAGE_PILL_CLASS[code]}`}>{code}</span>
 }
 
 export function AuditRow({ row }: { row: AuditRowData }) {
@@ -24,11 +36,26 @@ export function AuditRow({ row }: { row: AuditRowData }) {
       <tr className="tr-row cursor-pointer" onClick={() => setOpen((o) => !o)}>
         <td className="td whitespace-nowrap text-paper-dim">{row.time}</td>
         <td className="td whitespace-nowrap font-semibold text-paper">{row.actor}</td>
-        <td className="td text-paper">{row.event}</td>
+        <td className="td text-paper">
+          <div>{row.event}</div>
+          {row.packageChange && (
+            <div className="mt-1 flex items-center gap-1.5">
+              <PackagePill code={row.packageChange.before} />
+              <span className="text-paper-dim">→</span>
+              <PackagePill code={row.packageChange.after} />
+            </div>
+          )}
+        </td>
         <td className="td text-paper-dim">{row.dealer ?? '—'}</td>
         <td className="td text-right">
-          <div className="font-semibold text-paper">{row.amount}</div>
-          {row.points && <div className="mt-0.5 text-[11px] font-medium text-paper-dim">{row.points}</div>}
+          {row.packageChange ? (
+            <span className="text-paper-dim/50">—</span>
+          ) : (
+            <>
+              <div className="font-semibold text-paper">{row.amount}</div>
+              {row.points && <div className="mt-0.5 text-[11px] font-medium text-paper-dim">{row.points}</div>}
+            </>
+          )}
         </td>
         <td className="td">
           {row.status && (

@@ -11,6 +11,14 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 
 export const COMMISSION_RATE = 0.02
 
+// Shared with the Dealers list and the Audit Log's package-change rows so a
+// given package code always reads as the same color everywhere it appears.
+export const PACKAGE_PILL_CLASS: Record<PackageCode, string> = {
+  A: 'pill-neutral',
+  B: 'pill-jade',
+  C: 'pill-brass',
+}
+
 // What master effectively pays Vibe per point: the same 8% total margin
 // baked into every dealer sale (6% dealer rate + 2% master commission,
 // PROJECT_SPEC.md section 3.2's "8% dealer buys 1000 points -> pays RM920")

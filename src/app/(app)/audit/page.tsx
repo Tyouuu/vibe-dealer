@@ -165,6 +165,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
                         dealer: e.dealer,
                         amount: e.amount,
                         points: e.points,
+                        packageChange: e.packageChange,
                         status: e.status,
                         detail: e.detail,
                       }}

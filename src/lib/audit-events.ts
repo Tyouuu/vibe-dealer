@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PackageCode } from './packages'
 import { formatDateLabel, formatMonthLabel, todayInMalaysia, yesterdayInMalaysia } from './month'
 
 export type AuditKind = 'transaction' | 'reconciliation' | 'package_change'
@@ -18,6 +19,13 @@ export type AuditEvent = {
   // `amount`) so the table can show both on their own line instead of
   // picking one and burying the other in the detail expand.
   points: string | null
+  // A package assignment has neither a money amount nor a points count —
+  // `amount` for these events is still a plain "Not set → B" string (kept
+  // for CSV export, which has no room for colored pills), but the table
+  // renders this structured before/after instead so the transition can be
+  // shown as package-tier pills next to the event, not crammed into a
+  // column meant for currency figures.
+  packageChange: { before: PackageCode | null; after: PackageCode | null } | null
   status: 'verified' | 'flagged' | 'pending' | null
   detail: { label: string; value: string }[]
 }
@@ -153,6 +161,7 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       dealer: dealerName ?? null,
       amount: `RM ${tx.money_rm.toLocaleString()}`,
       points: `${tx.points.toLocaleString()} pts`,
+      packageChange: null,
       status: tx.status,
       detail: [
         { label: 'Type', value: typeLabel },
@@ -179,6 +188,7 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       dealer: null,
       amount: rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—',
       points: rev.company_total_points != null ? `${rev.company_total_points.toLocaleString()} pts` : null,
+      packageChange: null,
       status: null,
       detail: [
         { label: 'Month', value: formatMonthLabel(rev.month) },
@@ -209,6 +219,7 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       dealer: dealerName ?? null,
       amount: `${before} → ${after}`,
       points: null,
+      packageChange: { before: rh.old_package as PackageCode | null, after: rh.new_package as PackageCode | null },
       status: null,
       detail: [
         { label: 'Previous package', value: before },

@@ -421,10 +421,6 @@ body {
   .rail-item.active .badge {
     @apply bg-white/15 text-white;
   }
-  .rail-item.logout {
-    @apply text-clay-bright hover:bg-clay/10;
-  }
-
   /* Topbar icon buttons (search trigger, notification bell, help) + the
      dropdown panels they open (notification list, help menu, profile menu,
      period pickers) — all share one popover treatment. */

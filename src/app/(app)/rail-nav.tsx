@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogoutButton } from './logout-button'
 import { setPreviewRole } from './preview-role-actions'
 import { ROLE_LABEL, type Notification } from './types'
 import type { Role } from '@/lib/auth/dal'
@@ -196,8 +195,6 @@ export function RailNav({
             </span>
           </div>
         )}
-
-        <LogoutButton variant="rail" />
       </div>
     </aside>
   )

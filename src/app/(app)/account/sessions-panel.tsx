@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { signOutOtherSessions } from './actions'
+import { LogoutButton } from '../logout-button'
 
 export type SignInEvent = { id: string; device: string; when: string }
 
@@ -25,9 +26,12 @@ export function SessionsPanel({ currentDevice, since, history }: { currentDevice
             {since ? ` · since ${since}` : ''}
           </div>
         </div>
-        <button onClick={handleSignOutOthers} disabled={pending} className="btn-clay shrink-0">
-          {pending ? 'Signing out…' : 'Sign out of all other sessions'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button onClick={handleSignOutOthers} disabled={pending} className="btn-clay">
+            {pending ? 'Signing out…' : 'Sign out of all other sessions'}
+          </button>
+          <LogoutButton />
+        </div>
       </div>
 
       {history.length > 0 && (

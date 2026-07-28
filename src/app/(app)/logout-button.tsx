@@ -2,9 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { IconLogout } from './icons'
 
-export function LogoutButton({ variant = 'default' }: { variant?: 'default' | 'rail' }) {
+export function LogoutButton() {
   const router = useRouter()
 
   async function handleLogout() {
@@ -12,15 +11,6 @@ export function LogoutButton({ variant = 'default' }: { variant?: 'default' | 'r
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
-  }
-
-  if (variant === 'rail') {
-    return (
-      <button onClick={handleLogout} className="rail-item logout" type="button">
-        <IconLogout className="h-[18px] w-[18px]" />
-        <span className="lbl">Log out</span>
-      </button>
-    )
   }
 
   return (

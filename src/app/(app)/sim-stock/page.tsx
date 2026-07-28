@@ -194,105 +194,70 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
           </div>
-          {/* Date/SIM Type/Qty are given the exact same fixed widths, in the
-              same column order, as Stock Intake History below — Dealer is
-              the one column without a specified width (a bare <col />), so
-              it alone absorbs whatever space table-fixed has left over.
-              Without a flexible column like this, the browser stretches
-              EVERY fixed-width column proportionally to fill the table's
-              actual rendered width, and since that width differs from Stock
-              Intake History's (different column count, different min-w
-              floor), the "same" 90px Date column would render at a
-              different actual pixel width in each table and the two would
-              never line up — at any zoom level, not just this one. */}
+          {/* A table here — even a tightly-stacked 7-column one — has a hard
+              floor set by its least-compressible cell (the SIM Type tag, the
+              "Mark as Sent" button): measured against real viewport widths,
+              a table still needed a horizontal scrollbar at every common
+              laptop width (1366-1600px) and only stopped needing one above
+              ~1728px. Only a reflowing layout can actually guarantee "fits
+              without scrolling" at any width, so this is a flex-wrap list
+              instead of a table: dealer + status always share the top line,
+              and the detail chips below wrap onto more lines on a narrow
+              card rather than pushing the row sideways. */}
           {orders.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[940px] table-fixed border-collapse text-sm">
-                <colgroup>
-                  <col className="w-[90px]" />
-                  <col className="w-32" />
-                  <col className="w-14" />
-                  <col />
-                  <col className="w-20" />
-                  {isFinance && <col className="w-20" />}
-                  <col className="w-[70px]" />
-                  <col className="w-24" />
-                  <col className="w-[70px]" />
-                  <col className="w-28" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th className="th">Date</th>
-                    <th className="th">SIM Type</th>
-                    <th className="th text-right">Qty</th>
-                    <th className="th">Dealer</th>
-                    <th className="th text-right">Paid (RM)</th>
-                    {isFinance && <th className="th text-right">Margin (RM)</th>}
-                    <th className="th text-right">Shipping</th>
-                    <th className="th">Invoice / Codes</th>
-                    <th className="th">Status</th>
-                    <th className="th">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedOrders.map((o) => {
-                    const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
-                    const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
-                    const paid = o.quantity * Number(o.unit_price_rm)
-                    const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
-                    return (
-                      <tr key={o.id} className="tr-row">
-                        <td className="td text-paper-dim">{o.order_date}</td>
-                        <td className="td">
-                          <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
-                        </td>
-                        <td className="td text-right">{o.quantity.toLocaleString()}</td>
-                        <td className="td font-semibold text-paper">{dealerName}</td>
-                        <td className="td figure-money text-right">RM {paid.toLocaleString()}</td>
-                        {isFinance && <td className="td figure-money text-right">RM {margin.toLocaleString()}</td>}
-                        <td className="td text-right text-paper-dim">{o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}</td>
-                        <td className="td">
-                          {isPhysicalSimType(o.sim_type) ? (
-                            o.shipping_invoice_path ? (
-                              <a
-                                href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-semibold text-primary hover:underline"
-                              >
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-paper-dim/50">—</span>
-                            )
-                          ) : o.esim_codes ? (
-                            <span className="block truncate text-paper-dim" title={o.esim_codes}>
-                              {o.esim_codes}
-                            </span>
-                          ) : (
-                            <span className="text-paper-dim/50">—</span>
-                          )}
-                        </td>
-                        <td className="td">
-                          {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
-                        </td>
-                        <td className="td">
-                          {o.delivery_status === 'pending' ? (
-                            <form action={markSimOrderSent}>
-                              <input type="hidden" name="id" value={o.id} />
-                              <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this order as shipped? This cannot be undone.">
-                                Mark as Sent
-                              </ConfirmSubmitButton>
-                            </form>
-                          ) : (
-                            <span className="text-paper-dim/50">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="flex flex-col divide-y divide-ink-800">
+              {pagedOrders.map((o) => {
+                const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
+                const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
+                const paid = o.quantity * Number(o.unit_price_rm)
+                const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
+                return (
+                  <div key={o.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-paper">{dealerName}</span>
+                      {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-paper-dim">
+                      <span>{o.order_date}</span>
+                      <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
+                      <span>Qty {o.quantity.toLocaleString()}</span>
+                      <span className="figure-money font-semibold text-paper">
+                        RM {paid.toLocaleString()}
+                        {isFinance && <span className="font-normal text-paper-dim"> (+RM {margin.toLocaleString()} margin)</span>}
+                      </span>
+                      <span>{o.shipping_fee_rm != null ? `Shipping RM ${Number(o.shipping_fee_rm).toLocaleString()}` : 'No shipping fee'}</span>
+                      {isPhysicalSimType(o.sim_type) ? (
+                        o.shipping_invoice_path ? (
+                          <a
+                            href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-primary hover:underline"
+                          >
+                            View invoice
+                          </a>
+                        ) : (
+                          <span>No invoice</span>
+                        )
+                      ) : o.esim_codes ? (
+                        <span className="max-w-[200px] truncate" title={o.esim_codes}>
+                          {o.esim_codes}
+                        </span>
+                      ) : (
+                        <span>No codes</span>
+                      )}
+                    </div>
+                    {o.delivery_status === 'pending' && (
+                      <form action={markSimOrderSent}>
+                        <input type="hidden" name="id" value={o.id} />
+                        <ConfirmSubmitButton className="btn-jade py-1 text-xs" confirmMessage="Mark this order as shipped? This cannot be undone.">
+                          Mark as Sent
+                        </ConfirmSubmitButton>
+                      </form>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-paper-dim">No orders recorded yet.</p>
@@ -343,44 +308,26 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
             </div>
             {intakes.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
-                  <colgroup>
-                    <col className="w-[90px]" />
-                    <col className="w-32" />
-                    <col className="w-14" />
-                    <col className="w-20" />
-                    <col className="w-24" />
-                    <col />
-                    <col className="w-28" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th className="th">Date</th>
-                      <th className="th">SIM Type</th>
-                      <th className="th text-right">Qty</th>
-                      <th className="th text-right">Cost/Unit</th>
-                      <th className="th text-right">Total Cost</th>
-                      <th className="th">Note</th>
-                      <th className="th">Recorded By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedIntakes.map((r) => (
-                      <tr key={r.id} className="tr-row">
-                        <td className="td text-paper-dim">{r.intake_date}</td>
-                        <td className="td">
-                          <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
-                        </td>
-                        <td className="td text-right">{r.quantity.toLocaleString()}</td>
-                        <td className="td figure-money text-right">RM {Number(r.cost_per_unit_rm).toFixed(2)}</td>
-                        <td className="td figure-money text-right">RM {(r.quantity * Number(r.cost_per_unit_rm)).toLocaleString()}</td>
-                        <td className="td text-paper-dim">{r.note ?? '—'}</td>
-                        <td className="td text-paper-dim">{nameById.get(r.recorded_by) ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex flex-col divide-y divide-ink-800">
+                {pagedIntakes.map((r) => (
+                  <div key={r.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
+                      <span className="figure-money font-semibold text-paper">RM {(r.quantity * Number(r.cost_per_unit_rm)).toLocaleString()}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-paper-dim">
+                      <span>{r.intake_date}</span>
+                      <span>Qty {r.quantity.toLocaleString()}</span>
+                      <span>RM {Number(r.cost_per_unit_rm).toFixed(2)}/unit</span>
+                      <span>{nameById.get(r.recorded_by) ?? '—'}</span>
+                      {r.note && (
+                        <span className="max-w-[240px] truncate" title={r.note}>
+                          {r.note}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>

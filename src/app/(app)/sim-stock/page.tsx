@@ -179,8 +179,17 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <div className="app-card" id="dealer-orders">
+      {/* minmax(0, …) instead of a bare 1.4fr/1fr — a plain fr track's
+          implicit minimum is its content's min-content width, so this grid
+          and the near-identical one below (Stock Intake History) each ended
+          up with a DIFFERENT actual pixel split for the "same" 1.4fr/1fr,
+          purely because Place Order vs Log Stock Intake have different
+          min-content widths. Two card widths that were only close by
+          coincidence, not by design — minmax(0, …) makes both grids divide
+          the same container width by the same ratio every time, so the two
+          tables' cards always come out exactly the same width. */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="app-card min-w-0" id="dealer-orders">
           <div className="mb-3.5 flex items-center justify-between">
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
@@ -313,7 +322,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           )}
         </div>
 
-        <div className="app-card">
+        <div className="app-card min-w-0">
           <h3 className="mb-3.5 text-sm font-bold text-paper">Place Order</h3>
           <OrderForm
             dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
@@ -322,9 +331,13 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      {/* Same minmax(0, …) fix as the grid above, and for the same reason —
+          this grid's own content (Log Stock Intake) differs from the other
+          grid's (Place Order), so without it the two would independently
+          drift to different pixel splits despite the identical 1.4fr/1fr. */}
       {isFinance && (
-        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-          <div className="app-card" id="stock-intake-history">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="app-card min-w-0" id="stock-intake-history">
             <div className="mb-3.5 flex items-center justify-between">
               <h3 className="text-sm font-bold text-paper">Stock Intake History</h3>
               <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
@@ -397,7 +410,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             )}
           </div>
 
-          <div className="app-card">
+          <div className="app-card min-w-0">
             <h3 className="mb-3.5 text-sm font-bold text-paper">Log Stock Intake</h3>
             <IntakeForm />
           </div>

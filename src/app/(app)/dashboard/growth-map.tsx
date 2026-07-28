@@ -113,42 +113,66 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
   )
 }
 
+// How far "zoomed in to just this region" reads — big enough that the
+// selected pin's own area fills most of the frame (the original ask),
+// not so big that the coastline around it stops being recognizable.
+const ZOOM_SCALE = 3
+
 function GrowthMap({ regions, selected, onToggle }: { regions: Region[]; selected: string | null; onToggle: (region: string) => void }) {
+  const focus = selected ? REGION_COORDS[selected] : null
+  // transform-origin in the same % units already used for each pin's own
+  // left/top below (the wrapping div's aspect-[10/17] matches the SVG
+  // viewBox's own 200:340 ratio, so "% of this box" and "% across the
+  // viewBox" are the same number) — scaling around that point is what
+  // makes it read as "zoom into this region" instead of just "zoom in".
+  const zoomStyle: React.CSSProperties = focus
+    ? { transform: `scale(${ZOOM_SCALE})`, transformOrigin: `${focus.x}% ${focus.y}%` }
+    : { transform: 'scale(1)' }
+
   return (
-    <div className="relative mx-auto mt-1 aspect-[10/17] w-full max-w-[220px]">
-      <svg viewBox={MAP_VIEWBOX} className="h-full w-full" aria-hidden="true">
-        <path d={MAINLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d={PENANG_ISLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
-      </svg>
-      {regions.map((r) => {
-        const coord = REGION_COORDS[r.region]
-        if (!coord) return null
-        const isSelected = selected === r.region
-        const isDimmed = selected !== null && !isSelected
-        return (
-          <button
-            type="button"
-            key={r.region}
-            onClick={() => onToggle(r.region)}
-            aria-pressed={isSelected}
-            aria-label={`${r.region}, ${r.pct}% of this month's top-up`}
-            className="group absolute -translate-x-1/2 -translate-y-1/2 transition-opacity"
-            style={{ left: `${coord.x}%`, top: `${coord.y}%`, opacity: isDimmed ? 0.35 : 1 }}
-          >
-            <span
-              className={`block rounded-full shadow ring-2 ring-white transition-all ${isSelected ? 'h-4 w-4 ring-[3px]' : 'h-3 w-3'}`}
-              style={{ background: r.color }}
-            />
-            <span
-              className={`pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-[10px] font-semibold text-white shadow-lg transition-opacity ${
-                isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}
+    <div className="relative mx-auto mt-1 aspect-[10/17] w-full max-w-[220px] overflow-hidden rounded-lg">
+      <div className="absolute inset-0 transition-transform duration-500 ease-out" style={zoomStyle}>
+        <svg viewBox={MAP_VIEWBOX} className="h-full w-full" aria-hidden="true">
+          <path d={MAINLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
+          <path d={PENANG_ISLAND_PATH} className="fill-ink-850 stroke-ink-800" strokeWidth="1.5" strokeLinejoin="round" />
+        </svg>
+        {regions.map((r) => {
+          const coord = REGION_COORDS[r.region]
+          if (!coord) return null
+          const isSelected = selected === r.region
+          const isDimmed = selected !== null && !isSelected
+          return (
+            <button
+              type="button"
+              key={r.region}
+              onClick={() => onToggle(r.region)}
+              aria-pressed={isSelected}
+              aria-label={`${r.region}, ${r.pct}% of this month's top-up`}
+              className="group absolute -translate-x-1/2 -translate-y-1/2 transition-opacity"
+              style={{ left: `${coord.x}%`, top: `${coord.y}%`, opacity: isDimmed ? 0.35 : 1 }}
             >
-              {r.region} {r.pct}%
-            </span>
-          </button>
-        )
-      })}
+              {/* Counter-scaled against the map's own zoom, same duration —
+                  without this the dot and label would balloon to 3x size
+                  and the text would blur (transform-scaled text doesn't
+                  re-rasterize), instead of staying the same crisp marker
+                  just relocated by the zoom around it. */}
+              <span className="block transition-transform duration-500 ease-out" style={{ transform: focus ? `scale(${1 / ZOOM_SCALE})` : undefined }}>
+                <span
+                  className={`block rounded-full shadow ring-2 ring-white transition-all ${isSelected ? 'h-4 w-4 ring-[3px]' : 'h-3 w-3'}`}
+                  style={{ background: r.color }}
+                />
+                <span
+                  className={`pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-[10px] font-semibold text-white shadow-lg transition-opacity ${
+                    isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {r.region} {r.pct}%
+                </span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

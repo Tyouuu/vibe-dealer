@@ -185,21 +185,25 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
           </div>
-          {/* This table lives in the 1.4fr side of a 1.4fr/1fr split (Place
-              Order takes the rest), not the full page width — a colgroup
-              sized as if it had the whole page to itself would squeeze
-              Dealer down to almost nothing and the columns would visually
-              run into each other. min-w-[940px] + the overflow-x-auto
-              wrapper below means a narrow container scrolls horizontally
-              instead of destroying the layout. */}
+          {/* Date/SIM Type/Qty are given the exact same fixed widths, in the
+              same column order, as Stock Intake History below — Dealer is
+              the one column without a specified width (a bare <col />), so
+              it alone absorbs whatever space table-fixed has left over.
+              Without a flexible column like this, the browser stretches
+              EVERY fixed-width column proportionally to fill the table's
+              actual rendered width, and since that width differs from Stock
+              Intake History's (different column count, different min-w
+              floor), the "same" 90px Date column would render at a
+              different actual pixel width in each table and the two would
+              never line up — at any zoom level, not just this one. */}
           {orders.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[940px] table-fixed border-collapse text-sm">
                 <colgroup>
                   <col className="w-[90px]" />
-                  <col className="w-36" />
                   <col className="w-32" />
                   <col className="w-14" />
+                  <col />
                   <col className="w-20" />
                   {isFinance && <col className="w-20" />}
                   <col className="w-[70px]" />
@@ -210,9 +214,9 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                 <thead>
                   <tr>
                     <th className="th">Date</th>
-                    <th className="th">Dealer</th>
                     <th className="th">SIM Type</th>
                     <th className="th text-right">Qty</th>
+                    <th className="th">Dealer</th>
                     <th className="th text-right">Paid (RM)</th>
                     {isFinance && <th className="th text-right">Margin (RM)</th>}
                     <th className="th text-right">Shipping</th>
@@ -230,11 +234,11 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     return (
                       <tr key={o.id} className="tr-row">
                         <td className="td text-paper-dim">{o.order_date}</td>
-                        <td className="td font-semibold text-paper">{dealerName}</td>
                         <td className="td">
                           <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
                         </td>
                         <td className="td text-right">{o.quantity.toLocaleString()}</td>
+                        <td className="td font-semibold text-paper">{dealerName}</td>
                         <td className="td figure-money text-right">RM {paid.toLocaleString()}</td>
                         {isFinance && <td className="td figure-money text-right">RM {margin.toLocaleString()}</td>}
                         <td className="td text-right text-paper-dim">{o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}</td>
@@ -334,7 +338,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     <col className="w-14" />
                     <col className="w-20" />
                     <col className="w-24" />
-                    <col className="w-36" />
+                    <col />
                     <col className="w-28" />
                   </colgroup>
                   <thead>

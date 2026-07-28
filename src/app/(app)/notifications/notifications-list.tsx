@@ -5,23 +5,13 @@ import type { BuiltNotification } from '@/lib/notifications/build'
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
 import { IconCheckCircle, IconTruck, IconCoin, IconUsers } from '../icons'
 
-const VARIANT_TR: Record<BuiltNotification['variant'], string> = {
-  brass: 'tr-warn',
-  clay: 'tr-urgent',
-  info: 'tr-info',
-  slate: 'tr-slate',
-}
-
-// .btn-primary's own bg-paper is overridden by these — same specificity,
-// later in the generated stylesheet (utilities layer beats components layer
-// in Tailwind v4), so the plain utility class wins.
-const VARIANT_BTN: Record<BuiltNotification['variant'], string> = {
-  brass: 'bg-brass-bright hover:bg-brass',
-  clay: 'bg-clay-bright hover:bg-clay',
-  info: 'bg-info hover:bg-info-bright',
-  slate: 'bg-slate-bright hover:bg-slate',
-}
-
+// Color used to live on the icon AND a left border-accent AND a solid-fill
+// button — three repeats of the same category color per row, so a list
+// mixing categories read as a wall of competing bright colors rather than a
+// calm list with a hierarchy. Every row now shares one neutral border and
+// one neutral (btn-ghost) action button; the icon tint is the only place
+// category color still shows, which is enough for it to register at a
+// glance without shouting.
 const VARIANT_ICON_BG: Record<BuiltNotification['variant'], string> = {
   brass: 'bg-brass/12 text-brass-bright',
   clay: 'bg-clay/12 text-clay-bright',
@@ -42,8 +32,6 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
   const [filter, setFilter] = useState<NotificationCategory | 'all'>('all')
   const [sort, setSort] = useState<Sort>('oldest')
 
-  const countFor = (key: NotificationCategory) => notifications.filter((n) => n.category === key).length
-
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.category === filter)
   const sorted = useMemo(
     () => [...filtered].sort((a, b) => (sort === 'oldest' ? b.staleDays - a.staleDays : a.staleDays - b.staleDays)),
@@ -55,7 +43,7 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="segmented flex-wrap">
           <button type="button" onClick={() => setFilter('all')} className={`segmented-btn ${filter === 'all' ? 'active' : ''}`}>
-            All ({notifications.length})
+            All
           </button>
           {NOTIFICATION_CATEGORIES.map((c) => (
             <button
@@ -64,7 +52,7 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
               onClick={() => setFilter(c.key)}
               className={`segmented-btn ${filter === c.key ? 'active' : ''}`}
             >
-              {c.label} ({countFor(c.key)})
+              {c.label}
             </button>
           ))}
         </div>
@@ -92,7 +80,7 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
             return (
               <div
                 key={n.id}
-                className={`flex flex-col gap-3 rounded-xl border border-ink-800 bg-ink-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${VARIANT_TR[n.variant]}`}
+                className="flex flex-col gap-3 rounded-xl border border-ink-800 bg-ink-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${VARIANT_ICON_BG[n.variant]}`}>
@@ -103,10 +91,7 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
                     <div className="mt-0.5 text-[12px] text-paper-dim">{n.subtitle}</div>
                   </div>
                 </div>
-                <a
-                  href={n.href}
-                  className={`shrink-0 self-start rounded-lg px-3.5 py-1.5 text-xs font-bold text-white transition-colors sm:self-auto ${VARIANT_BTN[n.variant]}`}
-                >
+                <a href={n.href} className="btn-ghost shrink-0 self-start py-1.5 text-xs sm:self-auto">
                   {n.actionLabel}
                 </a>
               </div>

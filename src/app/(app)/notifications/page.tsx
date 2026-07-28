@@ -15,21 +15,19 @@ export default async function NotificationsPage() {
   const notifications = await buildNotifications(supabase, user.id, user.role)
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <div className="app-card">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
-            Notifications
-            <span className="pill pill-neutral">
-              {notifications.length} notification{notifications.length === 1 ? '' : 's'}
-            </span>
-          </h1>
-          <a href="/account" className="text-xs font-semibold text-paper-dim hover:text-paper hover:underline">
-            Manage what you get notified about →
-          </a>
-        </div>
-        <NotificationsList notifications={notifications} />
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
+          Notifications
+          <span className="pill pill-neutral">
+            {notifications.length} notification{notifications.length === 1 ? '' : 's'}
+          </span>
+        </h1>
+        <a href="/account" className="text-xs font-semibold text-paper-dim hover:text-paper hover:underline">
+          Manage what you get notified about →
+        </a>
       </div>
+      <NotificationsList notifications={notifications} />
     </div>
   )
 }

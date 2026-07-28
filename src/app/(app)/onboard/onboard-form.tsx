@@ -45,85 +45,83 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="app-card">
-        <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">Onboard Dealer</h1>
+      <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">Onboard Dealer</h1>
 
-        {initialError && <div className="alert alert-bad">{initialError}</div>}
-        {duplicate && (
-          <div className="alert alert-bad">
-            A dealer named &quot;{duplicate.company_name}&quot; already exists. Submit again to confirm this is a genuinely different dealer.
-          </div>
-        )}
+      {initialError && <div className="alert alert-bad">{initialError}</div>}
+      {duplicate && (
+        <div className="alert alert-bad">
+          A dealer named &quot;{duplicate.company_name}&quot; already exists. Submit again to confirm this is a genuinely different dealer.
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-          <div className="form-section-head">
-            <span className="tile">
-              <IconBuilding />
-            </span>
-            <span>Company Details</span>
-            <span className="rule" />
-          </div>
-          <div className="form-grid">
-            <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" onChange={() => setDuplicate(null)} />
-            <Field label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <div className="form-section-head">
+          <span className="tile">
+            <IconBuilding />
+          </span>
+          <span>Company Details</span>
+          <span className="rule" />
+        </div>
+        <div className="form-grid">
+          <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" onChange={() => setDuplicate(null)} />
+          <Field label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
+        </div>
 
-          <div className="form-section-head">
-            <span className="tile">
-              <IconPhone />
-            </span>
-            <span>Contact Info</span>
-            <span className="rule" />
+        <div className="form-section-head">
+          <span className="tile">
+            <IconPhone />
+          </span>
+          <span>Contact Info</span>
+          <span className="rule" />
+        </div>
+        <div className="form-grid">
+          <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
+          <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
+          <Field label="WhatsApp Number" name="whatsapp" placeholder="Leave blank if same as phone" />
+          <div>
+            <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
           </div>
-          <div className="form-grid">
-            <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
-            <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
-            <Field label="WhatsApp Number" name="whatsapp" placeholder="Leave blank if same as phone" />
-            <div>
-              <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
-            </div>
-          </div>
+        </div>
 
-          <div className="form-section-head">
-            <span className="tile">
-              <IconMapPin />
-            </span>
-            <span>Region &amp; Package</span>
-            <span className="rule" />
+        <div className="form-section-head">
+          <span className="tile">
+            <IconMapPin />
+          </span>
+          <span>Region &amp; Package</span>
+          <span className="rule" />
+        </div>
+        <div className="form-grid">
+          <div>
+            <label className="field-label">Region</label>
+            <TextAutocomplete name="region" suggestions={REGIONS} placeholder="Select or type a region" />
           </div>
-          <div className="form-grid">
-            <div>
-              <label className="field-label">Region</label>
-              <TextAutocomplete name="region" suggestions={REGIONS} placeholder="Select or type a region" />
-            </div>
-            <div>
-              <label className="field-label">Initial Package (optional, can change later)</label>
-              <Listbox
-                name="package"
-                defaultValue=""
-                options={[
-                  { value: '', label: 'Not set yet' },
-                  ...(Object.keys(PACKAGES) as (keyof typeof PACKAGES)[]).map((code) => ({
-                    value: code,
-                    label: `${PACKAGES[code].name} · RM${PACKAGES[code].price} · ${PACKAGES[code].reload} pts · ${PACKAGES[code].rate}%`,
-                  })),
-                ]}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="field-label">Address</label>
-              <input name="address" placeholder="Unit, street, postcode, city — used for SIM delivery" className="field-input" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="field-label">Notes (optional)</label>
-              <textarea name="notes" rows={2} placeholder="Anything worth remembering about this dealer" className="field-input resize-none" />
-            </div>
+          <div>
+            <label className="field-label">Initial Package (optional, can change later)</label>
+            <Listbox
+              name="package"
+              defaultValue=""
+              options={[
+                { value: '', label: 'Not set yet' },
+                ...(Object.keys(PACKAGES) as (keyof typeof PACKAGES)[]).map((code) => ({
+                  value: code,
+                  label: `${PACKAGES[code].name} · RM${PACKAGES[code].price} · ${PACKAGES[code].reload} pts · ${PACKAGES[code].rate}%`,
+                })),
+              ]}
+            />
           </div>
-          <button type="submit" disabled={checking || submitting} className="btn-primary mt-2">
-            {checking ? 'Checking for duplicates…' : duplicate ? 'Yes, Onboard This Dealer' : 'Onboard Dealer'}
-          </button>
-        </form>
-      </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Address</label>
+            <input name="address" placeholder="Unit, street, postcode, city — used for SIM delivery" className="field-input" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Notes (optional)</label>
+            <textarea name="notes" rows={2} placeholder="Anything worth remembering about this dealer" className="field-input resize-none" />
+          </div>
+        </div>
+        <button type="submit" disabled={checking || submitting} className="btn-primary mt-2">
+          {checking ? 'Checking for duplicates…' : duplicate ? 'Yes, Onboard This Dealer' : 'Onboard Dealer'}
+        </button>
+      </form>
     </div>
   )
 }

@@ -21,7 +21,7 @@ const VIEW_LABEL: Record<View, string> = {
   all: 'All',
   transaction: 'Transactions',
   reconciliation: 'Reconciliation',
-  rate_change: 'Rate changes',
+  package_change: 'Package changes',
 }
 
 type PageProps = {
@@ -36,7 +36,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
   }
 
   const { q = '', view: rawView = 'all', actor = 'all', month = '', before } = await searchParams
-  const view: View = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
+  const view: View = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'package_change' ? rawView : 'all'
 
   const supabase = await createClient()
   // Walks back through history looking for matches (capped, not unbounded)
@@ -98,8 +98,8 @@ export default async function AuditPage({ searchParams }: PageProps) {
         </a>
       </div>
       <p className="note-strip">
-        Every transaction, reconciliation save, and rate change — who did it and when. One row per event; click any row for the
-        full detail.
+        Every transaction, reconciliation save, and package assignment — who did it and when. One row per event; click
+        any row for the full detail.
       </p>
 
       <form className="mb-4 flex flex-wrap gap-3" action="/audit" method="GET">
@@ -164,6 +164,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
                         event: e.event,
                         dealer: e.dealer,
                         amount: e.amount,
+                        points: e.points,
                         status: e.status,
                         detail: e.detail,
                       }}
@@ -184,7 +185,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               ? hasMore
                 ? 'No matches in the history searched so far — try Load older to keep searching further back.'
                 : 'No events match those filters.'
-              : "Once your team verifies a top-up, saves a reconciliation, or changes a dealer's rate, it'll show up here — permanently, and searchable."}
+              : "Once your team verifies a top-up, saves a reconciliation, or assigns a dealer's package, it'll show up here — permanently, and searchable."}
           </p>
           {hasFilter && (
             <Link href="/audit" className="btn-ghost text-xs">

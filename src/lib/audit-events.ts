@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatDateLabel, formatMonthLabel, todayInMalaysia, yesterdayInMalaysia } from './month'
 
-export type AuditKind = 'transaction' | 'reconciliation' | 'rate_change'
+export type AuditKind = 'transaction' | 'reconciliation' | 'package_change'
 
 export type AuditEvent = {
   id: string
@@ -13,6 +13,11 @@ export type AuditEvent = {
   event: string
   dealer: string | null
   amount: string
+  // Money and points are different units, not two names for the same
+  // number — kept as a separate optional field (rather than folded into
+  // `amount`) so the table can show both on their own line instead of
+  // picking one and burying the other in the detail expand.
+  points: string | null
   status: 'verified' | 'flagged' | 'pending' | null
   detail: { label: string; value: string }[]
 }
@@ -147,6 +152,7 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       event: eventLabel,
       dealer: dealerName ?? null,
       amount: `RM ${tx.money_rm.toLocaleString()}`,
+      points: `${tx.points.toLocaleString()} pts`,
       status: tx.status,
       detail: [
         { label: 'Type', value: typeLabel },
@@ -172,6 +178,7 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       event: 'Saved reconciliation',
       dealer: null,
       amount: rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—',
+      points: rev.company_total_points != null ? `${rev.company_total_points.toLocaleString()} pts` : null,
       status: null,
       detail: [
         { label: 'Month', value: formatMonthLabel(rev.month) },
@@ -183,22 +190,29 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
     })
   }
 
+  // Every package has carried the same flat 6% resale rate since migration
+  // 0010 unified them, so old_rate/new_rate never actually differ between
+  // events anymore — showing "B · 6%" on every single row is just noise
+  // repeating a constant. What's still genuinely changing (and worth an
+  // audit trail) is which PACKAGE a dealer is on, so this now reads as a
+  // package-tier assignment rather than a rate change.
   for (const rh of rateHistory) {
     const dealerName = Array.isArray(rh.dealers) ? rh.dealers[0]?.company_name : rh.dealers?.company_name
-    const before = rh.old_package ? `${rh.old_package} · ${rh.old_rate}%` : 'Not set'
-    const after = rh.new_package ? `${rh.new_package} · ${rh.new_rate}%` : '—'
+    const before = rh.old_package ?? 'Not set'
+    const after = rh.new_package ?? '—'
     events.push({
       id: `rate-${rh.id}`,
       createdAt: rh.created_at,
-      kind: 'rate_change',
+      kind: 'package_change',
       actor: displayName(rh.changed_by),
-      event: 'Changed rate',
+      event: 'Assigned package',
       dealer: dealerName ?? null,
       amount: `${before} → ${after}`,
+      points: null,
       status: null,
       detail: [
-        { label: 'Before', value: before },
-        { label: 'After', value: after },
+        { label: 'Previous package', value: before },
+        { label: 'New package', value: after },
         { label: 'Changed by', value: displayName(rh.changed_by) },
       ],
     })

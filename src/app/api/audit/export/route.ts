@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const actor = params.get('actor') ?? 'all'
   const month = params.get('month') ?? ''
   const rawView = params.get('view') ?? 'all'
-  const view: 'all' | AuditKind = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'rate_change' ? rawView : 'all'
+  const view: 'all' | AuditKind = rawView === 'transaction' || rawView === 'reconciliation' || rawView === 'package_change' ? rawView : 'all'
 
   const supabase = await createClient()
   const { events, hasMore: truncated } = await getFilteredAuditEvents(
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     { pageSize: EXPORT_CAP, scanCap: EXPORT_SCAN_CAP }
   )
 
-  const columns = ['Time', 'Actor', 'Event', 'Dealer', 'Amount', 'Status'] as const
+  const columns = ['Time', 'Actor', 'Event', 'Dealer', 'Amount', 'Points', 'Status'] as const
   const lines = [columns.map(csvCell).join(',')]
   for (const e of events) {
     lines.push(
@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         csvCell(e.event),
         csvCell(e.dealer),
         csvCell(e.amount),
+        csvCell(e.points),
         csvCell(e.status),
       ].join(',')
     )

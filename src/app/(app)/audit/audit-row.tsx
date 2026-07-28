@@ -9,6 +9,9 @@ export type AuditRowData = {
   event: string
   dealer: string | null
   amount: string
+  // Money and points are different units — kept separate so the cell can
+  // show both stacked instead of picking one and hiding the other.
+  points: string | null
   status: 'verified' | 'flagged' | 'pending' | null
   detail: { label: string; value: string }[]
 }
@@ -23,7 +26,10 @@ export function AuditRow({ row }: { row: AuditRowData }) {
         <td className="td whitespace-nowrap font-semibold text-paper">{row.actor}</td>
         <td className="td text-paper">{row.event}</td>
         <td className="td text-paper-dim">{row.dealer ?? '—'}</td>
-        <td className="td text-right font-semibold text-paper">{row.amount}</td>
+        <td className="td text-right">
+          <div className="font-semibold text-paper">{row.amount}</div>
+          {row.points && <div className="mt-0.5 text-[11px] font-medium text-paper-dim">{row.points}</div>}
+        </td>
         <td className="td">
           {row.status && (
             <span
@@ -49,15 +55,21 @@ export function AuditRow({ row }: { row: AuditRowData }) {
       </tr>
       {open && (
         <tr className="border-b border-ink-800 bg-ink-850/60">
-          <td colSpan={7} className="px-4 py-3">
-            <div className="flex flex-wrap gap-x-7 gap-y-2.5">
+          <td colSpan={7} className="px-4 py-3.5">
+            {/* A fixed grid (not flex-wrap) so every label starts at the same
+                x position instead of a ragged layout driven by each value's
+                own text length — that raggedness plus the tight gap-2.5 is
+                what actually read as "cramped", not the amount of detail
+                itself. The bordered card gives the block its own visual
+                boundary instead of floating loose in the dark row strip. */}
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-ink-800 bg-ink-900/60 p-4 sm:grid-cols-3 lg:grid-cols-4">
               {row.detail.map((d) => (
-                <div key={d.label} className="min-w-[100px]">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">{d.label}</div>
-                  <div className="text-[12.5px] font-semibold text-paper">{d.value}</div>
+                <div key={d.label}>
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">{d.label}</dt>
+                  <dd className="mt-1 text-[13px] font-semibold text-paper">{d.value}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </td>
         </tr>
       )}

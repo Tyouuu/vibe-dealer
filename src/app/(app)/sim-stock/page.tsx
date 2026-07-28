@@ -1,14 +1,13 @@
 import type { Metadata } from 'next'
-import { Fragment } from 'react'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
-import { ConfirmSubmitButton } from '../confirm-submit-button'
-import { markSimOrderSent } from './actions'
+import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, type SimStockType } from '@/lib/sim-stock'
 import { OrderForm } from './order-form'
 import { IntakeForm } from './intake-form'
+import { DealerOrdersTable } from './dealer-orders-table'
+import { StockIntakeTable } from './stock-intake-table'
 import { IconInfo } from '../icons'
 
 export const metadata: Metadata = {
@@ -195,94 +194,38 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
           </div>
-          {/* A CSS Grid, not a <table> — a literal table forces every column
-              to its own fixed minimum width, and even tightly stacked
-              (Paid+Margin, Shipping+Invoice, Status+Action in one cell each)
-              that still needed a horizontal scrollbar at every common laptop
-              width (1366-1600px). One grid instance for the whole list (not
-              a div per row) is what makes every row's Date/SIM Type/Paid/etc.
-              line up in real columns — that alignment is the whole reason
-              this isn't back to the flex-wrap chips from before, which let
-              each row's text find its own width and drift out of line with
-              its neighbors.
-
-              Dealer has a real 80px floor (minmax(80px,1fr), not
-              minmax(0,1fr)) — a bare 0 floor let it collapse to a few
-              pixels the moment the other five fixed columns' combined width
-              got close to the container's actual width, and a dealer name
-              at ~4px doesn't wrap, it visually overflows into the next
-              column and reads as garbled interleaved text. min-w-[528px] +
-              overflow-x-auto is the honest fallback below that: scrolling a
-              readable row is fine, silently overlapping two columns' text
-              is not. */}
+          {/* Progressive disclosure instead of packing every field into the
+              row: each row shows one clear value per column (Date/Dealer/
+              SIM Type/Qty/Paid/Status), and margin/shipping/invoice/the
+              Mark as Sent action live in a click-to-expand panel — same
+              pattern the Audit Log already uses for its own detail row.
+              Cramming Paid+Margin, Shipping+Invoice, Status+Action into one
+              cell each (the previous version) kept the grid narrow enough
+              to never need horizontal scroll, but reads as dense/cramped
+              regardless of how well the columns themselves align. */}
           {orders.length ? (
-            <div className="overflow-x-auto">
-            <div className="grid min-w-[528px] grid-cols-[60px_minmax(80px,1fr)_104px_80px_88px_76px] gap-x-2 text-[12.5px]">
-              <div className="th">Date</div>
-              <div className="th">Dealer</div>
-              <div className="th">SIM Type</div>
-              <div className="th text-right">Paid (RM)</div>
-              <div className="th">Shipping</div>
-              <div className="th">Status</div>
-              {pagedOrders.map((o, i) => {
+            <DealerOrdersTable
+              orders={pagedOrders.map((o) => {
                 const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
                 const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
                 const paid = o.quantity * Number(o.unit_price_rm)
                 const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
-                const border = i === pagedOrders.length - 1 ? '' : 'border-b border-ink-800'
-                return (
-                  <Fragment key={o.id}>
-                    <div className={`py-2.5 text-paper-dim ${border}`}>{o.order_date}</div>
-                    <div className={`py-2.5 font-semibold text-paper ${border}`}>{dealerName}</div>
-                    <div className={`py-2.5 ${border}`}>
-                      <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
-                      <span className="mt-1 block text-paper-dim">Qty {o.quantity.toLocaleString()}</span>
-                    </div>
-                    <div className={`py-2.5 text-right ${border}`}>
-                      <div className="figure-money font-semibold text-paper">RM {paid.toLocaleString()}</div>
-                      {isFinance && <div className="mt-0.5 text-paper-dim">+RM {margin.toLocaleString()}</div>}
-                    </div>
-                    <div className={`py-2.5 text-paper-dim ${border}`}>
-                      <div>{o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}</div>
-                      <div className="mt-0.5">
-                        {isPhysicalSimType(o.sim_type) ? (
-                          o.shipping_invoice_path ? (
-                            <a
-                              href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-semibold text-primary hover:underline"
-                            >
-                              Invoice
-                            </a>
-                          ) : (
-                            <span className="text-paper-dim/50">No invoice</span>
-                          )
-                        ) : o.esim_codes ? (
-                          <span className="block max-w-[100px] truncate" title={o.esim_codes}>
-                            {o.esim_codes}
-                          </span>
-                        ) : (
-                          <span className="text-paper-dim/50">No codes</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className={`py-2.5 ${border}`}>
-                      {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
-                      {o.delivery_status === 'pending' && (
-                        <form action={markSimOrderSent} className="mt-1.5">
-                          <input type="hidden" name="id" value={o.id} />
-                          <ConfirmSubmitButton className="btn-jade w-full py-1 text-[11px]" confirmMessage="Mark this order as shipped? This cannot be undone.">
-                            Mark Sent
-                          </ConfirmSubmitButton>
-                        </form>
-                      )}
-                    </div>
-                  </Fragment>
-                )
+                return {
+                  id: o.id,
+                  order_date: o.order_date,
+                  dealerName,
+                  sim_type: o.sim_type,
+                  quantity: o.quantity,
+                  paid,
+                  margin,
+                  shipping_fee_rm: o.shipping_fee_rm,
+                  shipping_invoice_path: o.shipping_invoice_path,
+                  esim_codes: o.esim_codes,
+                  delivery_status: o.delivery_status,
+                }
               })}
-            </div>
-            </div>
+              isFinance={isFinance}
+            />
           ) : (
             <p className="text-sm text-paper-dim">No orders recorded yet.</p>
           )}
@@ -332,41 +275,18 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
             </div>
             {intakes.length ? (
-              <div className="overflow-x-auto">
-              <div className="grid min-w-[440px] grid-cols-[60px_104px_80px_84px_minmax(80px,1fr)] gap-x-2 text-[12.5px]">
-                <div className="th">Date</div>
-                <div className="th">SIM Type</div>
-                <div className="th text-right">Total Cost</div>
-                <div className="th">Recorded By</div>
-                <div className="th">Note</div>
-                {pagedIntakes.map((r, i) => {
-                  const border = i === pagedIntakes.length - 1 ? '' : 'border-b border-ink-800'
-                  return (
-                    <Fragment key={r.id}>
-                      <div className={`py-2.5 text-paper-dim ${border}`}>{r.intake_date}</div>
-                      <div className={`py-2.5 ${border}`}>
-                        <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
-                        <span className="mt-1 block text-paper-dim">Qty {r.quantity.toLocaleString()}</span>
-                      </div>
-                      <div className={`py-2.5 text-right ${border}`}>
-                        <div className="figure-money font-semibold text-paper">RM {(r.quantity * Number(r.cost_per_unit_rm)).toLocaleString()}</div>
-                        <div className="mt-0.5 text-paper-dim">RM {Number(r.cost_per_unit_rm).toFixed(2)}/unit</div>
-                      </div>
-                      <div className={`py-2.5 text-paper-dim ${border}`}>{nameById.get(r.recorded_by) ?? '—'}</div>
-                      <div className={`py-2.5 text-paper-dim ${border}`}>
-                        {r.note ? (
-                          <span className="block truncate" title={r.note}>
-                            {r.note}
-                          </span>
-                        ) : (
-                          <span className="text-paper-dim/50">—</span>
-                        )}
-                      </div>
-                    </Fragment>
-                  )
-                })}
-              </div>
-              </div>
+              <StockIntakeTable
+                intakes={pagedIntakes.map((r) => ({
+                  id: r.id,
+                  intake_date: r.intake_date,
+                  sim_type: r.sim_type,
+                  quantity: r.quantity,
+                  cost_per_unit_rm: Number(r.cost_per_unit_rm),
+                  totalCost: r.quantity * Number(r.cost_per_unit_rm),
+                  note: r.note,
+                  recordedByName: nameById.get(r.recorded_by) ?? '—',
+                }))}
+              />
             ) : (
               <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>
             )}

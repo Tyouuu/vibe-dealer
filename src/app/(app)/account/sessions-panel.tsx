@@ -1,21 +1,12 @@
 'use client'
 
-import { useTransition } from 'react'
 import { signOutOtherSessions } from './actions'
+import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { LogoutButton } from '../logout-button'
 
 export type SignInEvent = { id: string; device: string; when: string }
 
 export function SessionsPanel({ currentDevice, since, history }: { currentDevice: string; since: string | null; history: SignInEvent[] }) {
-  const [pending, startTransition] = useTransition()
-
-  function handleSignOutOthers() {
-    if (!confirm('Sign out of every other session? Any other device currently signed in will be logged out.')) return
-    startTransition(() => {
-      signOutOtherSessions()
-    })
-  }
-
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-800 bg-ink-850 px-3.5 py-2.5">
@@ -26,10 +17,20 @@ export function SessionsPanel({ currentDevice, since, history }: { currentDevice
             {since ? ` · since ${since}` : ''}
           </div>
         </div>
+        {/* Neither action here is destructive (no data is lost either way),
+            so both share the same neutral btn-ghost — a solid clay/red
+            button next to a plain "Log Out" made this row look like it was
+            warning about two different things when it's really just two
+            ordinary session actions. */}
         <div className="flex shrink-0 items-center gap-2">
-          <button onClick={handleSignOutOthers} disabled={pending} className="btn-clay">
-            {pending ? 'Signing out…' : 'Sign out of all other sessions'}
-          </button>
+          <form action={signOutOtherSessions}>
+            <ConfirmSubmitButton
+              className="btn-ghost"
+              confirmMessage="Sign out of every other session? Any other device currently signed in will be logged out."
+            >
+              Sign out of all other sessions
+            </ConfirmSubmitButton>
+          </form>
           <LogoutButton />
         </div>
       </div>

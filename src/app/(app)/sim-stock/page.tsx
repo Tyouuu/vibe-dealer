@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
@@ -194,70 +195,93 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
           </div>
-          {/* A table here — even a tightly-stacked 7-column one — has a hard
-              floor set by its least-compressible cell (the SIM Type tag, the
-              "Mark as Sent" button): measured against real viewport widths,
-              a table still needed a horizontal scrollbar at every common
-              laptop width (1366-1600px) and only stopped needing one above
-              ~1728px. Only a reflowing layout can actually guarantee "fits
-              without scrolling" at any width, so this is a flex-wrap list
-              instead of a table: dealer + status always share the top line,
-              and the detail chips below wrap onto more lines on a narrow
-              card rather than pushing the row sideways. */}
+          {/* A CSS Grid, not a <table> — a literal table forces every column
+              to its own fixed minimum width, and even tightly stacked
+              (Paid+Margin, Shipping+Invoice, Status+Action in one cell each)
+              that still needed a horizontal scrollbar at every common laptop
+              width (1366-1600px). One grid instance for the whole list (not
+              a div per row) is what makes every row's Date/SIM Type/Paid/etc.
+              line up in real columns — that alignment is the whole reason
+              this isn't back to the flex-wrap chips from before, which let
+              each row's text find its own width and drift out of line with
+              its neighbors.
+
+              Dealer has a real 80px floor (minmax(80px,1fr), not
+              minmax(0,1fr)) — a bare 0 floor let it collapse to a few
+              pixels the moment the other five fixed columns' combined width
+              got close to the container's actual width, and a dealer name
+              at ~4px doesn't wrap, it visually overflows into the next
+              column and reads as garbled interleaved text. min-w-[528px] +
+              overflow-x-auto is the honest fallback below that: scrolling a
+              readable row is fine, silently overlapping two columns' text
+              is not. */}
           {orders.length ? (
-            <div className="flex flex-col divide-y divide-ink-800">
-              {pagedOrders.map((o) => {
+            <div className="overflow-x-auto">
+            <div className="grid min-w-[528px] grid-cols-[60px_minmax(80px,1fr)_104px_80px_88px_76px] gap-x-2 text-[12.5px]">
+              <div className="th">Date</div>
+              <div className="th">Dealer</div>
+              <div className="th">SIM Type</div>
+              <div className="th text-right">Paid (RM)</div>
+              <div className="th">Shipping</div>
+              <div className="th">Status</div>
+              {pagedOrders.map((o, i) => {
                 const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
                 const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
                 const paid = o.quantity * Number(o.unit_price_rm)
                 const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
+                const border = i === pagedOrders.length - 1 ? '' : 'border-b border-ink-800'
                 return (
-                  <div key={o.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-paper">{dealerName}</span>
-                      {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-paper-dim">
-                      <span>{o.order_date}</span>
+                  <Fragment key={o.id}>
+                    <div className={`py-2.5 text-paper-dim ${border}`}>{o.order_date}</div>
+                    <div className={`py-2.5 font-semibold text-paper ${border}`}>{dealerName}</div>
+                    <div className={`py-2.5 ${border}`}>
                       <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
-                      <span>Qty {o.quantity.toLocaleString()}</span>
-                      <span className="figure-money font-semibold text-paper">
-                        RM {paid.toLocaleString()}
-                        {isFinance && <span className="font-normal text-paper-dim"> (+RM {margin.toLocaleString()} margin)</span>}
-                      </span>
-                      <span>{o.shipping_fee_rm != null ? `Shipping RM ${Number(o.shipping_fee_rm).toLocaleString()}` : 'No shipping fee'}</span>
-                      {isPhysicalSimType(o.sim_type) ? (
-                        o.shipping_invoice_path ? (
-                          <a
-                            href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-semibold text-primary hover:underline"
-                          >
-                            View invoice
-                          </a>
+                      <span className="mt-1 block text-paper-dim">Qty {o.quantity.toLocaleString()}</span>
+                    </div>
+                    <div className={`py-2.5 text-right ${border}`}>
+                      <div className="figure-money font-semibold text-paper">RM {paid.toLocaleString()}</div>
+                      {isFinance && <div className="mt-0.5 text-paper-dim">+RM {margin.toLocaleString()}</div>}
+                    </div>
+                    <div className={`py-2.5 text-paper-dim ${border}`}>
+                      <div>{o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}</div>
+                      <div className="mt-0.5">
+                        {isPhysicalSimType(o.sim_type) ? (
+                          o.shipping_invoice_path ? (
+                            <a
+                              href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-semibold text-primary hover:underline"
+                            >
+                              Invoice
+                            </a>
+                          ) : (
+                            <span className="text-paper-dim/50">No invoice</span>
+                          )
+                        ) : o.esim_codes ? (
+                          <span className="block max-w-[100px] truncate" title={o.esim_codes}>
+                            {o.esim_codes}
+                          </span>
                         ) : (
-                          <span>No invoice</span>
-                        )
-                      ) : o.esim_codes ? (
-                        <span className="max-w-[200px] truncate" title={o.esim_codes}>
-                          {o.esim_codes}
-                        </span>
-                      ) : (
-                        <span>No codes</span>
+                          <span className="text-paper-dim/50">No codes</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`py-2.5 ${border}`}>
+                      {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
+                      {o.delivery_status === 'pending' && (
+                        <form action={markSimOrderSent} className="mt-1.5">
+                          <input type="hidden" name="id" value={o.id} />
+                          <ConfirmSubmitButton className="btn-jade w-full py-1 text-[11px]" confirmMessage="Mark this order as shipped? This cannot be undone.">
+                            Mark Sent
+                          </ConfirmSubmitButton>
+                        </form>
                       )}
                     </div>
-                    {o.delivery_status === 'pending' && (
-                      <form action={markSimOrderSent}>
-                        <input type="hidden" name="id" value={o.id} />
-                        <ConfirmSubmitButton className="btn-jade py-1 text-xs" confirmMessage="Mark this order as shipped? This cannot be undone.">
-                          Mark as Sent
-                        </ConfirmSubmitButton>
-                      </form>
-                    )}
-                  </div>
+                  </Fragment>
                 )
               })}
+            </div>
             </div>
           ) : (
             <p className="text-sm text-paper-dim">No orders recorded yet.</p>
@@ -308,26 +332,40 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
             </div>
             {intakes.length ? (
-              <div className="flex flex-col divide-y divide-ink-800">
-                {pagedIntakes.map((r) => (
-                  <div key={r.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
-                      <span className="figure-money font-semibold text-paper">RM {(r.quantity * Number(r.cost_per_unit_rm)).toLocaleString()}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-paper-dim">
-                      <span>{r.intake_date}</span>
-                      <span>Qty {r.quantity.toLocaleString()}</span>
-                      <span>RM {Number(r.cost_per_unit_rm).toFixed(2)}/unit</span>
-                      <span>{nameById.get(r.recorded_by) ?? '—'}</span>
-                      {r.note && (
-                        <span className="max-w-[240px] truncate" title={r.note}>
-                          {r.note}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+              <div className="grid min-w-[440px] grid-cols-[60px_104px_80px_84px_minmax(80px,1fr)] gap-x-2 text-[12.5px]">
+                <div className="th">Date</div>
+                <div className="th">SIM Type</div>
+                <div className="th text-right">Total Cost</div>
+                <div className="th">Recorded By</div>
+                <div className="th">Note</div>
+                {pagedIntakes.map((r, i) => {
+                  const border = i === pagedIntakes.length - 1 ? '' : 'border-b border-ink-800'
+                  return (
+                    <Fragment key={r.id}>
+                      <div className={`py-2.5 text-paper-dim ${border}`}>{r.intake_date}</div>
+                      <div className={`py-2.5 ${border}`}>
+                        <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
+                        <span className="mt-1 block text-paper-dim">Qty {r.quantity.toLocaleString()}</span>
+                      </div>
+                      <div className={`py-2.5 text-right ${border}`}>
+                        <div className="figure-money font-semibold text-paper">RM {(r.quantity * Number(r.cost_per_unit_rm)).toLocaleString()}</div>
+                        <div className="mt-0.5 text-paper-dim">RM {Number(r.cost_per_unit_rm).toFixed(2)}/unit</div>
+                      </div>
+                      <div className={`py-2.5 text-paper-dim ${border}`}>{nameById.get(r.recorded_by) ?? '—'}</div>
+                      <div className={`py-2.5 text-paper-dim ${border}`}>
+                        {r.note ? (
+                          <span className="block truncate" title={r.note}>
+                            {r.note}
+                          </span>
+                        ) : (
+                          <span className="text-paper-dim/50">—</span>
+                        )}
+                      </div>
+                    </Fragment>
+                  )
+                })}
+              </div>
               </div>
             ) : (
               <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>

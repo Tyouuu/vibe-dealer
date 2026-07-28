@@ -90,10 +90,17 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
 
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
+        {/* Each label sits next to a shrink-0 icon in a flex row, so without
+            min-w-0 (flex items default to min-width:auto, which blocks
+            truncate from ever engaging) "Cash Margin vs 2%" would wrap to
+            2-3 lines the moment this row's actual width dips even slightly —
+            exactly what happened between 80%/100% browser zoom on the same
+            window, since zoom changes how many CSS px this row actually
+            gets. truncate keeps every label a single line at any width. */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
+              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
                 <IconCoin className="h-3.5 w-3.5" />
               </span>
@@ -111,7 +118,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
+              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
                 <IconTrendUp className="h-3.5 w-3.5" />
               </span>
@@ -120,7 +127,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
+              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
                 <IconDocument className="h-3.5 w-3.5" />
               </span>
@@ -129,7 +136,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
+              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
                 <IconCheckCircle className="h-3.5 w-3.5" />
               </span>

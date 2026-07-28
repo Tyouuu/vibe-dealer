@@ -516,7 +516,12 @@ function KpiCard({
   return (
     <a href={href} className="app-tile relative flex flex-col gap-3 overflow-visible transition-colors hover:border-jade/50">
       <div className="flex items-start justify-between">
-        <span className="text-[13px] font-semibold text-paper-dim">{label}</span>
+        {/* min-w-0 lets truncate actually engage on a flex item (the default
+            min-width:auto otherwise blocks it) — without it, a label like
+            "Top-up This Month" wraps to 2 lines the moment this row's real
+            width dips slightly, which happens between 80%/100% browser zoom
+            on the same window since zoom changes the CSS px this row gets. */}
+        <span className="min-w-0 truncate text-[13px] font-semibold text-paper-dim">{label}</span>
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary">{icon}</span>
       </div>
       <div className="flex flex-wrap items-baseline gap-2">

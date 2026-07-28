@@ -111,24 +111,34 @@ export function RailNav({
         <span className="overflow-hidden whitespace-nowrap text-base font-extrabold tracking-tight text-paper">DealerHub</span>
       </Link>
 
-      {[...groups.entries()].map(([group, groupItems]) => (
-        <div key={group}>
-          <div className="rail-group-label">{group}</div>
-          {groupItems.map((item) => {
-            const Icon = ICONS[item.href]
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-            return (
-              <a key={item.href} href={item.href} className={`rail-item${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
-                {Icon && <Icon />}
-                <span className="lbl">{item.label}</span>
-                {item.badge != null && item.badge > 0 && <span className="badge">{item.badge}</span>}
-              </a>
-            )
-          })}
-        </div>
-      ))}
+      {/* flex-1 + overflow-y-auto — .rail is a fixed h-screen column with no
+          scroll of its own, so once the nav groups plus the footer below
+          together outgrow the viewport (easy to hit: more nav items for
+          master/accountant, or just less effective height at 100% zoom than
+          at 80%), whatever didn't fit was simply cut off past the bottom
+          edge with no way to reach it. This section now scrolls on its own
+          when it needs to, while the footer (Notifications/Account
+          Settings/profile) stays pinned and always reachable. */}
+      <div className="flex-1 overflow-y-auto">
+        {[...groups.entries()].map(([group, groupItems]) => (
+          <div key={group}>
+            <div className="rail-group-label">{group}</div>
+            {groupItems.map((item) => {
+              const Icon = ICONS[item.href]
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              return (
+                <a key={item.href} href={item.href} className={`rail-item${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
+                  {Icon && <Icon />}
+                  <span className="lbl">{item.label}</span>
+                  {item.badge != null && item.badge > 0 && <span className="badge">{item.badge}</span>}
+                </a>
+              )
+            })}
+          </div>
+        ))}
+      </div>
 
-      <div className="mt-auto border-t border-ink-800 pt-2">
+      <div className="shrink-0 border-t border-ink-800 pt-2">
         <Link href="/notifications" className={`rail-item${pathname === '/notifications' ? ' active' : ''}`}>
           <span className="relative">
             <IconBell className="h-[18px] w-[18px]" />

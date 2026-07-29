@@ -10,6 +10,7 @@ import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
 import { MarkReconciledForm } from './mark-reconciled-form'
 import { MonthPicker } from '../month-picker'
+import { ScrollFade } from '../scroll-fade'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -86,7 +87,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
       <div className="flex flex-col gap-5">
         <div className="app-card relative overflow-visible">
           {statement?.reconciled && (
@@ -182,8 +183,8 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             <span className="pill pill-neutral">{breakdownRows.length} transaction{breakdownRows.length === 1 ? '' : 's'}</span>
           </div>
           {pagedRows.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+            <ScrollFade label="Verified transactions in this period">
+              <table className="w-full min-w-[620px] border-collapse text-sm">
                 <thead>
                   <tr>
                     <th className="th">Date</th>
@@ -227,7 +228,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ScrollFade>
           ) : (
             <p className="text-sm text-paper-dim">No verified transactions in this period yet.</p>
           )}
@@ -255,7 +256,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             </div>
           )}
           <div className="mt-3 text-center">
-            <a href={`/records?month=${month}&status=verified`} className="text-[11.5px] font-semibold text-primary hover:underline">
+            {/* inline-block + py-1.5 so this standalone link is a 24px-tall
+                touch target (WCAG 2.5.8) rather than just its 15px line box. */}
+            <a
+              href={`/records?month=${month}&status=verified`}
+              className="inline-block py-1.5 text-[11.5px] font-semibold text-primary hover:underline"
+            >
               View all in Transactions →
             </a>
           </div>

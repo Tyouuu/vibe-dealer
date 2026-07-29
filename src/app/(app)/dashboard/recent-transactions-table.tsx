@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
+import { ScrollFade } from '../scroll-fade'
 
 export type RecentTxRow = {
   id: string
@@ -41,8 +42,8 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
         />
       </label>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      <ScrollFade label="Recent transactions">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr>
               <th className="th">Txn Id</th>
@@ -103,7 +104,7 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollFade>
     </div>
   )
 }

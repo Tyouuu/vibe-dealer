@@ -27,7 +27,7 @@ export default function DealerDetailLoading() {
           ))}
         </div>
       </div>
-      <div className="grid gap-5 lg:grid-cols-[1fr_296px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_296px]">
         <div className="flex flex-col gap-5">
           <div className="app-card">
             <Bone className="mb-3 h-4 w-36" />

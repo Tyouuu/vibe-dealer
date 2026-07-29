@@ -462,11 +462,20 @@ body {
     @apply flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-sm text-paper-dim;
   }
 
+  /* max-w-full + flex-wrap: as a plain inline-flex this sized itself purely
+     from its buttons' own content and blew straight past a phone-width
+     container — the Audit Log's 4-tab bar ("All / Transactions /
+     Reconciliation / Package changes") measured 340px inside a 320px
+     viewport and pushed the whole page sideways. Wrapping to a second row
+     rather than scrolling, so every option stays visible at every width
+     instead of some being hidden behind a swipe. */
   .segmented {
-    @apply inline-flex items-center gap-0.5 rounded-lg border border-ink-800 bg-ink-850 p-0.5;
+    @apply inline-flex max-w-full flex-wrap items-center gap-0.5 rounded-lg border border-ink-800 bg-ink-850 p-0.5;
   }
+  /* min-h-[32px] keeps each option a comfortable touch target on a phone
+     (py-1.5 alone left them ~26px tall). */
   .segmented-btn {
-    @apply rounded-md px-3.5 py-1.5 text-xs font-bold text-paper-dim transition-colors;
+    @apply flex min-h-[32px] items-center rounded-md px-3.5 py-1.5 text-xs font-bold text-paper-dim transition-colors;
   }
   .segmented-btn.active {
     @apply bg-ink-900 text-paper shadow-sm;

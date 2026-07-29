@@ -8,6 +8,7 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { IconCoin, IconTrendUp, IconDocument, IconCheckCircle } from '../icons'
 import { todayInMalaysia } from '@/lib/month'
 import { PurchaseForm } from './purchase-form'
+import { ScrollFade } from '../scroll-fade'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — DealerHub',
@@ -81,7 +82,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
       <div className="app-card">
         <h1 className="mb-1 text-[26px] font-extrabold tracking-tight text-paper">Credit Purchases</h1>
         <p className="mb-4 text-[12.5px] text-paper-dim">
@@ -97,7 +98,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             exactly what happened between 80%/100% browser zoom on the same
             window, since zoom changes how many CSS px this row actually
             gets. truncate keeps every label a single line at any width. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
@@ -160,8 +161,8 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </div>
           {rows.length ? (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+              <ScrollFade label="Credit purchase history">
+                <table className="w-full min-w-[620px] border-collapse text-sm">
                   <thead>
                     <tr>
                       <th className="th">Date</th>
@@ -183,7 +184,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollFade>
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
                   <span className="text-[11.5px] text-paper-dim">

@@ -23,7 +23,9 @@ export default async function NotificationsPage() {
             {notifications.length} notification{notifications.length === 1 ? '' : 's'}
           </span>
         </h1>
-        <a href="/account" className="text-xs font-semibold text-paper-dim hover:text-paper hover:underline">
+        {/* inline-block + py-1.5 so this standalone link is a 24px-tall touch
+            target (WCAG 2.5.8) rather than just its 16px line box. */}
+        <a href="/account" className="inline-block py-1.5 text-xs font-semibold text-paper-dim hover:text-paper hover:underline">
           Manage what you get notified about →
         </a>
       </div>

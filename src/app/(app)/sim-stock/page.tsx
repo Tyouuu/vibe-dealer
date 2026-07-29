@@ -188,7 +188,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           coincidence, not by design — minmax(0, …) makes both grids divide
           the same container width by the same ratio every time, so the two
           tables' cards always come out exactly the same width. */}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="app-card min-w-0" id="dealer-orders">
           <div className="mb-3.5 flex items-center justify-between">
             <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
@@ -268,7 +268,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           grid's (Place Order), so without it the two would independently
           drift to different pixel splits despite the identical 1.4fr/1fr. */}
       {isFinance && (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <div className="app-card min-w-0" id="stock-intake-history">
             <div className="mb-3.5 flex items-center justify-between">
               <h3 className="text-sm font-bold text-paper">Stock Intake History</h3>

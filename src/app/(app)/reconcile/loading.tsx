@@ -4,7 +4,7 @@ function Bone({ className = '' }: { className?: string }) {
 
 export default function ReconcileLoading() {
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
       <div className="app-card">
         <div className="mb-4 flex items-start justify-between">
           <Bone className="h-8 w-52" />

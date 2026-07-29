@@ -5,6 +5,7 @@ import { StatusDot } from '../status-dot'
 import { markDelivered, bulkMarkDelivered } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { Modal } from '../modal'
+import { ScrollFade } from '../scroll-fade'
 
 export type DeliveryRow = {
   id: string
@@ -56,19 +57,29 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
 
   return (
     <div className="relative">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      <ScrollFade label="SIM delivery queue">
+        <table className="w-full min-w-[880px] border-collapse text-sm">
           <thead>
             <tr>
               {pendingRows.length > 0 && (
                 <th className="th w-8">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-primary"
-                    checked={pendingRows.every((r) => selected.has(r.id))}
-                    onChange={toggleAll}
-                    aria-label="Select all pending"
-                  />
+                  {/* -m-1.5 p-1.5 grows the tappable area to 28px around the
+                      16px box without taking any extra layout space. Unlike
+                      the checkboxes on Account Settings — which sit inside a
+                      full-width <label> row and so are already easy to hit —
+                      these are bare inputs in a table cell, where the 16px
+                      box was the entire target. The empty <label> carries no
+                      text, so the input's own aria-label stays its
+                      accessible name. */}
+                  <label className="-m-1.5 inline-flex cursor-pointer p-1.5">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={pendingRows.every((r) => selected.has(r.id))}
+                      onChange={toggleAll}
+                      aria-label="Select all pending"
+                    />
+                  </label>
                 </th>
               )}
               <th className="th">Date</th>
@@ -86,13 +97,15 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                 {pendingRows.length > 0 && (
                   <td className="td">
                     {row.delivery_status === 'pending' && (
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-primary"
-                        checked={selected.has(row.id)}
-                        onChange={() => toggle(row.id)}
-                        aria-label={`Select ${row.company_name}`}
-                      />
+                      <label className="-m-1.5 inline-flex cursor-pointer p-1.5">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={selected.has(row.id)}
+                          onChange={() => toggle(row.id)}
+                          aria-label={`Select ${row.company_name}`}
+                        />
+                      </label>
                     )}
                   </td>
                 )}
@@ -134,7 +147,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollFade>
 
       {selected.size > 0 && (
         <div className="sticky bottom-4 z-20 mt-3 flex items-center gap-3 rounded-xl border border-primary bg-primary-soft px-4 py-3 shadow-2xl">

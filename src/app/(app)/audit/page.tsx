@@ -10,6 +10,7 @@ import { IconSearch } from '../icons'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { AuditRow } from './audit-row'
+import { ScrollFade } from '../scroll-fade'
 
 export const metadata: Metadata = {
   title: 'Audit Log — DealerHub',
@@ -133,7 +134,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
       </form>
 
       {filtered.length ? (
-        <div className="overflow-x-auto">
+        <ScrollFade label="Audit event history">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr>
@@ -175,7 +176,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollFade>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">

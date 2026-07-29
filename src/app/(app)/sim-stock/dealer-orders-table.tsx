@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react'
 import { markSimOrderSent } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
+import { ScrollFade } from '../scroll-fade'
 
 export type OrderItem = {
   id: string
@@ -32,7 +33,7 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
   const [openId, setOpenId] = useState<string | null>(null)
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollFade label="Dealer SIM orders">
       <div className="grid grid-cols-[72px_minmax(110px,1fr)_120px_50px_84px_84px_24px] gap-x-3 text-sm">
         <div className="th">Date</div>
         <div className="th">Dealer</div>
@@ -137,6 +138,6 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
           )
         })}
       </div>
-    </div>
+    </ScrollFade>
   )
 }

@@ -4,6 +4,7 @@ import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { MonthPicker } from '../month-picker'
+import { ScrollFade } from '../scroll-fade'
 
 function formatDelta(current: number, prior: number): { label: string; positive: boolean } | null {
   if (prior === 0) return current === 0 ? null : { label: 'New this month', positive: current > 0 }
@@ -148,8 +149,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <div className="app-card">
         <h3 className="mb-0.5 text-sm font-bold text-paper">By Package</h3>
         <p className="mb-3.5 text-[11.5px] text-paper-dim">This month&apos;s verified total, split by transaction type.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <ScrollFade label="This month by package">
+          <table className="w-full min-w-[660px] border-collapse text-sm">
             <thead>
               <tr>
                 <th className="th">Type</th>
@@ -187,14 +188,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               )}
             </tbody>
           </table>
-        </div>
+        </ScrollFade>
       </div>
 
       <div className="app-card">
         <h3 className="mb-0.5 text-sm font-bold text-paper">By Dealer</h3>
         <p className="mb-3.5 text-[11.5px] text-paper-dim">Click a dealer to see its individual transactions for this month.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <ScrollFade label="This month by dealer">
+          <table className="w-full min-w-[660px] border-collapse text-sm">
             <thead>
               <tr>
                 <th className="th">#</th>
@@ -245,7 +246,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               )}
             </tbody>
           </table>
-        </div>
+        </ScrollFade>
       </div>
     </div>
   )

@@ -142,13 +142,20 @@ function GrowthMap({ regions, selected, onToggle }: { regions: Region[]; selecte
           const isSelected = selected === r.region
           const isDimmed = selected !== null && !isSelected
           return (
+            // p-1.5 around the 12px dot makes the button itself a 24px touch
+            // target (WCAG 2.5.8's minimum) without changing how big the
+            // marker looks — the bare dot was a 12x12 tap target, fine with
+            // a mouse and near-unhittable with a thumb. Kept at exactly 24px
+            // rather than larger because Ipoh and Kampar sit only ~31px apart
+            // vertically at this map's rendered size, and bigger boxes would
+            // start to overlap each other.
             <button
               type="button"
               key={r.region}
               onClick={() => onToggle(r.region)}
               aria-pressed={isSelected}
               aria-label={`${r.region}, ${r.pct}% of this month's top-up`}
-              className="group absolute -translate-x-1/2 -translate-y-1/2 transition-opacity"
+              className="group absolute -translate-x-1/2 -translate-y-1/2 p-1.5 transition-opacity"
               style={{ left: `${coord.x}%`, top: `${coord.y}%`, opacity: isDimmed ? 0.35 : 1 }}
             >
               {/* Counter-scaled against the map's own zoom, same duration —

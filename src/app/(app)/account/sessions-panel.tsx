@@ -9,7 +9,7 @@ export type SignInEvent = { id: string; device: string; when: string }
 export function SessionsPanel({ currentDevice, since, history }: { currentDevice: string; since: string | null; history: SignInEvent[] }) {
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-800 bg-ink-850 px-3.5 py-2.5">
+      <div className="flex flex-col gap-3 rounded-lg border border-ink-800 bg-ink-850 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-bold text-paper">Most recent sign-in</div>
           <div className="text-[12px] text-paper-dim">

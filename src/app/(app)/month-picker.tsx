@@ -88,7 +88,14 @@ export function MonthPicker({
         <IconChevronDown className={`ml-auto h-3.5 w-3.5 text-paper-dim transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="dropdown-panel w-[260px] p-0">
+        // left-0 right-auto overrides the shared .dropdown-panel default of
+        // right-0 — that anchors the panel's right edge to this trigger's
+        // own (narrow, content-width) right edge, which on a phone-width
+        // filter bar pushes the wider 260px panel's left edge past the
+        // screen's left edge entirely. Anchoring from the trigger's left
+        // edge instead keeps it on-screen everywhere this compact trigger
+        // is used (a left-aligned filter bar, never the far right edge).
+        <div className="dropdown-panel left-0 right-auto w-[260px] p-0">
           <div className="flex items-center justify-between px-3 py-2.5">
             <button
               type="button"

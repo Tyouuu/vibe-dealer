@@ -65,8 +65,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // now every size gets the plain full-bleed layout mobile already had.
     <div className="min-h-screen bg-ink-900 text-paper">
       <NotificationToast notifications={builtNotifications.map((n) => ({ id: n.id, title: n.title, subtitle: n.subtitle, variant: n.variant }))} />
-      <div className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
-        <div className="hidden md:block">
+      {/* The rail appears at lg (1024px), not md (768px). At 768-1023 — an
+          iPad in portrait, the single most common tablet size — a permanent
+          248px rail ate 30% of the screen and left only ~474px for content,
+          which is phone-width, so every table was scrolling sideways on a
+          device with plenty of room. No major design system treats 768px as
+          where desktop layouts start: Tailwind's own lg, Microsoft Fluent's
+          x-large, USWDS's `desktop`, and Atlassian's 12-column grid all
+          begin at 1024, and Carbon's 16-column grid at 1056. Below lg the
+          rail collapses into the existing hamburger panel and the content
+          gets the full width. */}
+      <div className="flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
+        <div className="hidden lg:block">
           <RailNav
             items={railItems}
             notifications={notifications}
@@ -77,12 +87,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
         </div>
 
-        {/* md:pl-[248px] reserves the space the now position:fixed .rail no
+        {/* lg:pl-[248px] reserves the space the now position:fixed .rail no
             longer occupies in normal flow (it used to be sticky, still
             flex-flow-participating) — without this the content would start
-            at x:0, hidden under the rail. */}
-        <div className="flex min-h-screen flex-1 flex-col md:min-h-0 md:pl-[248px]">
-          <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 md:hidden">
+            at x:0, hidden under the rail.
+
+            min-w-0 is load-bearing: as a row-direction flex item this
+            defaults to min-width:auto, which refuses to shrink below its
+            content's min-content width. Any page with a wide table then
+            pushed this column past the viewport (e.g. 1326px inside an
+            820px tablet) and the parent's lg:overflow-hidden CLIPPED the
+            excess — content silently cut off, with no scrollbar to reach
+            it, because the clip meant the document itself never reported
+            an overflow. Letting this shrink is what pushes the horizontal
+            scrolling back down into each table's own ScrollFade, where it
+            belongs. */}
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:min-h-0 lg:pl-[248px]">
+          <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 lg:hidden">
             <Link href="/dashboard" className="flex items-center gap-3">
               <LogoMark className="h-8 w-8 shrink-0" />
               <span className="text-sm font-bold text-paper">DealerHub</span>
@@ -104,7 +125,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* Credit balance card only — notifications/profile/role-preview
               live in the rail on md+ and in MobileNav's panel below md, so
               this header has nothing left to show on mobile. */}
-          <header className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 md:flex md:px-8">
+          <header className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 lg:flex lg:px-8">
             {isFinance && (
               <a
                 href="/purchases"
@@ -134,7 +155,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             )}
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 md:overflow-y-auto">
+          <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 lg:overflow-y-auto">
             {/* No max-width here — the shell above already caps out at 1440px
                 total (md:max-w-[1440px]), so this only needs w-full to use
                 whatever room that leaves past the rail. A redundant narrower

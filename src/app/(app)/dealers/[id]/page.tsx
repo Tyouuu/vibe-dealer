@@ -12,6 +12,7 @@ import { IconMapPin, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
 import { EditDealerButton } from './edit-dealer-button'
+import { ScrollFade } from '../../scroll-fade'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -365,7 +366,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_296px] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_296px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5">
           {isFinance && txRows.length > 0 && (
             <div className="app-card">
@@ -406,8 +407,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
 
             {isFinance ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+              <ScrollFade label="All transactions for this dealer">
+                <table className="w-full min-w-[820px] border-collapse text-sm">
                   <thead>
                     <tr>
                       <th className="th">Date</th>
@@ -456,10 +457,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollFade>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+              <ScrollFade label="Delivery history for this dealer">
+                <table className="w-full min-w-[560px] border-collapse text-sm">
                   <thead>
                     <tr>
                       <th className="th">Date</th>
@@ -503,15 +504,15 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollFade>
             )}
           </div>
 
           {isFinance && (
             <div className="app-card">
               <h3 className="mb-3.5 text-sm font-bold text-paper">Rate History</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+              <ScrollFade label="Rate change history">
+                <table className="w-full min-w-[520px] border-collapse text-sm">
                   <thead>
                     <tr>
                       <th className="th">Time</th>
@@ -542,7 +543,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollFade>
             </div>
           )}
         </div>

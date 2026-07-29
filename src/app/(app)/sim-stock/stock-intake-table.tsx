@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, type SimStockType } from '@/lib/sim-stock'
+import { ScrollFade } from '../scroll-fade'
 
 export type IntakeItem = {
   id: string
@@ -22,7 +23,7 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollFade label="SIM stock intake history">
       <div className="grid grid-cols-[72px_120px_50px_minmax(90px,1fr)_24px] gap-x-3 text-sm">
         <div className="th">Date</div>
         <div className="th">SIM Type</div>
@@ -86,6 +87,6 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
           )
         })}
       </div>
-    </div>
+    </ScrollFade>
   )
 }

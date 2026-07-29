@@ -4,11 +4,11 @@ function Bone({ className = '' }: { className?: string }) {
 
 export default function PurchasesLoading() {
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
       <div className="app-card">
         <Bone className="h-8 w-48" />
         <Bone className="mt-2 mb-4 h-3 w-64" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Bone key={i} className="h-16 rounded-2xl" />
           ))}

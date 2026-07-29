@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Avatar } from '../avatar'
 import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
+import { ScrollFade } from '../scroll-fade'
 
 export type DealerRow = {
   id: string
@@ -58,7 +59,7 @@ export function DealersTable({
     : [['', dealers] as [string, DealerRow[]]]
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollFade label="Dealer directory">
       {groups.map(([region, rows]) => (
         <details key={region || 'flat'} open className="mb-3 last:mb-0">
           {groupByRegion && (
@@ -74,7 +75,7 @@ export function DealersTable({
               one with long ones, and the columns visibly stop lining up as
               you scroll past a group boundary. Fixed widths shared by every
               group is what actually keeps them aligned. */}
-          <table className="w-full table-fixed border-collapse text-sm">
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
             <colgroup>
               {showRanking && <col className="w-14" />}
               <col />
@@ -177,6 +178,6 @@ export function DealersTable({
           </table>
         </details>
       ))}
-    </div>
+    </ScrollFade>
   )
 }

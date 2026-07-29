@@ -15,6 +15,7 @@ import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
+import { ScrollFade } from '../scroll-fade'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -278,8 +279,8 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      <ScrollFade label="Transactions">
+        <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead>
             <tr>
               <th className="th">Date</th>
@@ -391,7 +392,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollFade>
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">

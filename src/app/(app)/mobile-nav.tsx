@@ -11,7 +11,7 @@ type NavItem = { href: string; label: string }
 
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
-// Below md: the rail nav, search trigger, and topbar icon menus don't fit a
+// Below lg: the rail nav, search trigger, and topbar icon menus don't fit a
 // phone-width header, so they all collapse into this one hamburger panel —
 // including notifications and the role-preview switcher, since there's no
 // separate bell/profile icon on mobile. This used to be split across this
@@ -58,7 +58,7 @@ export function MobileNav({
   }
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} className="icon-btn">
         {open ? (
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="h-4 w-4">

@@ -64,7 +64,9 @@ export default async function AccountPage() {
   const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+    // Left-aligned, not mx-auto — same reason as Notifications and Onboard
+    // Dealer: it's the only alignment the rest of the app uses.
+    <div className="flex w-full max-w-2xl flex-col gap-8">
       <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
 
       <section>

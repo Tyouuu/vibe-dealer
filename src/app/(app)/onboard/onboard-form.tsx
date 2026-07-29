@@ -44,7 +44,13 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    // max-w-2xl but NOT mx-auto: every other page in the app starts hard
+    // against the left edge of the content area, so centring this one left a
+    // wide empty gutter beside the sidebar and made the form read as though
+    // it were floating in a box of its own. The width cap stays — a form
+    // stretched to a 1400px monitor is unusable — it just starts from the
+    // left like everything else.
+    <div className="max-w-2xl">
       <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">Onboard Dealer</h1>
 
       {initialError && <div className="alert alert-bad">{initialError}</div>}

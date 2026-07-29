@@ -15,7 +15,10 @@ export default async function NotificationsPage() {
   const notifications = await buildNotifications(supabase, user.id, user.role)
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    // Left-aligned, not mx-auto — see the note in onboard-form.tsx: the rest
+    // of the app starts at the left edge of the content area, so centring
+    // this made it look boxed-in beside the sidebar.
+    <div className="flex w-full max-w-4xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
           Notifications

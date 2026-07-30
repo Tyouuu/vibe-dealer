@@ -3,7 +3,7 @@
 // reusing them here would make an avatar's color look like a status. This
 // palette exists purely so adjacent rows in a long list read as distinct at
 // a glance, same idea as Gmail/Slack/Linear's hashed contact-avatar colors.
-const AVATAR_PALETTE = ['#3b6ea5', '#2b8f8f', '#8449a8', '#b8477a', '#5c6b8a', '#2f6fb0', '#6b4a8a', '#3f7d7a']
+const AVATAR_PALETTE = ['#3b6ea5', '#278282', '#8449a8', '#b8477a', '#5c6b8a', '#2f6fb0', '#6b4a8a', '#3f7d7a']
 
 export function avatarHex(name: string): string {
   let hash = 0

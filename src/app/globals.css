@@ -31,7 +31,7 @@
   --color-ink-700: #dcdce2;
 
   --color-paper: #1f2126;
-  --color-paper-dim: #8b8d97;
+  --color-paper-dim: #686a71;
 
   /* brand / primary accent (purple) — focus rings, chart highlights, logo,
      "Live" indicator, rail active-badge. Not used for solid primary buttons. */
@@ -45,7 +45,7 @@
 
   /* status: positive / verified */
   --color-jade: #1a9a4d;
-  --color-jade-bright: #14803f;
+  --color-jade-bright: #147a3c;
 
   /* status: negative / flagged */
   --color-clay: #e0393e;
@@ -418,7 +418,7 @@ body {
     @apply fixed inset-y-0 left-0 z-20 flex h-screen w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
   .rail-group-label {
-    @apply px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim/70 first:pt-1;
+    @apply px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim first:pt-1;
   }
   .rail-item {
     @apply mb-0.5 flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
@@ -433,7 +433,7 @@ body {
     @apply overflow-hidden whitespace-nowrap;
   }
   .rail-item .badge {
-    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary;
+    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary-deep;
   }
   .rail-item.active .badge {
     @apply bg-white/15 text-white;

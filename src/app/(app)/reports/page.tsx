@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
+import { PageHeader } from '../page-header'
 
 function formatDelta(current: number, prior: number): { label: string; positive: boolean } | null {
   if (prior === 0) return current === 0 ? null : { label: 'New this month', positive: current > 0 }
@@ -98,11 +99,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Monthly Report"
+        subtitle={`${formatMonthLabel(month)} · generated ${formatDateLabel(todayInMalaysia())}`}
+        action={<a href={`/api/reports/export?month=${month}`} className="btn-ghost shrink-0">⤓ Export Excel (CSV)</a>}
+      />
+
       <div className="app-card border-t-[3px] border-t-primary">
-        <h1 className="page-title">Monthly Report</h1>
-        <p className="mt-1 text-[11.5px] font-bold uppercase tracking-wide text-paper-dim">
-          Generated {formatDateLabel(todayInMalaysia())} · Period: {formatMonthLabel(month)}
-        </p>
 
         <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
           <form className="flex items-center gap-3" action="/reports" method="GET">
@@ -113,9 +116,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               View
             </button>
           </form>
-          <a href={`/api/reports/export?month=${month}`} className="btn-ghost">
-            ⤓ Export Excel (CSV)
-          </a>
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 shadow-sm sm:grid-cols-4 sm:divide-y-0">

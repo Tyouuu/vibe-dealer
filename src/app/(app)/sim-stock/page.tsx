@@ -9,6 +9,7 @@ import { IntakeForm } from './intake-form'
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { IconInfo } from '../icons'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'SIM Card Stock — DealerHub',
@@ -125,7 +126,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="app-card">
-        <h1 className="mb-1 page-title">SIM Card Stock</h1>
+        <PageHeader title="SIM Card Stock" subtitle="Physical, physical (no number) and eSIM — three separate stock pools" />
         <div className="info-strip mb-4">
           <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
           <span>

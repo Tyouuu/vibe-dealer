@@ -9,6 +9,7 @@ import { IconCoin, IconTrendUp, IconDocument, IconCheckCircle } from '../icons'
 import { todayInMalaysia } from '@/lib/month'
 import { PurchaseForm } from './purchase-form'
 import { ScrollFade } from '../scroll-fade'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — DealerHub',
@@ -84,10 +85,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
       <div className="app-card">
-        <h1 className="mb-1 page-title">Credit Purchases</h1>
-        <p className="mb-4 text-[12.5px] text-paper-dim">
-          What we pay Vibe Mobile for points/credit, before any of it is resold to dealers.
-        </p>
+        <PageHeader title="Credit Purchases" subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers" />
 
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 

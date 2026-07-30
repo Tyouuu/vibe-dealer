@@ -99,9 +99,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="page-title">Reconciliation · {month}</h1>
-              <p className="mt-1 text-[12.5px] text-paper-dim">
-                Compare what your system recorded against Vibe&apos;s official statement before confirming this
-                month&apos;s commission.
+              <p className="page-subtitle">
+                Compare what your system recorded against Vibe&apos;s statement before confirming this month&apos;s
+                commission.
               </p>
             </div>
             <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">

@@ -10,6 +10,7 @@ import { SessionsPanel, type SignInEvent } from './sessions-panel'
 import { IconInfo, IconUsers, IconBell, IconDevices, IconLock } from '../icons'
 import { AnnotatedSection } from '../annotated-section'
 import { ROLE_LABEL } from '../types'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Account — DealerHub',
@@ -70,7 +71,7 @@ export default async function AccountPage() {
     // capped at max-w-2xl, which left a third of a 1440px screen unclaimed
     // whichever way it was aligned.
     <div className="flex w-full flex-col gap-1">
-      <h1 className="mb-5 page-title">Account Settings</h1>
+      <PageHeader title="Account Settings" subtitle="Your profile, alerts, sessions and password" />
 
       <AnnotatedSection
         icon={<IconUsers />}

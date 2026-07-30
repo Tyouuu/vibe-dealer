@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { IconInfo, IconTruck } from '../icons'
 import { DeliveryTable } from './delivery-table'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'SIM Delivery — DealerHub',
@@ -67,10 +68,18 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
     }
   })
 
+  const pendingRows = deliveryRows.filter((r) => r.delivery_status === 'pending')
+  const oldestDays = pendingRows.reduce((m, r) => Math.max(m, r.days), 0)
+
   return (
-    <div className="app-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="page-title">SIM Delivery</h1>
+    <>
+      <PageHeader
+        title="SIM Delivery"
+        subtitle={`${pendingRows.length} pending${oldestDays ? ` · oldest is ${oldestDays}d old` : ''}`}
+      />
+
+      <div className="app-card">
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-3">
           <div className="segmented">
             <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
@@ -101,6 +110,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
           <p className="text-sm text-paper-dim">{showAll ? 'No delivery items yet.' : 'No pending SIM deliveries right now.'}</p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

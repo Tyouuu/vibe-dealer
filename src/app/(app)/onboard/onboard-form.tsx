@@ -8,6 +8,7 @@ import { IconBuilding, IconPhone, IconMapPin } from '../icons'
 import { Listbox } from '../listbox'
 import { TextAutocomplete } from '../text-autocomplete'
 import { AnnotatedSection } from '../annotated-section'
+import { PageHeader } from '../page-header'
 
 export function OnboardForm({ initialError }: { initialError?: string }) {
   const [duplicate, setDuplicate] = useState<{ id: string; company_name: string } | null>(null)
@@ -50,7 +51,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
     // max-w-2xl left a third of a wide screen unclaimed; stretching the fields
     // instead would put a 500px box around a phone number.
     <div className="w-full">
-      <h1 className="mb-4 page-title">Onboard Dealer</h1>
+      <PageHeader title="Onboard Dealer" subtitle="Add a new dealer to the network" />
 
       {initialError && <div className="alert alert-bad">{initialError}</div>}
       {duplicate && (

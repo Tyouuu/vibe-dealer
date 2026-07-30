@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { buildNotifications } from '@/lib/notifications/build'
 import { NotificationsList } from './notifications-list'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Notifications — DealerHub',
@@ -25,12 +26,11 @@ export default async function NotificationsPage() {
     // the width reads as deliberate rather than empty.
     <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2.5 page-title">
-          Notifications
-          <span className="pill pill-neutral">
-            {notifications.length} notification{notifications.length === 1 ? '' : 's'}
-          </span>
-        </h1>
+        <PageHeader
+        title="Notifications"
+        subtitle={`${notifications.length} notification${notifications.length === 1 ? '' : 's'}`}
+        action={<a href="/account" className="text-xs font-semibold text-paper-dim hover:text-paper hover:underline">Manage what you get notified about →</a>}
+      />
         {/* inline-block + py-1.5 so this standalone link is a 24px-tall touch
             target (WCAG 2.5.8) rather than just its 16px line box. */}
         <a href="/account" className="inline-block py-1.5 text-xs font-semibold text-paper-dim hover:text-paper hover:underline">

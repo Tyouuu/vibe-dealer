@@ -11,6 +11,7 @@ import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { AuditRow } from './audit-row'
 import { ScrollFade } from '../scroll-fade'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Audit Log — DealerHub',
@@ -82,22 +83,21 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const hasFilter = Boolean(q) || actor !== 'all' || Boolean(month) || view !== 'all'
 
   return (
-    <div className="app-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2.5 page-title">
-          Audit Log
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 px-2.5 py-1 text-[11px] font-bold text-paper-dim">
+    <>
+      <PageHeader
+        title="Audit Log"
+        subtitle={`${filtered.length} event${filtered.length === 1 ? '' : 's'}${hasMore ? ' loaded' : ''}`}
+        meta={<span className="inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 px-2.5 py-1 text-[11px] font-bold text-paper-dim">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5">
               <rect x="5" y="11" width="14" height="9" rx="2" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>
             Read-only
-          </span>
-        </h1>
-        <a href={exportHref} className="btn-ghost">
-          ⤓ Export
-        </a>
-      </div>
+          </span>}
+        action={<a href={exportHref} className="btn-ghost shrink-0">⤓ Export</a>}
+      />
+
+      <div className="app-card">
       <p className="note-strip">
         Every transaction, reconciliation save, and package assignment — who did it and when. One row per event; click
         any row for the full detail.
@@ -205,6 +205,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           </Link>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

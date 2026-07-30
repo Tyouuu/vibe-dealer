@@ -8,6 +8,7 @@ import { PACKAGES, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packag
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
+import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
 
 function fail(message: string): never {
   redirect('/entry?error=' + encodeURIComponent(message))
@@ -37,6 +38,13 @@ export async function createTransaction(formData: FormData) {
   const txDate = /^\d{4}-\d{2}-\d{2}$/.test(txDateRaw) && txDateRaw <= today ? txDateRaw : today
 
   const supabase = await createClient()
+
+  // Backdating is normal here (tx_date is when the sale happened, not when
+  // it's keyed in), so a submission can legitimately target a month that has
+  // since been reconciled — which would silently invalidate that
+  // reconciliation. Checked before doing any other work so the operator gets
+  // a useful message rather than a raw trigger error from 0031.
+  if (await isPeriodLocked(supabase, txDate)) fail(periodLockedMessage(txDate))
 
   const { data: dealer, error: dealerError } = await supabase
     .from('dealers')
@@ -117,6 +125,10 @@ export async function createTransaction(formData: FormData) {
   // successful attempt — that's not a real failure, the transaction already
   // exists, so this falls through to the normal success redirect below
   // instead of showing an error and letting someone resubmit a third time.
+  // Lost the race: the month was reconciled between the check above and this
+  // insert. The trigger is the authority, so translate its error rather than
+  // leaking raw Postgres text.
+  if (txError && isPeriodLockError(txError.message)) fail(periodLockedMessage(txDate))
   if (txError && txError.code !== '23505') fail(txError.message)
 
   if (type === 'package' && pkg) {

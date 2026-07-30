@@ -9,6 +9,7 @@ import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
 import { MarkReconciledForm } from './mark-reconciled-form'
+import { ReopenMonthForm } from './reopen-month-form'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 
@@ -175,6 +176,14 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <div className="mt-4 flex items-center gap-3">
             <MarkReconciledForm month={month} hasStatement={!!statement} diff={diff} />
           </div>
+
+          {/* Once a month is reconciled its totals are locked (0031), so the
+              only way to correct it is to reopen it — master only. */}
+          {statement?.reconciled && user.role === 'master' && (
+            <div className="mt-3">
+              <ReopenMonthForm month={month} />
+            </div>
+          )}
         </div>
 
         <div className="app-card">

@@ -107,3 +107,50 @@ export async function markReconciled(formData: FormData) {
   revalidatePath('/audit')
   redirect(`/reconcile?month=${month}&saved=1`)
 }
+
+// The sanctioned way to change a closed month. The period lock (migration
+// 0031) refuses any write that would move a reconciled month's verified
+// total, so a genuine late correction needs the month reopened first — make
+// the correction, then mark it reconciled again.
+//
+// Deliberately master-only, and deliberately not a per-transaction override
+// flag: reopening is one explicit, traceable act rather than a quiet
+// exception attached to whichever row needed it. A reason is required for the
+// same purpose the mismatch-override reason serves above — the audit trail is
+// only useful for tracing a dispute if it records why, not just who.
+export async function reopenMonth(formData: FormData) {
+  const user = await requireUser()
+  const month = String(formData.get('month') ?? '')
+  if (user.role !== 'master') fail(month, 'Only a master can reopen a reconciled month.')
+
+  const reason = String(formData.get('reason') ?? '').trim()
+  if (!reason) fail(month, 'Enter a reason for reopening this month.')
+
+  const monthDate = `${month}-01`
+  const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from('company_statements')
+    .select('company_total_points, company_profit_rm, reconciled')
+    .eq('month', monthDate)
+    .maybeSingle()
+
+  if (!existing) fail(month, 'No statement found for this month.')
+  if (!existing.reconciled) fail(month, 'This month is not currently reconciled.')
+
+  const { error } = await supabase.from('company_statements').update({ reconciled: false }).eq('month', monthDate)
+  if (error) fail(month, error.message)
+
+  await supabase.from('company_statement_revisions').insert({
+    month: monthDate,
+    company_total_points: existing.company_total_points,
+    company_profit_rm: existing.company_profit_rm,
+    note: `Month reopened for correction — reason: ${reason}`,
+    recorded_by: user.id,
+  })
+
+  revalidatePath('/reconcile')
+  revalidatePath('/audit')
+  revalidatePath('/records')
+  redirect(`/reconcile?month=${month}&reopened=1`)
+}

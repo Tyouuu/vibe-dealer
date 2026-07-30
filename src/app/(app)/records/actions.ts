@@ -8,6 +8,7 @@ import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { computeAdjustmentDelta } from '@/lib/adjustment'
 import { todayInMalaysia } from '@/lib/month'
+import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
 
 function fail(message: string): never {
   redirect('/records?error=' + encodeURIComponent(message))
@@ -25,16 +26,23 @@ export async function verifyTransaction(formData: FormData) {
   // Real gate, not just the VerifyButton UI state above it — a correction is
   // the one entry type with no formula/receipt behind it, so the person who
   // posted it can't also be the one who signs off on it.
-  const { data: tx } = await supabase.from('transactions').select('type, recorded_by').eq('id', id).maybeSingle()
+  const { data: tx } = await supabase.from('transactions').select('type, recorded_by, tx_date').eq('id', id).maybeSingle()
   if (tx?.type === 'adjustment' && tx.recorded_by === user.id) {
     fail('You posted this correction — a different accountant or master needs to verify it.')
   }
 
-  await supabase
+  // Verifying a still-pending row inside a reconciled month moves that
+  // month's verified total, which is exactly what the reconciliation signed
+  // off on. Same gate as a new entry.
+  if (tx?.tx_date && (await isPeriodLocked(supabase, tx.tx_date))) fail(periodLockedMessage(tx.tx_date))
+
+  const { error } = await supabase
     .from('transactions')
     .update({ status: 'verified', verified_by: user.id })
     .eq('id', id)
     .eq('status', 'pending')
+
+  if (error && isPeriodLockError(error.message) && tx?.tx_date) fail(periodLockedMessage(tx.tx_date))
 
   revalidatePath('/records')
 }
@@ -140,6 +148,10 @@ export async function adjustTransaction(formData: FormData) {
     tx_date: todayInMalaysia(),
   })
 
+  // A correction to a closed month deliberately posts in *today's* month
+  // (prior-period adjustment), so it normally isn't affected by the lock at
+  // all — this only trips if the current month has itself been reconciled.
+  if (error && isPeriodLockError(error.message)) fail(periodLockedMessage(todayInMalaysia()))
   if (error) fail(error.message)
 
   revalidatePath('/records')

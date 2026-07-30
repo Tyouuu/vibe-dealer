@@ -42,6 +42,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
+as $$
 declare
   -- What this row contributes to the figure the reconciliation actually
   -- signed off on: the sum over status='verified'. A row that isn't verified

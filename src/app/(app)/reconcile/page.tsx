@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, currentMonth, todayInMalaysia } from '@/lib/month'
+import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel } from '@/lib/month'
 import { ReconciledStamp, IconCheckCircle, IconAlertCircle } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
@@ -89,7 +89,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-5">
         <div className="app-card relative overflow-visible">
           {statement?.reconciled && (
@@ -99,7 +99,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           )}
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="page-title">Reconciliation · {month}</h1>
+              <h1 className="page-title">Reconciliation · {formatMonthLabel(month)}</h1>
               <p className="page-subtitle">
                 Compare what your system recorded against Vibe&apos;s statement before confirming this month&apos;s
                 commission.
@@ -118,60 +118,68 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           {error && <div className="alert alert-bad">{error}</div>}
           {saved && <div className="alert alert-ok">Saved.</div>}
 
-          {/* The difference is the one number that actually answers "are we
-              square with Vibe this month" — leading with two side-by-side
-              tiles made the reader do that subtraction themselves. This
-              leads with the answer, then shows the two source figures
-              underneath for whoever wants to check the math. */}
-          <div
-            className={`rounded-2xl border p-5 ${
-              diff == null ? 'border-ink-800 bg-ink-850/40' : diff === 0 ? 'border-jade/30 bg-jade/10' : 'border-clay/30 bg-clay/10'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${
-                  diff == null ? 'bg-ink-800 text-paper-dim' : diff === 0 ? 'bg-jade/15 text-jade-bright' : 'bg-clay/15 text-clay-bright'
-                }`}
-              >
-                {diff == null ? <IconAlertCircle className="h-5 w-5" /> : diff === 0 ? <IconCheckCircle className="h-5 w-5" /> : <IconAlertCircle className="h-5 w-5" />}
-              </span>
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">
-                  {diff == null ? 'Waiting on Vibe’s statement' : 'Difference vs Vibe’s statement'}
-                </div>
-                <div
-                  className={`figure-points text-2xl font-semibold ${
-                    diff == null ? 'text-paper-dim' : diff === 0 ? 'text-jade-bright' : 'text-clay-bright'
+          {/* One verdict, stated once, in the app's own visual language.
+              This block previously stacked three different container styles
+              (a tinted verdict panel, a dashed info box, a full-bleed purple
+              strip) and set its headline in the MONO face — which is used
+              nowhere else in the app for prose, only for figures. That single
+              choice was most of why the page read as if it came from a
+              different product. Everything here now uses .app-tile, .pill and
+              .figure-* exactly as the rest of the app does. */}
+          <div className="rounded-xl border border-ink-800 bg-ink-850/40 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${
+                    diff == null
+                      ? 'bg-ink-800 text-paper-dim'
+                      : diff === 0
+                        ? 'bg-jade/12 text-jade-bright'
+                        : 'bg-clay/12 text-clay-bright'
                   }`}
                 >
-                  {diff == null ? 'No statement yet' : diff === 0 ? 'Matches exactly' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} pts`}
+                  {diff === 0 ? <IconCheckCircle className="h-5 w-5" /> : <IconAlertCircle className="h-5 w-5" />}
+                </span>
+                <div>
+                  <div className="text-[15px] font-semibold text-paper">
+                    {diff == null
+                      ? 'Waiting on Vibe’s statement'
+                      : diff === 0
+                        ? 'Your records match Vibe’s'
+                        : `Off by ${Math.abs(diff).toLocaleString()} pts`}
+                  </div>
+                  <div className="mt-0.5 text-[12.5px] text-paper-dim">
+                    {diff == null
+                      ? 'Enter their total on the right to compare.'
+                      : diff === 0
+                        ? 'Nothing to resolve — this month is ready to close.'
+                        : `Your system is ${diff > 0 ? 'ahead of' : 'behind'} their statement.`}
+                  </div>
                 </div>
               </div>
+              <span className={`pill ${diff == null ? 'pill-neutral' : diff === 0 ? 'pill-jade' : 'pill-clay'}`}>
+                {diff == null ? 'No statement' : diff === 0 ? 'Matched' : 'Mismatch'}
+              </span>
             </div>
 
-            {diff == null ? (
-              <div className="mt-4 rounded-xl border border-dashed border-ink-800 bg-ink-900 px-3.5 py-3 text-[12.5px] text-paper-dim">
-                Your system has <b className="text-paper">{systemPoints.toLocaleString()} pts</b> verified this month. Enter Vibe&apos;s own
-                total in the panel on the right and this card will instantly show whether the two agree, and by how much if not.
+            {/* Same three-figure row in every state, so the numbers don't
+                move around as the verdict changes. */}
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
+                <div className="text-[11px] font-medium text-paper-dim">Your system</div>
+                <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
               </div>
-            ) : (
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-ink-900 px-3.5 py-2.5">
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Your System (verified)</div>
-                  <div className="figure-points mt-0.5 text-base font-bold text-paper">{systemPoints.toLocaleString()} pts</div>
-                </div>
-                <div className="rounded-xl bg-ink-900 px-3.5 py-2.5">
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Vibe&apos;s Statement</div>
-                  <div className="figure-points mt-0.5 text-base font-bold text-paper">{Number(companyPoints).toLocaleString()} pts</div>
+              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
+                <div className="text-[11px] font-medium text-paper-dim">Vibe’s statement</div>
+                <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">
+                  {companyPoints == null ? '—' : `${Number(companyPoints).toLocaleString()} pts`}
                 </div>
               </div>
-            )}
-          </div>
-
-          <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2.5">
-            <span className="text-sm font-semibold text-paper">Your 2% Due</span>
-            <b className="figure-money text-lg text-primary-deep">{formatMYR(systemProfit)}</b>
+              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
+                <div className="text-[11px] font-medium text-paper-dim">Your 2% due</div>
+                <div className="figure-money mt-0.5 text-[15px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex items-center gap-3">

@@ -4,7 +4,7 @@ function Bone({ className = '' }: { className?: string }) {
 
 export default function PurchasesLoading() {
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="app-card">
         <Bone className="h-8 w-48" />
         <Bone className="mt-2 mb-4 h-3 w-64" />

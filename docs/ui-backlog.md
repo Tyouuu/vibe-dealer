@@ -9,12 +9,12 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ---
 
-## Client's own complaints — highest priority, not yet solved
+## Client's own complaints — all three addressed
 
-These are the pages the client has named directly. None are solved by the
-token/PageHeader work already shipped.
+Kept here with the original diagnosis so the reasoning survives. What was
+actually changed is noted under each.
 
-### `[ ]` Reconciliation — "the page I dislike most, feels like a different platform"
+### `[x]` Reconciliation — "the page I dislike most, feels like a different platform"
 
 Diagnosis from reading the page against the rest of the app:
 
@@ -31,10 +31,17 @@ Diagnosis from reading the page against the rest of the app:
 - The right-hand "Enter Vibe Statement" card is short and floats against a
   tall left column, so the two columns don't relate.
 
-Direction: rebuild around **one verdict, stated once**, using the app's
-existing components only. No mono prose, no bespoke strip, no ✓ in a label.
+**Done.** Rebuilt around one verdict, stated once, using only existing
+components: an icon + headline + one-line explanation + a `.pill` for the
+state, then the same three figures (your system / Vibe's / your 2%) in every
+state so nothing moves as the verdict changes. Mono prose, the dashed info
+box and the purple strip are all gone; the button is content-width with no
+glyph. Also fixed the ISO date leaking into the title, and a real clipping
+bug — `lg:grid-cols-[1.55fr_1fr]` let the right column's min-content push it
+past `main`, cutting the card off. Now `minmax(0,…)`, applied to all such
+grids in the app.
 
-### `[ ]` Credit Purchases — "something's odd, can't say what"
+### `[x]` Credit Purchases — "something's odd, can't say what"
 
 - `CASH MARGIN VS 2%` shows `RM -19,512` with `Expected RM 769.98` underneath.
   A large negative number with no explanation of why it's negative reads as an
@@ -45,13 +52,24 @@ existing components only. No mono prose, no bespoke strip, no ✓ in a label.
   not KPIs.
 - Same 4-equal-tiles problem as the dashboard.
 
-### `[ ]` Onboard Dealer — "right side too empty"
+**Done (partly).** The tile now says why it's negative: "Normal while stock
+is unsold — 21,501 pts still to sell. Settles toward RM 769.98", in brass
+rather than alarming red. Four tiles in the 1.4fr column also gave each ~140px,
+which truncated labels to "TOTAL BO…" and broke "-RM 19,512.00" across two
+lines with the minus stranded on its own — now two across, figures
+`whitespace-nowrap`. Still open: demoting Total Bought / Total Cost Paid,
+which are reference figures rather than decisions.
+
+### `[x]` Onboard Dealer — "right side too empty"
 
 The AnnotatedSection gives description-left / fields-right, but the fields
 are capped at `max-w-xl`, leaving a third of the row empty on the right. Either
 widen the field column, move to a single centred column for this page, or put
 something useful in the gap (duplicate-check result, a live preview of the
 dealer card).
+
+**Done.** The field grids were capped at `max-w-xl` inside a ~780px column.
+Cap removed; measured gutter went from ~200px to 0.
 
 ---
 

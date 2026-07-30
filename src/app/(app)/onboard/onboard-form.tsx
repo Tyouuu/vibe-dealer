@@ -66,7 +66,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
           title="Company Details"
           description="The registered business, as it should appear on statements. Only the name is required — the SSM number can follow later."
         >
-          <div className="form-grid max-w-xl">
+          <div className="form-grid">
             <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" onChange={() => setDuplicate(null)} />
             <Field label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
           </div>
@@ -77,7 +77,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
           title="Contact Info"
           description="Who to reach when a top-up needs confirming. WhatsApp is usually the fastest route — leave it blank if it's the same number."
         >
-          <div className="form-grid max-w-xl">
+          <div className="form-grid">
             <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
             <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
             <Field label="WhatsApp Number" name="whatsapp" placeholder="Leave blank if same as phone" />
@@ -92,7 +92,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
           title="Region &amp; Package"
           description="Region drives the dashboard's regional breakdown. The package sets their commission rate — you can assign or change it any time after onboarding."
         >
-          <div className="form-grid max-w-xl">
+          <div className="form-grid">
             <div>
               <label className="field-label">Region</label>
               <TextAutocomplete name="region" suggestions={REGIONS} placeholder="Select or type a region" />

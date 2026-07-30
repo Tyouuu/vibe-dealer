@@ -21,7 +21,7 @@ export default function DashboardLoading() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
           <Bone className="mb-4 h-4 w-44" />
           <Bone className="h-52 w-full" />

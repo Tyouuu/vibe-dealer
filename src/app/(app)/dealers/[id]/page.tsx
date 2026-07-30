@@ -367,7 +367,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_296px] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5">
           {isFinance && txRows.length > 0 && (
             <div className="app-card">

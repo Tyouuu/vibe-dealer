@@ -36,12 +36,18 @@ export function MarkReconciledForm({ month, hasStatement, diff }: { month: strin
           />
         </div>
       )}
+      {/* Sized to its content and with no glyph in the label. It was
+          full-width with a literal ✓ in the string — no other button in the
+          app does either, which is part of why this page read as foreign.
+          The label keeps its verb on the pending state (Geist: "show a
+          loading indicator & keep the original label") rather than swapping
+          to a different word. */}
       <button
         type="submit"
         disabled={!hasStatement || (mismatched && !reason.trim()) || pending}
-        className="btn-primary w-full disabled:opacity-60"
+        className="btn-primary disabled:opacity-60"
       >
-        {pending ? 'Marking…' : mismatched ? 'Mark Reconciled Anyway ✓' : 'Mark Reconciled ✓'}
+        {pending ? 'Marking reconciled…' : mismatched ? 'Mark reconciled anyway' : 'Mark reconciled'}
       </button>
     </form>
   )

@@ -248,7 +248,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
           <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
           <MonthlyTrendChart rows={trendRows} regions={regions} />
@@ -371,7 +371,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
           <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
           <MonthlyTrendChart rows={trendRows} regions={regions} />
@@ -487,7 +487,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
           <div className="mb-3.5 flex items-center justify-between">
             <h3 className="text-sm font-bold text-paper">Pending Deliveries</h3>

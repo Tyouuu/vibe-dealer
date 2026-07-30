@@ -20,6 +20,12 @@
 // Collapses to one column below lg. Polaris collapses at 768px of *container*
 // width; with this app's 248px rail, the content region reaches 768px at
 // roughly a 1016px viewport, so lg (1024px) is the closest honest breakpoint.
+//
+// The controls column is deliberately NOT width-capped here. Callers cap
+// individual field grids where a narrow field is correct (a phone number in a
+// 500px box looks wrong), but capping the whole column left a dead gutter down
+// the right of every form — which is exactly what the client noticed on
+// Onboard Dealer.
 export function AnnotatedSection({
   icon,
   title,

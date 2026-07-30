@@ -10,7 +10,7 @@ import { todayInMalaysia } from '@/lib/month'
 import { PurchaseForm } from './purchase-form'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
-import { formatMYR } from '@/lib/money'
+import { formatMYR, formatPoints } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — DealerHub',
@@ -84,7 +84,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="app-card">
         <PageHeader title="Credit Purchases" subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers" />
 
@@ -97,16 +97,16 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             exactly what happened between 80%/100% browser zoom on the same
             window, since zoom changes how many CSS px this row actually
             gets. truncate keeps every label a single line at any width. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
+              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
               <span className="stat-tile-icon">
                 <IconCoin className="h-3.5 w-3.5" />
               </span>
             </div>
             <div
-              className={`figure-points mt-1.5 text-xl font-semibold ${
+              className={`figure-points mt-1.5 whitespace-nowrap text-xl font-semibold ${
                 balance <= 0 ? 'text-clay-bright' : balance < LOW_BALANCE_THRESHOLD ? 'text-brass-bright' : ''
               }`}
             >
@@ -118,31 +118,46 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
+              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
               <span className="stat-tile-icon">
                 <IconTrendUp className="h-3.5 w-3.5" />
               </span>
             </div>
-            <div className="figure-points mt-1.5 text-xl font-semibold">{totalPurchasedPoints.toLocaleString()} pts</div>
+            <div className="figure-points mt-1.5 whitespace-nowrap text-xl font-semibold">{totalPurchasedPoints.toLocaleString()} pts</div>
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
+              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
               <span className="stat-tile-icon">
                 <IconDocument className="h-3.5 w-3.5" />
               </span>
             </div>
-            <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(totalPurchasedCost)}</div>
+            <div className="figure-money mt-1.5 whitespace-nowrap text-xl font-semibold">{formatMYR(totalPurchasedCost)}</div>
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
+              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
               <span className="stat-tile-icon">
                 <IconCheckCircle className="h-3.5 w-3.5" />
               </span>
             </div>
-            <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(actualCashMargin)}</div>
-            <div className="mt-0.5 text-[11px] text-paper-dim">Expected {formatMYR(expectedCommission)}</div>
+            <div
+              className={`figure-money mt-1.5 whitespace-nowrap text-xl font-semibold ${
+                actualCashMargin < 0 ? 'text-brass-bright' : ''
+              }`}
+            >
+              {formatMYR(actualCashMargin)}
+            </div>
+            {/* A large negative number with no explanation reads as a bug.
+                It isn't one: points are paid for up front and earn their
+                margin only as they're resold, so this sits negative until
+                the batch is sold through. Saying that is the difference
+                between "something is broken" and "this is how it works". */}
+            <div className="mt-0.5 text-[11px] leading-snug text-paper-dim">
+              {actualCashMargin < 0
+                ? `Normal while stock is unsold — ${formatPoints(balance)} pts still to sell. Settles toward ${formatMYR(expectedCommission)}.`
+                : `Expected ${formatMYR(expectedCommission)} at 2%`}
+            </div>
           </div>
         </div>
 

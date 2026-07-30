@@ -16,7 +16,7 @@ export default function SimStockLoading() {
         <Bone className="mt-3.5 h-16 rounded-2xl" />
       </div>
       {Array.from({ length: 2 }).map((_, section) => (
-        <div key={section} className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <div key={section} className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <div className="app-card">
             <Bone className="mb-3.5 h-4 w-32" />
             <div className="flex flex-col gap-3">

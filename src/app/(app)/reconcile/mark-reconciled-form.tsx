@@ -6,7 +6,17 @@ import { markReconciled } from './actions'
 // diff !== 0 needs a typed override reason before this can submit — Mark
 // Reconciled used to only check that a statement existed at all, so a month
 // could be closed while the system and Vibe totals visibly disagreed.
-export function MarkReconciledForm({ month, hasStatement, diff }: { month: string; hasStatement: boolean; diff: number | null }) {
+export function MarkReconciledForm({
+  month,
+  monthLabel,
+  hasStatement,
+  diff,
+}: {
+  month: string
+  monthLabel: string
+  hasStatement: boolean
+  diff: number | null
+}) {
   const [reason, setReason] = useState('')
   const [pending, startTransition] = useTransition()
   const mismatched = diff != null && diff !== 0
@@ -47,7 +57,7 @@ export function MarkReconciledForm({ month, hasStatement, diff }: { month: strin
         disabled={!hasStatement || (mismatched && !reason.trim()) || pending}
         className="btn-primary disabled:opacity-60"
       >
-        {pending ? 'Marking reconciled…' : mismatched ? 'Mark reconciled anyway' : 'Mark reconciled'}
+        {pending ? `Closing ${monthLabel}…` : mismatched ? `Close ${monthLabel} anyway` : `Close ${monthLabel}`}
       </button>
     </form>
   )

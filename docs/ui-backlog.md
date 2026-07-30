@@ -41,6 +41,41 @@ bug — `lg:grid-cols-[1.55fr_1fr]` let the right column's min-content push it
 past `main`, cutting the card off. Now `minmax(0,…)`, applied to all such
 grids in the app.
 
+**Second pass — "still don't like it, I think it's the overall structure."**
+The first pass fixed the styling; the client's follow-up said the *structure*
+was the problem, so this pass was driven by how QuickBooks, Xero, NetSuite,
+GOV.UK and Stripe actually build a reconcile screen rather than by taste:
+
+- **One column, state-driven.** The two-column layout showed an entry form and
+  a verdict side by side, so both were half-answered at all times. There are
+  really two states. Before a statement exists the form *is* the page — no
+  verdict placeholders showing `—`, because `Difference = statement − cleared`
+  genuinely cannot exist yet; that's why QuickBooks gates its whole reconcile
+  screen behind entering the ending balance. Once it exists, the form collapses
+  to a read-only summary line with a `Change` link (GOV.UK check-answers) and
+  the verdict takes the space.
+- **Difference is the hero.** It's now a 34px figure with a one-line plain
+  reading of it. The old layout showed your total and Vibe's total side by side
+  and left the reader to subtract them — the page's entire output was the one
+  number it never displayed.
+- **Month moved into the header**, beside an `Open`/`Closed` pill, rather than
+  being the first control inside the content.
+- **Evidence folded away**, opening automatically when the difference isn't
+  zero — at that point the task changes from confirming to investigating.
+- **Closing got its own block** with visible preconditions, and the button now
+  reads `Close July 2026`, matching the heading above it, instead of
+  `Mark reconciled`. It locks the month in the database (migration 0031), so
+  it's named for what it does.
+- **Full width, left-aligned.** The rebuild initially centred a `max-w-3xl`
+  column, which reproduced *both* of the client's earlier complaints at once —
+  content "squeezed into the middle" (Notifications) and a dead right-hand
+  gutter (Onboard Dealer). The research asked for a single column, not a narrow
+  one. Field widths are capped inside the form instead, where a narrow box is
+  correct and a 1100px points input is not.
+
+Verified in all three states (no statement / matched / mismatch) at 1440,
+820 and 390px: axe-core clean, no horizontal document scroll.
+
 ### `[x]` Credit Purchases — "something's odd, can't say what"
 
 - `CASH MARGIN VS 2%` shows `RM -19,512` with `Expected RM 769.98` underneath.

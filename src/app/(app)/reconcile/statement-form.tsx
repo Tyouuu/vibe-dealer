@@ -76,6 +76,10 @@ export function StatementForm({
       </label>
       {extractError && <p className="text-xs text-clay-bright">{extractError}</p>}
 
+      {/* Side by side, and capped. A points total in a 1100px box is the
+          field-width mismatch Baymard warns about; the note below is free
+          text and keeps the wider row. */}
+      <div className="grid grid-cols-1 gap-3.5 sm:max-w-xl sm:grid-cols-2">
       <div>
         <label className="field-label">Vibe total top-up (pts)</label>
         <input
@@ -90,7 +94,7 @@ export function StatementForm({
         />
       </div>
       <div>
-        <label className="field-label">Vibe&apos;s Profit Figure (RM)</label>
+        <label className="field-label">Vibe&apos;s profit figure (RM)</label>
         <input
           name="company_profit_rm"
           type="number"
@@ -101,14 +105,17 @@ export function StatementForm({
           className="field-input"
         />
       </div>
-      <div>
+      </div>
+      <div className="sm:max-w-xl">
         <label className="field-label">Note</label>
         <input name="note" type="text" defaultValue={initialNote} className="field-input" />
       </div>
-      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60">
-        {pending ? 'Saving…' : 'Save & Compare'}
-        {}
-      </button>
+      {/* Content-width, like every other primary action in the app. */}
+      <div>
+        <button type="submit" disabled={pending} className="btn-primary disabled:opacity-60">
+          {pending ? 'Saving…' : 'Save and compare'}
+        </button>
+      </div>
     </form>
   )
 }

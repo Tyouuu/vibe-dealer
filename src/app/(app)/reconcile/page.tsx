@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel } from '@/lib/month'
-import { ReconciledStamp, IconCheckCircle, IconAlertCircle } from '../icons'
+import { IconCheckCircle, IconChevronDown } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
@@ -32,12 +32,12 @@ type BreakdownRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; error?: string; saved?: string; page?: string }>
+  searchParams: Promise<{ month?: string; error?: string; saved?: string; reopened?: string; page?: string }>
 }
 
 export default async function ReconcilePage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month = currentMonth(), error, saved, page } = await searchParams
+  const { month = currentMonth(), error, saved, reopened, page } = await searchParams
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -88,118 +88,177 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     return `/reconcile?${params.toString()}`
   }
 
+  // Single column, ordered by the task, and state-driven rather than a fixed
+  // layout — the shape research settled on after checking how QuickBooks,
+  // Xero, NetSuite, Stripe and Adyen actually build this screen.
+  //
+  // It used to be two columns with the verdict in the primary 1.55fr slot and
+  // "Enter Vibe Statement" in the secondary 1fr one. Shopify Polaris defines
+  // that secondary column as holding "information that might not be used as
+  // often but remains helpful for context or secondary tasks" — but entering
+  // the statement is the one action this page exists for, and the verdict
+  // beside it could not even be computed until that action had happened. So
+  // before a statement arrived, the largest region on the page was
+  // structurally empty and the only thing worth doing was in the corner.
+  //
+  // No mainstream product does it that way. QuickBooks gates its whole
+  // reconcile screen behind entering the statement's ending balance, because
+  // Difference = statement − cleared simply has no value without it. Xero
+  // gives the bank's own figures the left/primary column and moves the verdict
+  // to a separate report entirely.
+  //
+  // Deliberately NOT a stepper: NN/g warns wizards "quickly become annoying
+  // and overly controlling if they have to be used over and over again", and
+  // this is three people doing the same thing once a month.
+  // diff is null exactly when companyPoints is — narrowing it here keeps
+  // State B free of non-null assertions.
+  const hasStatement = companyPoints != null && diff != null
+  const gap = diff ?? 0
+  const isClosed = Boolean(statement?.reconciled)
+
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-      <div className="flex flex-col gap-5">
-        <div className="app-card relative overflow-visible">
-          {statement?.reconciled && (
-            <div className="pointer-events-none absolute -right-3 -top-5">
-              <ReconciledStamp sub={month} />
-            </div>
-          )}
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="page-title">Reconciliation · {formatMonthLabel(month)}</h1>
-              <p className="page-subtitle">
-                Compare what your system recorded against Vibe&apos;s statement before confirming this month&apos;s
-                commission.
-              </p>
-            </div>
-            <form action="/reconcile" method="GET" className="flex flex-wrap items-center gap-2">
-              <div className="w-40">
-                <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
-              </div>
-              <button type="submit" className="btn-ghost py-1.5 text-xs">
-                View
-              </button>
-            </form>
-          </div>
-
-          {error && <div className="alert alert-bad">{error}</div>}
-          {saved && <div className="alert alert-ok">Saved.</div>}
-
-          {/* One verdict, stated once, in the app's own visual language.
-              This block previously stacked three different container styles
-              (a tinted verdict panel, a dashed info box, a full-bleed purple
-              strip) and set its headline in the MONO face — which is used
-              nowhere else in the app for prose, only for figures. That single
-              choice was most of why the page read as if it came from a
-              different product. Everything here now uses .app-tile, .pill and
-              .figure-* exactly as the rest of the app does. */}
-          <div className="rounded-xl border border-ink-800 bg-ink-850/40 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${
-                    diff == null
-                      ? 'bg-ink-800 text-paper-dim'
-                      : diff === 0
-                        ? 'bg-jade/12 text-jade-bright'
-                        : 'bg-clay/12 text-clay-bright'
-                  }`}
-                >
-                  {diff === 0 ? <IconCheckCircle className="h-5 w-5" /> : <IconAlertCircle className="h-5 w-5" />}
-                </span>
-                <div>
-                  <div className="text-[15px] font-semibold text-paper">
-                    {diff == null
-                      ? 'Waiting on Vibe’s statement'
-                      : diff === 0
-                        ? 'Your records match Vibe’s'
-                        : `Off by ${Math.abs(diff).toLocaleString()} pts`}
-                  </div>
-                  <div className="mt-0.5 text-[12.5px] text-paper-dim">
-                    {diff == null
-                      ? 'Enter their total on the right to compare.'
-                      : diff === 0
-                        ? 'Nothing to resolve — this month is ready to close.'
-                        : `Your system is ${diff > 0 ? 'ahead of' : 'behind'} their statement.`}
-                  </div>
-                </div>
-              </div>
-              <span className={`pill ${diff == null ? 'pill-neutral' : diff === 0 ? 'pill-jade' : 'pill-clay'}`}>
-                {diff == null ? 'No statement' : diff === 0 ? 'Matched' : 'Mismatch'}
-              </span>
-            </div>
-
-            {/* Same three-figure row in every state, so the numbers don't
-                move around as the verdict changes. */}
-            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
-                <div className="text-[11px] font-medium text-paper-dim">Your system</div>
-                <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
-              </div>
-              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
-                <div className="text-[11px] font-medium text-paper-dim">Vibe’s statement</div>
-                <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">
-                  {companyPoints == null ? '—' : `${Number(companyPoints).toLocaleString()} pts`}
-                </div>
-              </div>
-              <div className="rounded-lg bg-ink-900 px-3.5 py-2.5">
-                <div className="text-[11px] font-medium text-paper-dim">Your 2% due</div>
-                <div className="figure-money mt-0.5 text-[15px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <MarkReconciledForm month={month} hasStatement={!!statement} diff={diff} />
-          </div>
-
-          {/* Once a month is reconciled its totals are locked (0031), so the
-              only way to correct it is to reopen it — master only. */}
-          {statement?.reconciled && user.role === 'master' && (
-            <div className="mt-3">
-              <ReopenMonthForm month={month} />
-            </div>
-          )}
+    <div className="flex w-full flex-col gap-4">
+      {/* Month is the page's scope, so it belongs in the header rather than
+          as the first control inside the content — the same place QuickBooks,
+          NetSuite and Stripe all settle it before any work begins. Changing it
+          is a safe read, so it navigates on change with no separate View
+          button to press. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="page-title flex items-center gap-2.5">
+            Reconciliation
+            <span className={`pill ${isClosed ? 'pill-jade' : 'pill-neutral'}`}>{isClosed ? 'Closed' : 'Open'}</span>
+          </h1>
+          <p className="page-subtitle">Compare your verified total against Vibe&apos;s own statement, then close the month.</p>
         </div>
-
-        <div className="app-card">
-          <div className="mb-2.5 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-paper">Verified Transactions Behind This Total</h2>
-            <span className="pill pill-neutral">{breakdownRows.length} transaction{breakdownRows.length === 1 ? '' : 's'}</span>
+        <form action="/reconcile" method="GET" className="flex items-center gap-2">
+          <div className="w-44">
+            <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
           </div>
+          <button type="submit" className="btn-ghost py-1.5 text-xs">
+            View
+          </button>
+        </form>
+      </div>
+
+      {error && <div className="alert alert-bad">{error}</div>}
+      {saved && <div className="alert alert-ok">Statement saved.</div>}
+      {reopened && <div className="alert alert-ok">{formatMonthLabel(month)} reopened. Make the correction, then close it again.</div>}
+
+      {!hasStatement ? (
+        /* STATE A — no statement yet. The form IS the page. No verdict
+           placeholder showing "—", because the verdict genuinely doesn't
+           exist yet; QuickBooks' equivalent state is simply its entry screen. */
+        <div className="app-card">
+          <h2 className="text-[15px] font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-paper-dim">
+            Nothing can be compared until Vibe&apos;s own figures are in. Upload their statement and the numbers below
+            fill themselves in, or type them.
+          </p>
+          <div className="mt-4">
+            <StatementForm
+              month={month}
+              initialPoints={companyPoints}
+              initialProfit={statement?.company_profit_rm ?? null}
+              initialNote={statement?.note ?? ''}
+            />
+          </div>
+        </div>
+      ) : (
+        /* STATE B — statement is in. The difference becomes the anchor and
+           stays visible; this is QuickBooks' summary bar, whose whole purpose
+           is driving one number to zero. */
+        <div className={`app-card ${gap === 0 ? 'ring-1 ring-jade/30' : ''}`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-paper-dim">Difference</div>
+              {/* The number the page exists to produce. The old layout showed
+                  your total and Vibe's total side by side and left the reader
+                  to subtract them. */}
+              <div
+                className={`figure-points mt-1 text-[34px] font-semibold leading-none ${
+                  gap === 0 ? 'text-jade-bright' : 'text-clay-bright'
+                }`}
+              >
+                {gap === 0 ? '0' : `${gap > 0 ? '+' : ''}${gap.toLocaleString()}`} pts
+              </div>
+              <div className="mt-2 text-[13px] text-paper-dim">
+                {gap === 0
+                  ? 'Your records and Vibe’s agree exactly.'
+                  : gap > 0
+                    ? `Your system records ${Math.abs(gap).toLocaleString()} pts more than Vibe’s statement.`
+                    : `Vibe’s statement is ${Math.abs(gap).toLocaleString()} pts higher than your system.`}
+              </div>
+            </div>
+            <span className={`pill ${gap === 0 ? 'pill-jade' : 'pill-clay'}`}>{gap === 0 ? 'Matched' : 'Mismatch'}</span>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-ink-800 pt-4 sm:grid-cols-3">
+            <div>
+              <div className="text-[11px] font-medium text-paper-dim">Your system</div>
+              <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-medium text-paper-dim">Vibe&apos;s statement</div>
+              <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{Number(companyPoints).toLocaleString()} pts</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-medium text-paper-dim">Your 2% due</div>
+              <div className="figure-money mt-0.5 text-[15px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Once entered, the statement collapses to a read-only summary with a
+          Change affordance — GOV.UK's check-answers pattern. Showing the live
+          form again would imply the entry step is still outstanding. Source is
+          named because OCR can misread, and that's worth being able to see. */}
+      {hasStatement && !isClosed && (
+        <details className="app-card group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-[13px] font-semibold text-paper">Vibe&apos;s statement</span>
+              <span className="figure-points text-[12.5px] text-paper-dim">{Number(companyPoints).toLocaleString()} pts</span>
+              {statement?.company_profit_rm != null && (
+                <span className="figure-money text-[12.5px] text-paper-dim">{formatMYR(statement.company_profit_rm)}</span>
+              )}
+              {statement?.note ? <span className="truncate text-[12.5px] text-paper-dim">{statement.note}</span> : null}
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-primary-deep">
+              Change
+              <IconChevronDown className="h-3 w-3 transition-transform duration-150 group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="mt-4 border-t border-ink-800 pt-4">
+            <StatementForm
+              month={month}
+              initialPoints={companyPoints}
+              initialProfit={statement?.company_profit_rm ?? null}
+              initialNote={statement?.note ?? ''}
+            />
+          </div>
+        </details>
+      )}
+
+      {/* Supporting evidence, folded away by default — Stripe and Adyen both
+          split reconciliation into a summary with itemised detail behind a
+          deliberate step. Opened automatically when the difference isn't zero,
+          because at that point the task changes from confirming to
+          investigating and the rows stop being background material. The
+          summary line carries the count and total, since NN/g requires the
+          progression mechanic to say what's behind it. */}
+      <details className="app-card group" open={hasStatement && gap !== 0}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span className="text-[13px] font-semibold text-paper">
+            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} behind your total
+          </span>
+          <span className="flex shrink-0 items-center gap-2.5">
+            <span className="figure-points text-[13px] font-semibold text-paper-dim">{systemPoints.toLocaleString()} pts</span>
+            <IconChevronDown className="h-3 w-3 text-paper-dim transition-transform duration-150 group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="mt-4 border-t border-ink-800 pt-4">
           {pagedRows.length ? (
             <ScrollFade label="Verified transactions in this period">
               <table className="w-full min-w-[620px] border-collapse text-sm">
@@ -284,20 +343,52 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             </a>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="app-card lg:sticky lg:top-5 lg:self-start">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Enter Vibe Statement</h3>
-        <StatementForm
-          month={month}
-          initialPoints={companyPoints}
-          initialProfit={statement?.company_profit_rm ?? null}
-          initialNote={statement?.note ?? ''}
-        />
-        <p className="note-strip">
-          Vibe provides a monthly total; the system compares it against verified records automatically so any
-          mismatch is obvious right away.
-        </p>
+      {/* Closing is the consequential act on this page: migration 0031 locks
+          the month at the database level afterwards. NetSuite, QuickBooks and
+          Xero all put visible preconditions, a separate confirmation and an
+          audit trail around the equivalent action; this gets its own block at
+          the end of the task rather than sitting beside the figures. */}
+      <div className="app-card">
+        {isClosed ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-jade/12 text-jade-bright">
+                <IconCheckCircle className="h-5 w-5" />
+              </span>
+              <div>
+                <div className="text-[15px] font-semibold text-paper">{formatMonthLabel(month)} is closed</div>
+                <div className="mt-0.5 text-[12.5px] text-paper-dim">
+                  Transactions dated in this month can no longer be added, edited or verified.
+                </div>
+              </div>
+            </div>
+            {user.role === 'master' && <ReopenMonthForm month={month} />}
+          </div>
+        ) : (
+          <>
+            <div className="text-[15px] font-semibold text-paper">Close {formatMonthLabel(month)}</div>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-paper-dim">
+              Locks the month. Once closed, no transaction dated in {formatMonthLabel(month)} can be added, edited or
+              verified — a correction has to reopen the month first.
+            </p>
+            {/* Precondition stays visible rather than the action just being
+                absent, so it's clear what's left to do — NetSuite shows its
+                blocked close tasks as a lock icon for the same reason. */}
+            {!hasStatement && (
+              <p className="mt-2 text-[12.5px] font-medium text-brass-bright">Enter Vibe&apos;s statement first.</p>
+            )}
+            {hasStatement && gap !== 0 && (
+              <p className="mt-2 text-[12.5px] font-medium text-brass-bright">
+                Resolve the {Math.abs(gap).toLocaleString()} pt difference, or record a reason for closing anyway.
+              </p>
+            )}
+            <div className="mt-4">
+              <MarkReconciledForm month={month} monthLabel={formatMonthLabel(month)} hasStatement={hasStatement} diff={diff} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

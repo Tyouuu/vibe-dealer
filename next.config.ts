@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Baseline hardening from the security audit (docs/security-and-feature-gap-
 // audit.md) — this app had no security headers at all. Uses 'unsafe-inline'
@@ -42,4 +43,26 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrapped for source-map upload, so a production stack trace points at real
+// source lines instead of minified bundle offsets. Everything below is
+// inert without the Sentry env vars, so builds without them are unchanged.
+export default withSentryConfig(nextConfig, {
+  silent: !process.env.CI,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Upload needs SENTRY_AUTH_TOKEN; without it the build must still succeed
+  // rather than failing a deploy over a monitoring nicety.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Strip the uploaded maps from the client bundle — they're for Sentry to
+  // resolve traces, not for anyone opening devtools on the live app.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // Routes browser telemetry through this app's own origin. Without it, ad
+  // blockers eat a good share of client-side error reports — and the CSP
+  // above has no connect-src entry for Sentry's ingest domain, so this is
+  // also what keeps the two consistent.
+  tunnelRoute: "/monitoring",
+  // No disableLogger here: it's deprecated in @sentry/nextjs 10, and its
+  // replacement (webpack.treeshake.removeDebugLogging) is webpack-only —
+  // this project builds with Turbopack, so the option would do nothing but
+  // emit a deprecation warning on every build.
+});

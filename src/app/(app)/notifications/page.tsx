@@ -15,10 +15,15 @@ export default async function NotificationsPage() {
   const notifications = await buildNotifications(supabase, user.id, user.role)
 
   return (
-    // Left-aligned, not mx-auto — see the note in onboard-form.tsx: the rest
-    // of the app starts at the left edge of the content area, so centring
-    // this made it look boxed-in beside the sidebar.
-    <div className="flex w-full max-w-4xl flex-col gap-5">
+    // Full content width, no cap. This is a list of single-line rows, not
+    // running prose — line-length limits only bind on text that wraps, and
+    // each row truncates. Every design system that addresses it says lists
+    // should fill their container (Carbon: "On-page lists should span the
+    // entire width of the container they are placed within to make the best
+    // use of space"; Shopify says the same for resource index pages). The
+    // right-aligned action button is what gives a wide row its far edge, so
+    // the width reads as deliberate rather than empty.
+    <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
           Notifications

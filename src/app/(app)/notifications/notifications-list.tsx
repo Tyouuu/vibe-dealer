@@ -86,9 +86,14 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
                   <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${VARIANT_ICON_BG[n.variant]}`}>
                     <Icon className="h-4 w-4" />
                   </span>
+                  {/* truncate is load-bearing, not cosmetic: it's what makes a
+                      full-width row legitimate. A row that wrapped to multiple
+                      lines at this width would run past a readable line
+                      length, which is exactly the case where a max-width would
+                      be needed instead. */}
                   <div className="min-w-0">
-                    <div className="text-[13px] font-bold text-paper">{n.title}</div>
-                    <div className="mt-0.5 text-[12px] text-paper-dim">{n.subtitle}</div>
+                    <div className="truncate text-[13px] font-bold text-paper">{n.title}</div>
+                    <div className="mt-0.5 truncate text-[12px] text-paper-dim">{n.subtitle}</div>
                   </div>
                 </div>
                 <a href={n.href} className="btn-ghost shrink-0 self-start py-1.5 text-xs sm:self-auto">

@@ -8,6 +8,7 @@ import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
 import { IconInfo, IconUsers, IconBell, IconDevices, IconLock } from '../icons'
+import { AnnotatedSection } from '../annotated-section'
 import { ROLE_LABEL } from '../types'
 
 export const metadata: Metadata = {
@@ -64,20 +65,19 @@ export default async function AccountPage() {
   const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
 
   return (
-    // Left-aligned, not mx-auto — same reason as Notifications and Onboard
-    // Dealer: it's the only alignment the rest of the app uses.
-    <div className="flex w-full max-w-2xl flex-col gap-8">
-      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
+    // Full content width, with each section splitting into an explanation
+    // column and a controls column (see AnnotatedSection). The page previously
+    // capped at max-w-2xl, which left a third of a 1440px screen unclaimed
+    // whichever way it was aligned.
+    <div className="flex w-full flex-col gap-1">
+      <h1 className="mb-5 text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
 
-      <section>
-        <div className="form-section-head">
-          <span className="tile">
-            <IconUsers />
-          </span>
-          <span>Profile</span>
-          <span className="rule" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <AnnotatedSection
+        icon={<IconUsers />}
+        title="Profile"
+        description="How you're identified across the app — on the audit log, and as the author of anything you verify."
+      >
+        <div className="grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <span className="field-label">Name</span>
             <div className="field-disabled">{user.name ?? '—'}</div>
@@ -95,44 +95,37 @@ export default async function AccountPage() {
           </div>
         </div>
         {user.role === 'master' && (
-          <div className="mt-6">
+          <div className="mt-6 max-w-xl">
             <ReportSenderNameForm initialValue={profileRow?.report_sender_name ?? ''} />
           </div>
         )}
-      </section>
+      </AnnotatedSection>
 
-      <section>
-        <div className="form-section-head">
-          <span className="tile">
-            <IconBell />
-          </span>
-          <span>Notifications</span>
-          <span className="rule" />
-        </div>
+      <AnnotatedSection
+        icon={<IconBell />}
+        title="Notifications"
+        description="Pick which alerts reach you. Switching a category off silences it everywhere — the bell, the toast and the daily email."
+      >
         <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
-      </section>
+      </AnnotatedSection>
 
-      <section>
-        <div className="form-section-head">
-          <span className="tile">
-            <IconDevices />
-          </span>
-          <span>Sessions</span>
-          <span className="rule" />
-        </div>
+      <AnnotatedSection
+        icon={<IconDevices />}
+        title="Sessions"
+        description="Every device currently signed in as you. If you don't recognise one, sign the others out and change your password."
+      >
         <SessionsPanel currentDevice={currentDevice} since={since} history={pastHistory} />
-      </section>
+      </AnnotatedSection>
 
-      <section>
-        <div className="form-section-head">
-          <span className="tile">
-            <IconLock />
-          </span>
-          <span>Security</span>
-          <span className="rule" />
+      <AnnotatedSection
+        icon={<IconLock />}
+        title="Security"
+        description="Change your password. At least 8 characters; you'll stay signed in on this device."
+      >
+        <div className="max-w-xl">
+          <ChangePasswordForm />
         </div>
-        <ChangePasswordForm />
-      </section>
+      </AnnotatedSection>
     </div>
   )
 }

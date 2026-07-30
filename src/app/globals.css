@@ -190,6 +190,14 @@ body {
   .form-section-head .tile {
     @apply grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary;
   }
+  /* Same icon tile, reusable outside .form-section-head — AnnotatedSection
+     needs it in its own heading. */
+  .section-icon {
+    @apply grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary;
+  }
+  .section-icon svg {
+    @apply h-[14px] w-[14px];
+  }
   .form-section-head .tile svg {
     @apply h-[14px] w-[14px];
   }

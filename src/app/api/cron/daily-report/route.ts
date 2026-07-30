@@ -1,8 +1,27 @@
 import { timingSafeEqual } from 'crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getYesterdaySummary } from '@/lib/reports/daily-summary'
+
+// Both failure paths below return a response instead of throwing, which means
+// Next's onRequestError never sees them and Sentry would otherwise hear
+// nothing. That matters more here than on a normal route: nobody is watching a
+// 00:00 cron. The report would just stop arriving, and the first person to
+// notice would be whoever eventually wondered why.
+//
+// flush() is the other half. On a serverless function the runtime can freeze
+// the instance the moment the response is returned, before Sentry's queued
+// event has been sent — so the report is awaited rather than fired off.
+async function reportToSentry(capture: () => void) {
+  try {
+    capture()
+    await Sentry.flush(2000)
+  } catch {
+    // Monitoring must never be the reason the cron itself fails.
+  }
+}
 
 function isAuthorizedCronRequest(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
@@ -89,6 +108,17 @@ export async function GET(request: NextRequest) {
   const recipients = await resolveMasterEmails(supabase, masters ?? [])
 
   if (!recipients.length) {
+    // Previously a bare 200 "skipped", which Vercel records as a healthy run —
+    // the report silently going nowhere looked identical to it being
+    // delivered. It means every master row has lost its email, so it's a
+    // misconfiguration to fix, not an error the code can recover from.
+    await reportToSentry(() =>
+      Sentry.captureMessage('Daily report skipped: no master recipients', {
+        level: 'warning',
+        tags: { cron: 'daily-report' },
+        extra: { masterRows: masters?.length ?? 0 },
+      })
+    )
     return NextResponse.json({ status: 'skipped', reason: 'no master recipients' })
   }
 
@@ -113,6 +143,18 @@ export async function GET(request: NextRequest) {
 
   if (!res.ok) {
     const body = await res.text()
+    // The most likely real-world trigger isn't an outage: the sender is still
+    // Resend's shared onboarding@resend.dev, which may only deliver to the
+    // Resend account owner. Adding a second master, or moving the existing one
+    // to a company address, starts failing here — so this needs to be loud.
+    await reportToSentry(() =>
+      Sentry.captureException(new Error(`Daily report email failed: Resend returned ${res.status}`), {
+        tags: { cron: 'daily-report' },
+        // Recipients are the point of the alert (which address was refused),
+        // and no report content is included.
+        extra: { status: res.status, recipients, resendResponse: body.slice(0, 500) },
+      })
+    )
     return NextResponse.json({ error: 'Resend request failed', detail: body }, { status: 502 })
   }
 

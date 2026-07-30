@@ -5,6 +5,7 @@ import { recordSimIntake } from './actions'
 import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
+import { formatMYR } from '@/lib/money'
 
 export function IntakeForm() {
   const [simType, setSimType] = useState<SimStockType>('physical')
@@ -75,7 +76,7 @@ export function IntakeForm() {
           </div>
           <div className="docket-row">
             <span className="text-paper-dim">Total Cost</span>
-            <b className="figure-money text-paper">RM {(quantity * costPerUnit).toLocaleString()}</b>
+            <b className="figure-money text-paper">{formatMYR((quantity * costPerUnit))}</b>
           </div>
         </div>
         <div className="mt-4 flex items-center gap-2">

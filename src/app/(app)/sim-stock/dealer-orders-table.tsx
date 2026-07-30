@@ -5,6 +5,7 @@ import { markSimOrderSent } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { ScrollFade } from '../scroll-fade'
+import { formatMYR } from '@/lib/money'
 
 export type OrderItem = {
   id: string
@@ -61,7 +62,7 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                 {o.quantity.toLocaleString()}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper ${border}`}>
-                RM {o.paid.toLocaleString()}
+                {formatMYR(o.paid)}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 ${border}`}>
                 {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
@@ -86,13 +87,13 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                       {isFinance && (
                         <div>
                           <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Margin</dt>
-                          <dd className="mt-1 text-[13px] font-semibold text-paper">+RM {o.margin.toLocaleString()}</dd>
+                          <dd className="mt-1 text-[13px] font-semibold text-paper">+{formatMYR(o.margin)}</dd>
                         </div>
                       )}
                       <div>
                         <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Shipping</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">
-                          {o.shipping_fee_rm != null ? `RM ${Number(o.shipping_fee_rm).toLocaleString()}` : '—'}
+                          {o.shipping_fee_rm != null ? `${formatMYR(Number(o.shipping_fee_rm))}` : '—'}
                         </dd>
                       </div>
                       <div>

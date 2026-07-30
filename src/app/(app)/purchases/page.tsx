@@ -10,6 +10,7 @@ import { todayInMalaysia } from '@/lib/month'
 import { PurchaseForm } from './purchase-form'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — DealerHub',
@@ -131,7 +132,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                 <IconDocument className="h-3.5 w-3.5" />
               </span>
             </div>
-            <div className="figure-money mt-1.5 text-xl font-semibold">RM {totalPurchasedCost.toLocaleString()}</div>
+            <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(totalPurchasedCost)}</div>
           </div>
           <div className="app-tile">
             <div className="flex items-start justify-between gap-2">
@@ -140,8 +141,8 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                 <IconCheckCircle className="h-3.5 w-3.5" />
               </span>
             </div>
-            <div className="figure-money mt-1.5 text-xl font-semibold">RM {actualCashMargin.toLocaleString()}</div>
-            <div className="mt-0.5 text-[11px] text-paper-dim">Expected RM {expectedCommission.toLocaleString()}</div>
+            <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(actualCashMargin)}</div>
+            <div className="mt-0.5 text-[11px] text-paper-dim">Expected {formatMYR(expectedCommission)}</div>
           </div>
         </div>
 
@@ -174,7 +175,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                     {rows.map((p) => (
                       <tr key={p.id} className="tr-row">
                         <td className="td text-paper-dim">{p.purchase_date}</td>
-                        <td className="td figure-money text-right">RM {Number(p.money_rm).toLocaleString()}</td>
+                        <td className="td figure-money text-right">{formatMYR(Number(p.money_rm))}</td>
                         <td className="td figure-points text-right">{Number(p.points).toLocaleString()}</td>
                         <td className="td text-paper-dim">{p.note ?? '—'}</td>
                         <td className="td text-paper-dim">{nameById.get(p.recorded_by) ?? '—'}</td>

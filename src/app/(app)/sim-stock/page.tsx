@@ -10,6 +10,7 @@ import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { IconInfo } from '../icons'
 import { PageHeader } from '../page-header'
+import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'SIM Card Stock — DealerHub',
@@ -169,12 +170,12 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           <>
             <div className="mt-3.5 app-tile">
               <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin So Far (all types)</div>
-              <div className="figure-money mt-1.5 text-xl font-semibold">RM {totalOrderMargin.toLocaleString()}</div>
-              <div className="mt-0.5 text-[11px] text-paper-dim">RM {SIM_MARGIN_RM.toFixed(2)}/card</div>
+              <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(totalOrderMargin)}</div>
+              <div className="mt-0.5 text-[11px] text-paper-dim">{formatMYR(SIM_MARGIN_RM)}/card</div>
             </div>
             <p className="note-strip mt-3.5">
-              Cost RM {SIM_UNIT_COST_RM.toFixed(2)}/card from Vibe Mobile, resold at RM {SIM_SELL_PRICE_RM.toFixed(2)}/card — spent RM{' '}
-              {totalIntakeCost.toLocaleString()} on stock so far, collected RM {totalOrderRevenue.toLocaleString()} from dealer orders.
+              Cost {formatMYR(SIM_UNIT_COST_RM)}/card from Vibe Mobile, resold at {formatMYR(SIM_SELL_PRICE_RM)}/card — spent RM{' '}
+              {totalIntakeCost.toLocaleString()} on stock so far, collected {formatMYR(totalOrderRevenue)} from dealer orders.
             </p>
           </>
         )}

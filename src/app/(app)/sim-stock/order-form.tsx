@@ -8,6 +8,7 @@ import { IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
+import { formatMYR } from '@/lib/money'
 
 // Mirrors the sim-shipping-invoices bucket limits (migration 0024).
 const INVOICE_MAX_BYTES = 10 * 1024 * 1024
@@ -113,7 +114,7 @@ export function OrderForm({
         <label className="field-label">Quantity (min {SIM_MIN_ORDER_QTY})</label>
         <input name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
         <p className="mt-1 text-[11px] text-paper-dim">
-          RM {SIM_SELL_PRICE_RM.toFixed(2)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
+          {formatMYR(SIM_SELL_PRICE_RM)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
         </p>
       </div>
       {isPhysicalSimType(simType) ? (

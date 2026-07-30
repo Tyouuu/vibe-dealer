@@ -13,6 +13,7 @@ import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
 import { EditDealerButton } from './edit-dealer-button'
 import { ScrollFade } from '../../scroll-fade'
+import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -429,14 +430,14 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                           {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                           {tx.type === 'topup' && tx.coupon_rm > 0 && (
                             <div className="mt-0.5 text-[10.5px] text-paper-dim">
-                              RM {tx.coupon_rm.toLocaleString()} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
+                              {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                             </div>
                           )}
                         </td>
-                        <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                        <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                         <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                        <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
+                        <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
                         <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
                         <td className="td">
                           <StatusPill status={tx.status} />
@@ -584,7 +585,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white/50">Commission Earned</div>
-                      <div className="mt-0.5 text-xl font-semibold text-primary">RM {lifetimeCommission.toLocaleString()}</div>
+                      <div className="mt-0.5 text-xl font-semibold text-primary">{formatMYR(lifetimeCommission)}</div>
                     </div>
                   </div>
                 </div>

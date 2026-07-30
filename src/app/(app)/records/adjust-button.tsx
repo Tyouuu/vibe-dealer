@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { adjustTransaction } from './actions'
 import { computeAdjustmentDelta } from '@/lib/adjustment'
 import { Modal } from '../modal'
+import { formatMYR } from '@/lib/money'
 
 export function AdjustButton({
   transactionId,
@@ -66,7 +67,7 @@ export function AdjustButton({
       <Modal open={open} onClose={close} className="max-w-md">
         <p className="text-sm font-bold text-paper">Correct this transaction</p>
         <p className="mt-1 text-xs text-paper-dim">
-          Currently on record: {currentPoints.toLocaleString()} pts · RM {currentMoneyRm.toLocaleString()}. This posts a new, linked
+          Currently on record: {currentPoints.toLocaleString()} pts · {formatMYR(currentMoneyRm)}. This posts a new, linked
           correction — the original row stays untouched.
         </p>
 
@@ -99,14 +100,14 @@ export function AdjustButton({
           {!unchanged && (
             <div className="rounded-lg bg-primary-soft px-3 py-2 text-xs font-semibold text-primary-deep">
               Posts a correction of {deltaPoints >= 0 ? '+' : ''}
-              {deltaPoints.toLocaleString()} pts · {deltaMoneyRm >= 0 ? '+' : ''}RM {deltaMoneyRm.toLocaleString()}
+              {deltaPoints.toLocaleString()} pts · {deltaMoneyRm >= 0 ? '+' : ''}{formatMYR(deltaMoneyRm)}
             </div>
           )}
 
           {rateMismatch && (
             <div className="rounded-lg bg-brass/12 px-3 py-2 text-xs font-semibold text-brass-bright">
               Heads up: at this dealer&apos;s {rate}% rate, {pointsNum.toLocaleString()} pts would normally collect RM{' '}
-              {expectedMoneyAtRate!.toLocaleString()} — you entered RM {moneyNum.toLocaleString()}. Fine if that&apos;s the actual
+              {expectedMoneyAtRate!.toLocaleString()} — you entered {formatMYR(moneyNum)}. Fine if that&apos;s the actual
               reason for the correction, just make sure the note below says why.
             </div>
           )}

@@ -9,6 +9,7 @@ import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
+import { formatMYR } from '@/lib/money'
 
 // Mirrors /api/reconcile/extract's limits — this upload previously had none
 // at all, client-side or bucket-level, unlike the OCR route which validates
@@ -347,7 +348,7 @@ export function EntryForm({
                 />
                 <span className={`hint ${couponExceedsMoney ? 'font-semibold text-clay-bright' : ''}`}>
                   {couponExceedsMoney
-                    ? `Can't exceed the RM ${(Number(moneyCollected) || 0).toLocaleString()} collected above.`
+                    ? `Can't exceed the ${formatMYR((Number(moneyCollected) || 0))} collected above.`
                     : `Portion of the amount above issued as RM${COUPON_DENOMINATION_RM} coupons instead of straight to the dealer's phone — leave blank if this whole top-up is direct.`}
                 </span>
               </div>
@@ -406,7 +407,7 @@ export function EntryForm({
         </div>
         {preview ? (
           <div className="flex flex-col text-sm">
-            <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
+            <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
             <Row label="Rate" value={`${preview.rate}%`} />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
             {type === 'topup' && couponAmount > 0 && (
@@ -416,7 +417,7 @@ export function EntryForm({
                 warn={couponExceedsMoney}
               />
             )}
-            <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
+            <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
             <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
           </div>
         ) : (
@@ -447,9 +448,9 @@ export function EntryForm({
           <div className="mt-3 flex flex-col text-sm">
             <Row label="Dealer" value={dealer?.company_name ?? '—'} />
             <Row label="Type" value={type === 'package' ? `Buy Package ${pkg}` : 'Regular Top-up'} />
-            <Row label="Amount Collected" value={`RM ${preview.money.toLocaleString()}`} unit="money" />
+            <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
-            <Row label="Your 2%" value={`RM ${preview.commission.toLocaleString()}`} unit="money" bold highlight />
+            <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
           </div>
         )}
         <p className="mt-3 text-[11px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>

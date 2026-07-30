@@ -5,6 +5,7 @@ import { recordCreditPurchase } from './actions'
 import { CREDIT_PURCHASE_RATE } from '@/lib/packages'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
+import { formatMYR } from '@/lib/money'
 
 export function PurchaseForm({ today }: { today: string }) {
   const [moneyRm, setMoneyRm] = useState('')
@@ -82,7 +83,7 @@ export function PurchaseForm({ today }: { today: string }) {
         <div className="mt-3 flex flex-col text-sm">
           <div className="docket-row">
             <span className="text-paper-dim">Amount Paid</span>
-            <b className="figure-money text-paper">RM {(Number(moneyRm) || 0).toLocaleString()}</b>
+            <b className="figure-money text-paper">{formatMYR((Number(moneyRm) || 0))}</b>
           </div>
           <div className="docket-row">
             <span className="text-paper-dim">Points Received</span>

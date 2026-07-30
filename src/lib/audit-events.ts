@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PackageCode } from './packages'
 import { formatDateLabel, formatMonthLabel, todayInMalaysia, yesterdayInMalaysia } from './month'
+import { formatMYR } from '@/lib/money'
 
 export type AuditKind = 'transaction' | 'reconciliation' | 'package_change'
 
@@ -159,14 +160,14 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       actor: tx.status === 'pending' ? displayName(tx.recorded_by) : displayName(tx.verified_by),
       event: eventLabel,
       dealer: dealerName ?? null,
-      amount: `RM ${tx.money_rm.toLocaleString()}`,
+      amount: `${formatMYR(tx.money_rm)}`,
       points: `${tx.points.toLocaleString()} pts`,
       packageChange: null,
       status: tx.status,
       detail: [
         { label: 'Type', value: typeLabel },
         { label: 'Points', value: `${tx.points.toLocaleString()} pts` },
-        { label: 'Collected', value: `RM ${tx.money_rm.toLocaleString()}` },
+        { label: 'Collected', value: `${formatMYR(tx.money_rm)}` },
         { label: 'Recorded by', value: displayName(tx.recorded_by) },
         ...(tx.status !== 'pending'
           ? [{ label: tx.status === 'verified' ? 'Verified by' : 'Flagged by', value: displayName(tx.verified_by) }]
@@ -186,14 +187,14 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
       actor: displayName(rev.recorded_by),
       event: 'Saved reconciliation',
       dealer: null,
-      amount: rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—',
+      amount: rev.company_profit_rm != null ? `${formatMYR(rev.company_profit_rm)}` : '—',
       points: rev.company_total_points != null ? `${rev.company_total_points.toLocaleString()} pts` : null,
       packageChange: null,
       status: null,
       detail: [
         { label: 'Month', value: formatMonthLabel(rev.month) },
         { label: 'Vibe top-up', value: rev.company_total_points != null ? `${rev.company_total_points.toLocaleString()} pts` : '—' },
-        { label: 'Your 2%', value: rev.company_profit_rm != null ? `RM ${rev.company_profit_rm.toLocaleString()}` : '—' },
+        { label: 'Your 2%', value: rev.company_profit_rm != null ? `${formatMYR(rev.company_profit_rm)}` : '—' },
         { label: 'Saved by', value: displayName(rev.recorded_by) },
         ...(rev.note ? [{ label: 'Note', value: rev.note }] : []),
       ],

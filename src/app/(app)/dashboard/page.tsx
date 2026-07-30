@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { todayInMalaysia } from '@/lib/month'
+import { todayInMalaysia, formatMonthLabel } from '@/lib/month'
 import {
   daysSince,
   getDealerActivityMap,
@@ -17,6 +17,7 @@ import { RegionGrowthCard } from './growth-map'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconAlertCircle, IconTruck, ReconciledStamp } from '../icons'
 import { PageHeader } from '../page-header'
+import { formatMYR } from '@/lib/money'
 
 // null means "no meaningful baseline" (previous period was 0) — callers must
 // skip rendering the chg badge rather than show a divide-by-zero NaN/Infinity.
@@ -210,7 +211,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Dashboard" subtitle={`Figures for ${currentMonthStr}`} />
+      <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconTrendUp className="h-4 w-4" />}
@@ -223,9 +224,9 @@ export default async function DashboardPage() {
         <KpiCard
           icon={<IconCoin className="h-4 w-4" />}
           label="Your Commission (2%)"
-          value={`RM ${totalCommission.toLocaleString()}`}
+          value={`${formatMYR(totalCommission)}`}
           chg={commissionChg}
-          footer={`Last month: RM ${prevMonthCommission.toLocaleString()}`}
+          footer={`Last month: ${formatMYR(prevMonthCommission)}`}
           href={`/records?status=verified&month=${currentMonthStr}`}
         />
         <KpiCard
@@ -327,7 +328,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Dashboard" subtitle={`Figures for ${currentMonthStr}`} />
+      <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconAlertCircle className="h-4 w-4" />}
@@ -454,7 +455,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Dashboard" subtitle={`Figures for ${monthStart.slice(0, 7)}`} />
+      <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <KpiCard
           icon={<IconTruck className="h-4 w-4" />}

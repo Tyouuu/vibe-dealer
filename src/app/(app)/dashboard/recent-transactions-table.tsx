@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { ScrollFade } from '../scroll-fade'
+import { formatMYR } from '@/lib/money'
 
 export type RecentTxRow = {
   id: string
@@ -92,7 +93,7 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                   </span>
                 </td>
                 <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
               </tr>
             ))}
             {!filtered.length && (

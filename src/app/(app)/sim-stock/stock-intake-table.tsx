@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, type SimStockType } from '@/lib/sim-stock'
 import { ScrollFade } from '../scroll-fade'
+import { formatMYR } from '@/lib/money'
 
 export type IntakeItem = {
   id: string
@@ -46,7 +47,7 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
                 {r.quantity.toLocaleString()}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper ${border}`}>
-                RM {r.totalCost.toLocaleString()}
+                {formatMYR(r.totalCost)}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim ${border}`}>
                 <svg
@@ -67,7 +68,7 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
                     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
                       <div>
                         <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
-                        <dd className="mt-1 text-[13px] font-semibold text-paper">RM {r.cost_per_unit_rm.toFixed(2)}</dd>
+                        <dd className="mt-1 text-[13px] font-semibold text-paper">{formatMYR(r.cost_per_unit_rm)}</dd>
                       </div>
                       <div>
                         <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Recorded By</dt>

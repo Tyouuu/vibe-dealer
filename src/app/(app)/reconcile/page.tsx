@@ -12,6 +12,7 @@ import { MarkReconciledForm } from './mark-reconciled-form'
 import { ReopenMonthForm } from './reopen-month-form'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
+import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'Reconciliation — DealerHub',
@@ -170,7 +171,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
           <div className="-mx-3 mt-3 flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2.5">
             <span className="text-sm font-semibold text-paper">Your 2% Due</span>
-            <b className="figure-money text-lg text-primary-deep">RM {systemProfit.toLocaleString()}</b>
+            <b className="figure-money text-lg text-primary-deep">{formatMYR(systemProfit)}</b>
           </div>
 
           <div className="mt-4 flex items-center gap-3">

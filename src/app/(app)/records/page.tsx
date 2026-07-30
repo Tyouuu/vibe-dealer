@@ -17,6 +17,7 @@ import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -282,7 +283,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           Flagged <b>{flaggedCount ?? 0}</b>
         </span>
         <span className="txn-summary-item accent">
-          Your 2% on this page <b>RM {pageCommission.toLocaleString()}</b>
+          Your 2% on this page <b>{formatMYR(pageCommission)}</b>
         </span>
       </div>
 
@@ -332,14 +333,14 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
                     {tx.type === 'topup' && tx.coupon_rm > 0 && (
                       <div className="mt-0.5 text-[10.5px] text-paper-dim">
-                        RM {tx.coupon_rm.toLocaleString()} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
+                        {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                       </div>
                     )}
                   </td>
-                  <td className="td figure-money text-right">RM {tx.money_rm.toLocaleString()}</td>
+                  <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
                   <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                   <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                  <td className="td figure-money text-right">RM {tx.commission_rm.toLocaleString()}</td>
+                  <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
                   <td className="td">
                     {tx.delivery_status === 'sent' ? (
                       <span className="pill pill-jade">Sent</span>

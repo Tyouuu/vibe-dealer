@@ -29,8 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isFinance = user.role === 'master' || user.role === 'accountant'
 
-  const [{ count: dealerCount }, { count: pendingCount }, { count: pendingDeliveryCount }, creditBalance, builtNotifications] = await Promise.all([
-    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+  // No dealer count here any more — the /dealers badge that consumed it is
+  // gone (see the badge note below), and this was a COUNT over 249 rows on
+  // every single page load in the app, for a number nothing rendered.
+  const [{ count: pendingCount }, { count: pendingDeliveryCount }, creditBalance, builtNotifications] = await Promise.all([
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending'),
     getAvailablePointsBalance(supabase),
@@ -42,14 +44,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     href: item.href,
     label: item.label,
     group: item.group,
+    // A badge means "this needs you", never "this is how many exist". The
+    // /dealers badge showed 249 — a number that barely moves, permanently lit,
+    // and visually louder than the two genuine alerts beside it. Stripe badges
+    // unresolved disputes; Linear badges unread. Neither badges a total.
     badge:
-      item.href === '/dealers'
-        ? (dealerCount ?? undefined)
-        : item.href === '/records'
-          ? (pendingCount ?? undefined)
-          : item.href === '/delivery'
-            ? (pendingDeliveryCount ?? undefined)
-            : undefined,
+      item.href === '/records'
+        ? (pendingCount ?? undefined)
+        : item.href === '/delivery'
+          ? (pendingDeliveryCount ?? undefined)
+          : undefined,
   }))
 
   // The bell dropdown is a short preview (capped at 4) of the same list the

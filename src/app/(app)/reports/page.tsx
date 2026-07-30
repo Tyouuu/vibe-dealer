@@ -6,6 +6,7 @@ import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLa
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { formatMYR } from '@/lib/money'
 
 function formatDelta(current: number, prior: number): { label: string; positive: boolean } | null {
   if (prior === 0) return current === 0 ? null : { label: 'New this month', positive: current > 0 }
@@ -128,7 +129,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </div>
           <div className="p-4 sm:p-5">
             <div className="text-[13px] font-semibold text-paper-dim">Your 2%</div>
-            <div className="figure-money mt-2 text-2xl font-semibold">RM {totalCommission.toLocaleString()}</div>
+            <div className="figure-money mt-2 text-2xl font-semibold">{formatMYR(totalCommission)}</div>
             <Delta current={totalCommission} prior={prevTotalCommission} />
           </div>
           <div className="p-4 sm:p-5">
@@ -166,8 +167,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td font-semibold text-paper">{t.label}</td>
                   <td className="td text-right text-paper-dim">{t.count}</td>
                   <td className="td figure-points text-right">{t.points.toLocaleString()} pts</td>
-                  <td className="td figure-money text-right">RM {t.money.toLocaleString()}</td>
-                  <td className="td figure-money text-right">RM {t.commission.toLocaleString()}</td>
+                  <td className="td figure-money text-right">{formatMYR(t.money)}</td>
+                  <td className="td figure-money text-right">{formatMYR(t.commission)}</td>
                 </tr>
               ))}
               {typeBreakdown.length > 0 && (
@@ -175,8 +176,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td text-paper">Total</td>
                   <td className="td text-right text-paper">{typeBreakdown.reduce((s, t) => s + t.count, 0)}</td>
                   <td className="td figure-points text-right">{typeBreakdown.reduce((s, t) => s + t.points, 0).toLocaleString()} pts</td>
-                  <td className="td figure-money text-right">RM {typeBreakdown.reduce((s, t) => s + t.money, 0).toLocaleString()}</td>
-                  <td className="td figure-money text-right">RM {typeBreakdown.reduce((s, t) => s + t.commission, 0).toLocaleString()}</td>
+                  <td className="td figure-money text-right">{formatMYR(typeBreakdown.reduce((s, t) => s + t.money, 0))}</td>
+                  <td className="td figure-money text-right">{formatMYR(typeBreakdown.reduce((s, t) => s + t.commission, 0))}</td>
                 </tr>
               )}
               {!typeBreakdown.length && (
@@ -222,9 +223,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
                     <td className="td figure-money relative text-right">
                       <span className="absolute -left-1.5 bottom-[3px] top-[3px] rounded-md bg-primary-soft" style={{ width: `${pct}%` }} />
-                      <span className="relative">RM {d.money.toLocaleString()}</span>
+                      <span className="relative">{formatMYR(d.money)}</span>
                     </td>
-                    <td className="td figure-money text-right">RM {d.commission.toLocaleString()}</td>
+                    <td className="td figure-money text-right">{formatMYR(d.commission)}</td>
                   </tr>
                 )
               })}
@@ -233,8 +234,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td" />
                   <td className="td text-paper">Total</td>
                   <td className="td figure-points text-right">{totalPoints.toLocaleString()} pts</td>
-                  <td className="td figure-money text-right">RM {totalMoney.toLocaleString()}</td>
-                  <td className="td figure-money text-right">RM {totalCommission.toLocaleString()}</td>
+                  <td className="td figure-money text-right">{formatMYR(totalMoney)}</td>
+                  <td className="td figure-money text-right">{formatMYR(totalCommission)}</td>
                 </tr>
               )}
               {!breakdown.length && (

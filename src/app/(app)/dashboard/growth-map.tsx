@@ -19,7 +19,13 @@ import { DISTRICTS } from './districts'
 // through the "Ipoh" label and clipped it to "Ip".
 const REGION_COORDS: Record<string, { x: number; y: number; labelAbove?: boolean }> = {
   Penang: { x: 38.9, y: 42.2 },
-  Taiping: { x: 59.4, y: 58.8 },
+  // Taiping's label goes above too. Ipoh already flips above (Kampar sits
+  // directly under it), and with Taiping's sitting below its own dot the two
+  // labels landed on the same eye level — Ipoh's to the left of Ipoh's dot,
+  // Taiping's to the right of Taiping's. Each then read as captioning the
+  // other town's circle, so the biggest region looked like the second
+  // biggest. Both above keeps every label directly over its own dot.
+  Taiping: { x: 59.4, y: 58.8, labelAbove: true },
   Ipoh: { x: 77.0, y: 66.3, labelAbove: true },
   Kampar: { x: 79.8, y: 74.7 },
   Sitiawan: { x: 57.5, y: 77.5 },
@@ -177,7 +183,7 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
           </>
         ) : regions.length ? (
           <>
-            This month&apos;s verified top-up, top {regions.length} region{regions.length === 1 ? '' : 's'}.{' '}
+            All {regions.length} region{regions.length === 1 ? '' : 's'} with verified top-up this month, best first.{' '}
             <span className="text-paper-dim/70">Click one to see its dealers.</span>
           </>
         ) : (
@@ -224,7 +230,11 @@ function RegionList({
   onSelect: (r: string) => void
 }) {
   return (
-    <div className="flex flex-col">
+    // Capped and scrollable: this now lists every region that sold, which is
+    // 40+ in real data. Roughly seven rows are visible before it scrolls, so
+    // the leaders are what you land on while the rest stays reachable without
+    // the card growing taller than the chart beside it.
+    <div className="flex max-h-[248px] flex-col overflow-y-auto pr-1">
       {regions.map((r) => {
         const dim = highlight !== null && highlight !== r.region
         return (
@@ -311,6 +321,9 @@ function GrowthMap({
   const focusCoord = selected ? REGION_COORDS[selected] : null
   const target = focusCoord ? frameOn(focusCoord) : FULL_VIEW
   const view = useViewBoxTween(target)
+
+  const mapped = regions.filter((r) => hasMapPin(r.region)).length
+  const unmapped = regions.length - mapped
 
   // Keeps outlines visually the same weight at every zoom level: the viewBox
   // shrinking is what makes a fixed stroke-width appear thicker, so scale it
@@ -435,6 +448,18 @@ function GrowthMap({
             ))}
           </span>
         </div>
+      )}
+
+      {/* Says out loud that the map is a partial view. Only six towns have
+          real projected coordinates, but dealers span 40+ regions, so most of
+          the business genuinely cannot appear here — and a map that silently
+          omits more than half the network reads as "these are all my areas"
+          when it isn't. The list above is the complete picture; this line is
+          what stops the map quietly contradicting it. */}
+      {!selected && unmapped > 0 && (
+        <p className="mt-1.5 text-center text-[9.5px] text-paper-dim/70">
+          Map shows the {mapped} main town{mapped === 1 ? '' : 's'} · {unmapped} more region{unmapped === 1 ? '' : 's'} in the list above
+        </p>
       )}
     </div>
   )

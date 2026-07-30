@@ -101,14 +101,22 @@ function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRe
     const name = dealerNameOf(t.dealers)
     entry.dealers.set(name, (entry.dealers.get(name) ?? 0) + points)
   }
+  // Every region that sold anything, not a top-N slice. The card's whole job
+  // is "at a glance, all the areas I cover and which sells best" — and there
+  // are 44 distinct regions against 6 that the map can plot, so a top-4 cut
+  // was hiding most of the business. The list carries the full picture; the
+  // map stays a companion for the towns it genuinely knows.
+  //
+  // Only the leaders get a categorical colour. Handing 44 regions 44 colours
+  // would make the palette meaningless — past the top few, colour stops
+  // encoding anything and the ranking itself does the work.
   return [...byRegion.entries()]
     .sort((a, b) => b[1].points - a[1].points)
-    .slice(0, 4)
     .map(([region, entry], i) => ({
       region,
       points: entry.points,
       pct: totalPoints ? Math.round((entry.points / totalPoints) * 100) : 0,
-      color: REGION_GROWTH_COLORS[i],
+      color: i < REGION_GROWTH_COLORS.length ? REGION_GROWTH_COLORS[i] : 'var(--color-slate)',
       dealers: [...entry.dealers.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([name, points]) => ({ name, points })),

@@ -41,10 +41,20 @@ function monthsBack(n: number): { key: string; label: string }[] {
   return out
 }
 
-type DealerRegionRel = { region: string | null } | { region: string | null }[] | null
+// company_name is optional because the trend chart's own query doesn't need
+// it — only the region breakdown, which drills down to individual dealers,
+// does. Keeping it optional lets both share this one type.
+type DealerRegionRel =
+  | { region: string | null; company_name?: string | null }
+  | { region: string | null; company_name?: string | null }[]
+  | null
 
 function regionOf(rel: DealerRegionRel): string {
   return (Array.isArray(rel) ? rel[0]?.region : rel?.region) ?? '(No Region)'
+}
+
+function dealerNameOf(rel: DealerRegionRel): string {
+  return (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '(Unknown dealer)'
 }
 
 // Shared by master + accountant (both chart the same 6-month top-up trend,
@@ -73,20 +83,35 @@ function buildTrendRows(
 // verified top-up points, top 4 regions, each with its own categorical color.
 const REGION_GROWTH_COLORS = ['var(--color-info)', 'var(--color-jade)', 'var(--color-clay)', 'var(--color-brass)']
 
+// Aggregates twice in one pass: by region (the top-level ranking) and, within
+// each region, by dealer — the region card drills down to "which dealers are
+// in here and what did each one sell", so the per-dealer split has to come
+// from the same rows rather than a second query.
 function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRegionRel }[], totalPoints: number) {
-  const map = new Map<string, number>()
+  const byRegion = new Map<string, { points: number; dealers: Map<string, number> }>()
   for (const t of monthTx) {
     const region = regionOf(t.dealers)
-    map.set(region, (map.get(region) ?? 0) + Number(t.points))
+    let entry = byRegion.get(region)
+    if (!entry) {
+      entry = { points: 0, dealers: new Map() }
+      byRegion.set(region, entry)
+    }
+    const points = Number(t.points)
+    entry.points += points
+    const name = dealerNameOf(t.dealers)
+    entry.dealers.set(name, (entry.dealers.get(name) ?? 0) + points)
   }
-  return [...map.entries()]
-    .sort((a, b) => b[1] - a[1])
+  return [...byRegion.entries()]
+    .sort((a, b) => b[1].points - a[1].points)
     .slice(0, 4)
-    .map(([region, points], i) => ({
+    .map(([region, entry], i) => ({
       region,
-      points,
-      pct: totalPoints ? Math.round((points / totalPoints) * 100) : 0,
+      points: entry.points,
+      pct: totalPoints ? Math.round((entry.points / totalPoints) * 100) : 0,
       color: REGION_GROWTH_COLORS[i],
+      dealers: [...entry.dealers.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, points]) => ({ name, points })),
     }))
 }
 
@@ -251,7 +276,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
       supabase.from('dealers_directory').select('id, region'),
       supabase
         .from('transactions')
-        .select('tx_date, points, dealers(region)')
+        .select('tx_date, points, dealers(region, company_name)')
         .eq('status', 'verified')
         .gte('tx_date', trendStart)
         .lte('tx_date', today),
@@ -385,7 +410,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
     // back null for every row. Region is joined in JS below instead, off
     // dealers_directory, which cs can read.
     supabase.from('transactions').select('dealer_id, points').eq('status', 'verified').gte('tx_date', monthStart).lte('tx_date', today),
-    supabase.from('dealers_directory').select('id, region'),
+    supabase.from('dealers_directory').select('id, region, company_name'),
   ])
 
   const oldestDeliveryDays = deliveryListRows?.length ? daysSince(deliveryListRows[0].tx_date) : 0
@@ -408,8 +433,13 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
     }
   })
 
-  const regionByDealerId = new Map((dealerRegionRows ?? []).map((d) => [d.id, d.region]))
-  const monthTxWithRegion = (monthTx ?? []).map((t) => ({ points: t.points, dealers: { region: regionByDealerId.get(t.dealer_id) ?? null } }))
+  // cs can't join transactions->dealers (no SELECT on the base table), so the
+  // region AND dealer name both come from dealers_directory, keyed by id.
+  const dealerByIdForCs = new Map((dealerRegionRows ?? []).map((d) => [d.id, d]))
+  const monthTxWithRegion = (monthTx ?? []).map((t) => {
+    const d = dealerByIdForCs.get(t.dealer_id)
+    return { points: t.points, dealers: { region: d?.region ?? null, company_name: d?.company_name ?? null } }
+  })
   const totalPoints = monthTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
   const regionGrowth = buildRegionGrowth(monthTxWithRegion, totalPoints)
 

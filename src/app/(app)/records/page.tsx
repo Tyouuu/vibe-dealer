@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, todayInMalaysia } from '@/lib/month'
+import { monthRange, todayInMalaysia, formatMonthLabel } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
@@ -18,6 +18,7 @@ import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { EmptyState } from '../empty-state'
+import { FilterChips } from '../filter-chips'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -166,18 +167,35 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   if (sort !== 'desc') exportParams.set('sort', sort)
   const exportHref = `/api/records/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
 
-  const clearDealerParams = new URLSearchParams()
-  if (status !== 'all') clearDealerParams.set('status', status)
-  if (month) clearDealerParams.set('month', month)
-  if (q) clearDealerParams.set('q', q)
-  if (sort !== 'desc') clearDealerParams.set('sort', sort)
-  const clearDealerHref = `/records${clearDealerParams.toString() ? `?${clearDealerParams.toString()}` : ''}`
-
   const hasFilter = status !== 'all' || !!month || !!q
   const clearFiltersParams = new URLSearchParams()
   if (dealerId) clearFiltersParams.set('dealer', dealerId)
   if (sort !== 'desc') clearFiltersParams.set('sort', sort)
   const clearFiltersHref = `/records${clearFiltersParams.toString() ? `?${clearFiltersParams.toString()}` : ''}`
+
+  // One chip per active filter, each linking to the same URL minus itself.
+  // The dealer filter previously had its own bespoke pill with a ✕ glyph; it
+  // is now the same component as the rest, so there is one way to see and
+  // remove a filter rather than two.
+  function withoutFilter(drop: 'status' | 'month' | 'q' | 'dealer') {
+    const params = new URLSearchParams()
+    if (status !== 'all' && drop !== 'status') params.set('status', status)
+    if (month && drop !== 'month') params.set('month', month)
+    if (q && drop !== 'q') params.set('q', q)
+    if (dealerId && drop !== 'dealer') params.set('dealer', dealerId)
+    if (sort !== 'desc') params.set('sort', sort)
+    const qs = params.toString()
+    return `/records${qs ? `?${qs}` : ''}`
+  }
+
+  const STATUS_LABEL: Record<string, string> = { pending: 'Pending', verified: 'Verified', flagged: 'Flagged' }
+  const filterChips = [
+    ...(status !== 'all' ? [{ label: 'Status', value: STATUS_LABEL[status] ?? status, removeHref: withoutFilter('status') }] : []),
+    ...(month ? [{ label: 'Month', value: formatMonthLabel(month), removeHref: withoutFilter('month') }] : []),
+    ...(q ? [{ label: 'Search', value: q, removeHref: withoutFilter('q') }] : []),
+    ...(dealerId ? [{ label: 'Dealer', value: dealerFilterName ?? 'Unknown dealer', removeHref: withoutFilter('dealer') }] : []),
+  ]
+  const clearAllHref = sort !== 'desc' ? `/records?sort=${sort}` : '/records'
 
   return (
     <>
@@ -202,16 +220,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
       <div className="app-card">
 
-      {dealerId && (
-        <div className="mb-4 flex items-center gap-2">
-          <span className="pill pill-info">
-            Dealer: {dealerFilterName ?? 'Unknown dealer'}
-            <a href={clearDealerHref} className="ml-1.5 font-bold hover:text-paper" title="Clear dealer filter" aria-label="Clear dealer filter">
-              ✕
-            </a>
-          </span>
-        </div>
-      )}
+      <FilterChips chips={filterChips} clearAllHref={clearAllHref} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <form className="flex flex-wrap items-center gap-3" action="/records" method="GET">

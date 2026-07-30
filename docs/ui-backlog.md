@@ -105,8 +105,11 @@ Cap removed; measured gutter went from ~200px to 0.
 
 ## Batch 2 — worth it, more work
 
-- `[ ]` **Active-filter chips** with a per-chip `×` and `Clear all`. Right now
-  there's no way to see what's filtering the view or clear it in one action.
+- `[x]` **Active-filter chips** with per-chip removal and `Clear all`. Each
+  chip links to the current URL minus itself, so removing Month keeps Status
+  and Search. Records' bespoke dealer pill (its own markup and a ✕ glyph) is
+  folded into the same component, so there's one way to see and remove a
+  filter instead of two. `Clear all` only appears with 2+ chips.
 - `[ ]` **Validate on blur, focus the first error on submit, keep submit
   enabled.** Geist Input is explicit that validation should not fire per
   keystroke and that a pristine form's submit shouldn't be disabled.

@@ -11,6 +11,7 @@ import { ImportDealersButton } from './import-dealers-button'
 import { Listbox } from '../listbox'
 import { PageHeader } from '../page-header'
 import { EmptyState } from '../empty-state'
+import { FilterChips } from '../filter-chips'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -159,6 +160,22 @@ export default async function DealersPage({ searchParams }: PageProps) {
     return `/dealers${qs ? `?${qs}` : ''}`
   }
 
+  // Each chip's href is the current URL minus that one filter, so removing
+  // "Region: Ipoh" keeps the search term and the view.
+  function withoutFilter(drop: 'q' | 'region') {
+    const params = new URLSearchParams()
+    if (q && drop !== 'q') params.set('q', q)
+    if (region !== 'all' && drop !== 'region') params.set('region', region)
+    if (view !== 'all') params.set('view', view)
+    const qs = params.toString()
+    return `/dealers${qs ? `?${qs}` : ''}`
+  }
+
+  const filterChips = [
+    ...(q ? [{ label: 'Search', value: q, removeHref: withoutFilter('q') }] : []),
+    ...(region !== 'all' ? [{ label: 'Region', value: region, removeHref: withoutFilter('region') }] : []),
+  ]
+
   const hasFilter = Boolean(q) || region !== 'all'
 
   const exportParams = new URLSearchParams()
@@ -191,6 +208,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       {importError && <div className="alert alert-bad">{importError}</div>}
 
       <div className="app-card">
+      <FilterChips chips={filterChips} clearAllHref={viewHref(view)} />
       <div className="mb-4 segmented" role="group" aria-label="Saved views">
         <Link href={viewHref('all')} className={`segmented-btn ${view === 'all' ? 'active' : ''}`}>
           All

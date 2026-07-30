@@ -71,12 +71,59 @@
   --color-brass-chart: #a8710a;
 }
 
+/* Craft tokens taken from the shipped CSS of Linear, Vercel (Geist) and
+   Stripe — the three products chosen as this app's quality bar.
+
+   The weight ceiling is the important one. Linear runs every title token from
+   17px to 72px at 590; Vercel caps at 600; Mercury, a bank, tops out at 480
+   and even remaps <b> down to it. This app was using 800 for page titles and
+   700 for card titles — heavier than any of them uses anywhere. Nothing here
+   should exceed --fw-semibold.
+
+   Tracking scales negatively with size, which all three do and this app did
+   not do at all: 0 tracking on a 26px heading is the single most obvious
+   difference when you put them side by side. */
 :root {
   color-scheme: light;
+
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  --tracking-body: -0.011em; /* Linear --text-regular-letter-spacing */
+  --tracking-sm: -0.013em; /* Linear --text-small */
+  --tracking-title: -0.02em; /* Vercel .text-heading-14/16 */
+  --tracking-title-lg: -0.04em; /* Vercel .text-heading-24 (-0.96px) */
+
+  /* Alpha, not an opaque hex: composites correctly over white *and* over the
+     #f5f5f8 / #ececf0 surfaces this app also uses. Vercel ships the same idea
+     as a ring: --ds-shadow-border-base: 0 0 0 1px #00000014. */
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.11);
+
+  /* Linear ships true half-pixel borders on 2x displays. */
+  --hairline: 1px;
+
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Linear --ease-out-quad */
+  --dur-fast: 120ms; /* Linear background transition */
+  --dur: 160ms; /* Linear button transition */
+}
+
+@media (min-resolution: 192dpi) {
+  :root {
+    --hairline: 0.5px;
+  }
 }
 
 html {
-  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--tracking-body);
+}
+
+/* Tabular figures belong on numeric columns, not on running prose — in body
+   text they open awkward gaps around "1". Vercel scopes it to a utility
+   (.geist-tabular-nums) rather than setting it on html, which is what this
+   used to do. .figure/.figure-money/.figure-points already opt in. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -85,31 +132,44 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: none;
+  /* Two-layer ring: a surface-coloured gap then the accent, so the ring reads
+     cleanly on top of a row hover or a coloured fill. Vercel ships exactly
+     this shape as --ds-focus-ring. */
+  box-shadow:
+    0 0 0 2px var(--color-ink-900),
+    0 0 0 4px var(--color-primary);
   border-radius: 4px;
 }
 
 @layer components {
   .app-card {
-    @apply rounded-2xl border border-ink-800 bg-ink-900 p-5;
+    @apply rounded-xl bg-ink-900 p-6;
+    /* Border delivered as the first layer of the shadow stack (Vercel's
+       --ds-shadow-border-base pattern) so it composites with the elevation
+       instead of fighting it, and negative spread on the wide layer keeps it
+       from washing out (Vercel --ds-shadow-medium). */
     box-shadow:
+      0 0 0 var(--hairline) var(--border-subtle),
       0 1px 2px rgba(20, 20, 43, 0.05),
-      0 1px 1px rgba(20, 20, 43, 0.03);
+      0 8px 8px -8px rgba(20, 20, 43, 0.04);
   }
 
   .app-tile {
-    @apply rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-all duration-200 ease-out;
+    @apply rounded-xl bg-ink-900 p-4;
+    transition: box-shadow var(--dur) var(--ease-out-quad), transform var(--dur) var(--ease-out-quad);
     box-shadow:
+      0 0 0 var(--hairline) var(--border-subtle),
       0 1px 2px rgba(20, 20, 43, 0.05),
-      0 1px 1px rgba(20, 20, 43, 0.03);
+      0 8px 8px -8px rgba(20, 20, 43, 0.04);
   }
   a.app-tile:hover,
   .app-tile:has(a:hover) {
-    @apply -translate-y-0.5 border-ink-700;
+    @apply -translate-y-0.5;
     box-shadow:
+      0 0 0 var(--hairline) var(--border-strong),
       0 2px 4px rgba(20, 20, 43, 0.06),
-      0 16px 30px -10px rgba(20, 20, 43, 0.16);
+      0 16px 30px -10px rgba(20, 20, 43, 0.14);
   }
 
   /* The small colored icon square that leads a stat tile (Dashboard's KPI
@@ -138,6 +198,23 @@ body {
   }
   .icon-badge-neutral {
     @apply text-paper-dim;
+  }
+
+  /* One page title, everywhere. 16 pages had hand-typed
+     `text-[26px] font-extrabold tracking-tight` — the same drift risk that
+     produced two different icon-tile sizes before .stat-tile-icon existed.
+     Values are Vercel's .text-heading-24 verbatim (24px/32px, 600, -0.96px);
+     the old 800 was heavier than the heaviest weight Linear, Vercel or
+     Mercury ship anywhere. */
+  .page-title {
+    @apply text-[24px] font-semibold text-paper;
+    line-height: 32px;
+    letter-spacing: var(--tracking-title-lg);
+  }
+
+  /* Sits under a page title: the one-line "how big is this" summary. */
+  .page-subtitle {
+    @apply mt-1 text-[13px] text-paper-dim;
   }
 
   .field-label {
@@ -202,7 +279,8 @@ body {
     @apply h-[14px] w-[14px];
   }
   .form-section-head span {
-    @apply whitespace-nowrap text-[11.5px] font-bold uppercase tracking-wider text-paper-dim;
+    @apply whitespace-nowrap text-[12px] font-medium uppercase text-paper-dim;
+    letter-spacing: 0.08em;
   }
   .form-section-head .rule {
     @apply h-px flex-1 bg-ink-800;
@@ -241,7 +319,7 @@ body {
   }
 
   .pill {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide;
+    @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium;
   }
   /* Same color classes as .pill (pill-jade/pill-slate/etc, combined as
      `tag pill-slate`), but rounded-md instead of rounded-full — a label
@@ -250,7 +328,7 @@ body {
      border-radius stretches into an oval/blob shape as the box gets taller;
      a modest fixed corner radius doesn't have that failure mode. */
   .tag {
-    @apply inline-flex max-w-[150px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold leading-tight;
+    @apply inline-flex max-w-[150px] items-center gap-1 rounded px-2 py-1 text-[11px] font-medium leading-tight;
   }
   .pill-jade {
     @apply bg-jade/12 text-jade-bright;
@@ -287,7 +365,7 @@ body {
   }
 
   .th {
-    @apply whitespace-nowrap border-b border-ink-800 px-3 py-2.5 text-left text-xs font-bold text-paper-dim;
+    @apply whitespace-nowrap border-b border-ink-800 px-3 py-2.5 text-left text-xs font-medium text-paper-dim;
   }
   .td {
     @apply px-3 py-2.5;

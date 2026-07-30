@@ -209,7 +209,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
+      <h1 className="page-title">Dashboard</h1>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconTrendUp className="h-4 w-4" />}
@@ -326,7 +326,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
+      <h1 className="page-title">Dashboard</h1>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<IconAlertCircle className="h-4 w-4" />}
@@ -453,7 +453,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dashboard</h1>
+      <h1 className="page-title">Dashboard</h1>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <KpiCard
           icon={<IconTruck className="h-4 w-4" />}
@@ -563,7 +563,7 @@ function KpiCard({
         <span className="stat-tile-icon">{icon}</span>
       </div>
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-[26px] font-extrabold tracking-tight text-paper tabular-nums">{value}</span>
+        <span className="page-title tabular-nums">{value}</span>
         {chg !== undefined && <ChgBadge pct={chg ?? null} />}
         {statusPill && <span className="chg chg-down w-fit">{statusPill}</span>}
       </div>

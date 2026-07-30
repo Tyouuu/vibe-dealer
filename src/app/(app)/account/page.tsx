@@ -70,7 +70,7 @@ export default async function AccountPage() {
     // capped at max-w-2xl, which left a third of a 1440px screen unclaimed
     // whichever way it was aligned.
     <div className="flex w-full flex-col gap-1">
-      <h1 className="mb-5 text-[26px] font-extrabold tracking-tight text-paper">Account Settings</h1>
+      <h1 className="mb-5 page-title">Account Settings</h1>
 
       <AnnotatedSection
         icon={<IconUsers />}

@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
     // the width reads as deliberate rather than empty.
     <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
+        <h1 className="flex items-center gap-2.5 page-title">
           Notifications
           <span className="pill pill-neutral">
             {notifications.length} notification{notifications.length === 1 ? '' : 's'}

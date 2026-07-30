@@ -99,7 +99,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="app-card border-t-[3px] border-t-primary">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Monthly Report</h1>
+        <h1 className="page-title">Monthly Report</h1>
         <p className="mt-1 text-[11.5px] font-bold uppercase tracking-wide text-paper-dim">
           Generated {formatDateLabel(todayInMalaysia())} · Period: {formatMonthLabel(month)}
         </p>
@@ -171,7 +171,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 </tr>
               ))}
               {typeBreakdown.length > 0 && (
-                <tr className="border-t-2 border-paper bg-ink-850/60 font-extrabold">
+                <tr className="border-t-2 border-paper bg-ink-850/60 font-semibold">
                   <td className="td text-paper">Total</td>
                   <td className="td text-right text-paper">{typeBreakdown.reduce((s, t) => s + t.count, 0)}</td>
                   <td className="td figure-points text-right">{typeBreakdown.reduce((s, t) => s + t.points, 0).toLocaleString()} pts</td>
@@ -229,7 +229,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 )
               })}
               {breakdown.length > 0 && (
-                <tr className="border-t-2 border-paper bg-ink-850/60 font-extrabold">
+                <tr className="border-t-2 border-paper bg-ink-850/60 font-semibold">
                   <td className="td" />
                   <td className="td text-paper">Total</td>
                   <td className="td figure-points text-right">{totalPoints.toLocaleString()} pts</td>

@@ -98,7 +98,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           )}
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Reconciliation · {month}</h1>
+              <h1 className="page-title">Reconciliation · {month}</h1>
               <p className="mt-1 text-[12.5px] text-paper-dim">
                 Compare what your system recorded against Vibe&apos;s official statement before confirming this
                 month&apos;s commission.
@@ -140,7 +140,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                   {diff == null ? 'Waiting on Vibe’s statement' : 'Difference vs Vibe’s statement'}
                 </div>
                 <div
-                  className={`figure-points text-2xl font-extrabold ${
+                  className={`figure-points text-2xl font-semibold ${
                     diff == null ? 'text-paper-dim' : diff === 0 ? 'text-jade-bright' : 'text-clay-bright'
                   }`}
                 >

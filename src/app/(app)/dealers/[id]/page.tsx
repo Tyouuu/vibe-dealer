@@ -296,7 +296,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           <div className="flex items-center gap-3">
             <Avatar name={typedDealer.company_name} size={44} />
             <div>
-              <h2 className="text-lg font-extrabold text-paper">{typedDealer.company_name}</h2>
+              <h2 className="text-lg font-semibold text-paper">{typedDealer.company_name}</h2>
               {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}
             </div>
           </div>
@@ -580,11 +580,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   <div className="flex flex-col gap-3">
                     <div>
                       <div className="text-xs font-semibold text-white/50">Lifetime Top-up</div>
-                      <div className="mt-0.5 text-xl font-extrabold text-white">{lifetimePoints.toLocaleString()} pts</div>
+                      <div className="mt-0.5 text-xl font-semibold text-white">{lifetimePoints.toLocaleString()} pts</div>
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white/50">Commission Earned</div>
-                      <div className="mt-0.5 text-xl font-extrabold text-primary">RM {lifetimeCommission.toLocaleString()}</div>
+                      <div className="mt-0.5 text-xl font-semibold text-primary">RM {lifetimeCommission.toLocaleString()}</div>
                     </div>
                   </div>
                 </div>

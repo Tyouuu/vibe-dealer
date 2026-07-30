@@ -70,7 +70,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
   return (
     <div className="app-card">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">SIM Delivery</h1>
+        <h1 className="page-title">SIM Delivery</h1>
         <div className="flex items-center gap-3">
           <div className="segmented">
             <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>

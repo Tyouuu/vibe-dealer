@@ -16,6 +16,7 @@ import { StatusDot } from '../status-dot'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Transactions — DealerHub',
@@ -177,7 +178,18 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const clearFiltersHref = `/records${clearFiltersParams.toString() ? `?${clearFiltersParams.toString()}` : ''}`
 
   return (
-    <div className="app-card">
+    <>
+      {/* Header on the page surface, card holds only the data — see PageHeader. */}
+      <PageHeader
+        title="Transactions"
+        subtitle={
+          totalCount > PAGE_SIZE
+            ? `Showing ${rangeStart}–${rangeEnd} of ${totalCount} · ${pendingCount ?? 0} pending review`
+            : `${totalCount} transaction${totalCount === 1 ? '' : 's'} · ${pendingCount ?? 0} pending review`
+        }
+        action={{ href: '/entry', label: '+ New Transaction' }}
+      />
+
       {submitted && (
         <div className="alert alert-ok">Recorded! Status = pending — counts toward reconciliation/reports once verified.</div>
       )}
@@ -186,12 +198,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       )}
       {error && <div className="alert alert-bad">{error}</div>}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Transactions</h1>
-        <span className="pill pill-neutral">
-          {totalCount > PAGE_SIZE ? `Showing ${rangeStart}–${rangeEnd} of ${totalCount} transactions` : `${totalCount} transactions`}
-        </span>
-      </div>
+      <div className="app-card">
 
       {dealerId && (
         <div className="mb-4 flex items-center gap-2">
@@ -417,6 +424,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

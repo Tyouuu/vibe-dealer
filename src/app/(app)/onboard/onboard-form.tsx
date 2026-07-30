@@ -50,7 +50,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
     // max-w-2xl left a third of a wide screen unclaimed; stretching the fields
     // instead would put a 500px box around a phone number.
     <div className="w-full">
-      <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">Onboard Dealer</h1>
+      <h1 className="mb-4 page-title">Onboard Dealer</h1>
 
       {initialError && <div className="alert alert-bad">{initialError}</div>}
       {duplicate && (

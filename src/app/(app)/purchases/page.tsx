@@ -84,7 +84,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
       <div className="app-card">
-        <h1 className="mb-1 text-[26px] font-extrabold tracking-tight text-paper">Credit Purchases</h1>
+        <h1 className="mb-1 page-title">Credit Purchases</h1>
         <p className="mb-4 text-[12.5px] text-paper-dim">
           What we pay Vibe Mobile for points/credit, before any of it is resold to dealers.
         </p>

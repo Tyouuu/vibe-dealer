@@ -134,7 +134,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-[11px] font-semibold text-paper-dim">Credit Balance</span>
-                  <span className="text-sm font-extrabold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
+                  <span className="text-sm font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
                   <div

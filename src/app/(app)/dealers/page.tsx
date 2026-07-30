@@ -9,6 +9,7 @@ import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
 import { Listbox } from '../listbox'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -166,7 +167,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
   const exportHref = `/api/dealers/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
 
   return (
-    <div className="app-card">
+    <>
+      {/* Header lives on the page surface, not inside the card — see
+          PageHeader for why. */}
+      <PageHeader
+        title="Dealers"
+        subtitle={`${displayCount} dealer${displayCount === 1 ? '' : 's'}${regions.length ? ` · ${regions.length} regions` : ''}`}
+        action={canManage ? { href: '/onboard', label: '+ Onboard Dealer' } : undefined}
+      />
+
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
       {deleted && <div className="alert alert-ok">Dealer deleted.</div>}
       {imported && (
@@ -179,11 +188,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
         </div>
       )}
       {importError && <div className="alert alert-bad">{importError}</div>}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-paper">Dealers</h1>
-        <span className="pill pill-neutral">{displayCount} dealers</span>
-      </div>
 
+      <div className="app-card">
       <div className="mb-4 segmented" role="group" aria-label="Saved views">
         <Link href={viewHref('all')} className={`segmented-btn ${view === 'all' ? 'active' : ''}`}>
           All
@@ -272,6 +278,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

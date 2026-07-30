@@ -159,7 +159,7 @@ export function DatePicker({
                 <path d="m15 18-6-6 6-6" />
               </svg>
             </button>
-            <span className="text-[13px] font-extrabold text-paper">
+            <span className="text-[13px] font-semibold text-paper">
               {MONTHS[viewM]} {viewY}
             </span>
             <button

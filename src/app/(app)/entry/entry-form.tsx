@@ -194,7 +194,7 @@ export function EntryForm({
   return (
     <div className="grid gap-5 md:grid-cols-[1.3fr_1fr]">
       <div className="app-card">
-        <h1 className="mb-4 text-[26px] font-extrabold tracking-tight text-paper">New Transaction</h1>
+        <h1 className="mb-4 page-title">New Transaction</h1>
 
         {error && <div className="alert alert-bad">{error}</div>}
 

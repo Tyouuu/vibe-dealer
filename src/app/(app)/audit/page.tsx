@@ -84,7 +84,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
   return (
     <div className="app-card">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-paper">
+        <h1 className="flex items-center gap-2.5 page-title">
           Audit Log
           <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-850 px-2.5 py-1 text-[11px] font-bold text-paper-dim">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5">

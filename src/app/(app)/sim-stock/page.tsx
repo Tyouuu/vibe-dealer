@@ -125,7 +125,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="app-card">
-        <h1 className="mb-1 text-[26px] font-extrabold tracking-tight text-paper">SIM Card Stock</h1>
+        <h1 className="mb-1 page-title">SIM Card Stock</h1>
         <div className="info-strip mb-4">
           <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
           <span>

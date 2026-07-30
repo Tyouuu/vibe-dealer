@@ -17,6 +17,7 @@ import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { EmptyState } from '../empty-state'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -287,120 +288,121 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </span>
       </div>
 
-      <ScrollFade label="Transactions">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="th">Date</th>
-              <th className="th">Dealer</th>
-              <th className="th">Type</th>
-              <th className="th text-right">In (RM)</th>
-              <th className="th text-right">Out (pts)</th>
-              <th className="th text-right">Rate</th>
-              <th className="th text-right">Your 2%</th>
-              <th className="th">Delivery</th>
-              <th className="th">Status</th>
-              <th className="th">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((tx) => {
-              const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
-              const dealerName = dealerRel?.company_name
-              const statusColor =
-                tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
-              const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
-              const pendingStale = tx.status === 'pending' && pendingDays >= PENDING_REVIEW_STALE_DAYS
-              const statusLabel =
-                tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : pendingStale ? `Pending·${pendingDays}d` : 'Pending'
-              const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
-              const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
-              return (
-                <tr key={tx.id} className="tr-row relative">
-                  <td className="td text-paper-dim">{tx.tx_date}</td>
-                  <td className="td">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={dealerName ?? '?'} size={24} />
-                      <a
-                        href={`/dealers/${tx.dealer_id}`}
-                        className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
-                      >
-                        {dealerName ?? '—'}
-                      </a>
-                    </div>
-                  </td>
-                  <td className="td text-paper-dim">
-                    {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
-                    {tx.type === 'topup' && tx.coupon_rm > 0 && (
-                      <div className="mt-0.5 text-[10.5px] text-paper-dim">
-                        {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
-                      </div>
-                    )}
-                  </td>
-                  <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
-                  <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                  <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                  <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
-                  <td className="td">
-                    {tx.delivery_status === 'sent' ? (
-                      <span className="pill pill-jade">Sent</span>
-                    ) : tx.delivery_status === 'pending' ? (
-                      <span className="pill pill-brass">{deliveryWarn ? `Pending·${deliveryDays}d` : 'Pending'}</span>
-                    ) : (
-                      <span className="text-paper-dim/50">—</span>
-                    )}
-                  </td>
-                  <td className="td">
-                    <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
-                    {tx.status === 'flagged' && tx.flag_reason && (
-                      <div className="mt-0.5 max-w-[140px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
-                        {tx.flag_reason}
-                      </div>
-                    )}
-                  </td>
-                  {/* relative z-10 — the dealer-name link's stretched ::after
-                      (after:absolute after:inset-0) covers the whole row for
-                      click-to-open-dealer, and without their own stacking
-                      context these buttons sit underneath it: a click aimed
-                      at Verify/Flag/Adjust would hit the overlay instead and
-                      navigate to the dealer page rather than firing the
-                      button, since plain static-positioned elements paint
-                      below an absolutely-positioned sibling by default. */}
-                  <td className="td relative z-10">
-                    {tx.status === 'pending' ? (
-                      <div className="flex items-center gap-1.5">
-                        <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
-                        <FlagButton transactionId={tx.id} />
-                      </div>
-                    ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
-                      <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
-                    ) : (
-                      <span className="text-paper-dim/50">—</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-            {!rows?.length && (
+      {pageRows.length ? (
+        <ScrollFade label="Transactions">
+          <table className="w-full min-w-[980px] border-collapse text-sm">
+            <thead>
               <tr>
-                <td colSpan={10} className="p-0">
-                  <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">
-                      <IconSearch className="h-5 w-5" />
-                    </span>
-                    <p className="text-sm text-paper-dim">{hasFilter ? 'No transactions match those filters.' : 'No transactions yet.'}</p>
-                    {hasFilter && (
-                      <Link href={clearFiltersHref} className="btn-ghost text-xs">
-                        Clear filters
-                      </Link>
-                    )}
-                  </div>
-                </td>
+                <th className="th">Date</th>
+                <th className="th">Dealer</th>
+                <th className="th">Type</th>
+                <th className="th text-right">In (RM)</th>
+                <th className="th text-right">Out (pts)</th>
+                <th className="th text-right">Rate</th>
+                <th className="th text-right">Your 2%</th>
+                <th className="th">Delivery</th>
+                <th className="th">Status</th>
+                <th className="th">Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </ScrollFade>
+            </thead>
+            <tbody>
+              {pageRows.map((tx) => {
+                const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
+                const dealerName = dealerRel?.company_name
+                const statusColor =
+                  tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
+                const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
+                const pendingStale = tx.status === 'pending' && pendingDays >= PENDING_REVIEW_STALE_DAYS
+                const statusLabel =
+                  tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : pendingStale ? `Pending·${pendingDays}d` : 'Pending'
+                const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
+                const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
+                return (
+                  <tr key={tx.id} className="tr-row relative">
+                    <td className="td text-paper-dim">{tx.tx_date}</td>
+                    <td className="td">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={dealerName ?? '?'} size={24} />
+                        <a
+                          href={`/dealers/${tx.dealer_id}`}
+                          className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                        >
+                          {dealerName ?? '—'}
+                        </a>
+                      </div>
+                    </td>
+                    <td className="td text-paper-dim">
+                      {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                      {tx.type === 'topup' && tx.coupon_rm > 0 && (
+                        <div className="mt-0.5 text-[10.5px] text-paper-dim">
+                          {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
+                        </div>
+                      )}
+                    </td>
+                    <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
+                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                    <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
+                    <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
+                    <td className="td">
+                      {tx.delivery_status === 'sent' ? (
+                        <span className="pill pill-jade">Sent</span>
+                      ) : tx.delivery_status === 'pending' ? (
+                        <span className="pill pill-brass">{deliveryWarn ? `Pending·${deliveryDays}d` : 'Pending'}</span>
+                      ) : (
+                        <span className="text-paper-dim/50">—</span>
+                      )}
+                    </td>
+                    <td className="td">
+                      <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
+                      {tx.status === 'flagged' && tx.flag_reason && (
+                        <div className="mt-0.5 max-w-[140px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
+                          {tx.flag_reason}
+                        </div>
+                      )}
+                    </td>
+                    {/* relative z-10 — the dealer-name link's stretched ::after
+                        (after:absolute after:inset-0) covers the whole row for
+                        click-to-open-dealer, and without their own stacking
+                        context these buttons sit underneath it: a click aimed
+                        at Verify/Flag/Adjust would hit the overlay instead and
+                        navigate to the dealer page rather than firing the
+                        button, since plain static-positioned elements paint
+                        below an absolutely-positioned sibling by default. */}
+                    <td className="td relative z-10">
+                      {tx.status === 'pending' ? (
+                        <div className="flex items-center gap-1.5">
+                          <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
+                          <FlagButton transactionId={tx.id} />
+                        </div>
+                      ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
+                        <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
+                      ) : (
+                        <span className="text-paper-dim/50">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </ScrollFade>
+      ) : hasFilter ? (
+        <EmptyState
+          variant="filtered"
+          icon={<IconSearch className="h-5 w-5" />}
+          title="No transactions match your filters"
+          description="Nothing matches these filters. Clear them to see the full ledger."
+          action={{ href: clearFiltersHref, label: 'Clear filters' }}
+        />
+      ) : (
+        <EmptyState
+          variant="empty"
+          icon={<IconSearch className="h-5 w-5" />}
+          title="No transactions yet"
+          description="Record a transaction to start the ledger. Entries here can be corrected by adjustment, never edited or deleted."
+          action={{ href: '/entry', label: 'New transaction' }}
+        />
+      )}
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
@@ -410,17 +412,17 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           <div className="flex items-center gap-2">
             {pageNum > 1 ? (
               <Link href={buildHref({ page: pageNum - 1 })} className="btn-ghost py-1.5 text-xs">
-                ← Prev
+                Previous
               </Link>
             ) : (
-              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
             )}
             {pageNum < totalPages ? (
               <Link href={buildHref({ page: pageNum + 1 })} className="btn-ghost py-1.5 text-xs">
-                Next →
+                Next
               </Link>
             ) : (
-              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
             )}
           </div>
         </div>

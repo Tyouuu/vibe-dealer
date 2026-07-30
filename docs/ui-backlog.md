@@ -1,0 +1,157 @@
+# UI/UX backlog
+
+Sourced from two research passes against Stripe, Linear and Vercel (values
+pulled from their shipped CSS and published design systems, not from opinion),
+plus the client's own reactions. Ordered so the cheapest visible wins come
+first.
+
+Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
+
+---
+
+## Client's own complaints — highest priority, not yet solved
+
+These are the pages the client has named directly. None are solved by the
+token/PageHeader work already shipped.
+
+### `[ ]` Reconciliation — "the page I dislike most, feels like a different platform"
+
+Diagnosis from reading the page against the rest of the app:
+
+- The "No statement yet" headline renders in the **mono** face at ~28px. Mono
+  is used nowhere else for prose in this app — it's reserved for figures. That
+  single choice is most of why the page reads as imported from somewhere else.
+- `Mark Reconciled ✓` is a **full-width grey button with a literal ✓ character**
+  in the label. Every other primary action in the app is a near-black
+  `.btn-primary` sized to its content, and no other button embeds a glyph.
+- The purple `Your 2% Due` strip is a one-off treatment — a full-bleed tinted
+  bar exists on no other page.
+- Three different container styles stack inside one card: a dashed-border
+  info box, a tinted strip, and a bordered verdict panel.
+- The right-hand "Enter Vibe Statement" card is short and floats against a
+  tall left column, so the two columns don't relate.
+
+Direction: rebuild around **one verdict, stated once**, using the app's
+existing components only. No mono prose, no bespoke strip, no ✓ in a label.
+
+### `[ ]` Credit Purchases — "something's odd, can't say what"
+
+- `CASH MARGIN VS 2%` shows `RM -19,512` with `Expected RM 769.98` underneath.
+  A large negative number with no explanation of why it's negative reads as an
+  error. It's negative because stock was bought up-front and hasn't been resold
+  yet — the tile never says so.
+- Four tiles where only two are decisions ("how much can I still sell", "am I
+  ahead or behind"). Total Bought and Total Cost Paid are reference figures,
+  not KPIs.
+- Same 4-equal-tiles problem as the dashboard.
+
+### `[ ]` Onboard Dealer — "right side too empty"
+
+The AnnotatedSection gives description-left / fields-right, but the fields
+are capped at `max-w-xl`, leaving a third of the row empty on the right. Either
+widen the field column, move to a single centred column for this page, or put
+something useful in the gap (duplicate-check result, a live preview of the
+dealer card).
+
+---
+
+## Batch 1 — cheap, visible, do first
+
+- `[x]` **Sticky table headers.** Needed a real fix, not just `position:
+  sticky` — see the note in `scroll-fade.tsx`. CSS won't let a box scroll on
+  one axis and stay visible on the other, so the `overflow-x-auto` wrapper was
+  turning itself into the sticky containing block and the header scrolled away
+  with the rows (measured: top 343px → −257px on a 600px scroll). The wrapper
+  now only takes `overflow-x-auto` when the table genuinely doesn't fit.
+- `[x]` **`—` in empty cells.** Already done throughout — 58 sites. The
+  research assumed otherwise; checked before changing anything.
+- `[x]` **Back link on dealer detail.** Already existed; only needed sentence
+  case (`← Back to dealers`).
+- `[x]` **Pagination copy** → `Previous` / `Next` across all six paginated
+  tables. Dropped the arrows-inside-labels.
+- `[x]` **Split empty states**, via a shared `EmptyState` with three variants:
+  `empty` (offer the action), `filtered` (offer Clear filters, never the
+  create action), `cleared` (no action — a CTA on finished work reads as a
+  chore). Verified in the browser that a no-match search offers Clear filters
+  and does NOT offer "Onboard dealer".
+- `[x]` **Empty state rendered outside the table.** Records was rendering it
+  in a `colSpan={10}` cell inside `<tbody>`.
+- `[x]` **`aria-live="polite"`** — built into `EmptyState`.
+- `[ ]` **Scroll restoration on browser Back.** NOT done, and it's more than a
+  quick win: the browser only restores the *document* scroller, but this app
+  scrolls `<main>` (`lg:overflow-y-auto` inside an `lg:overflow-hidden`
+  shell), so there is nothing for it to restore. Fixing it properly means
+  either moving the scroll to the document or saving/restoring
+  `main.scrollTop` across navigations. Same root cause as the sticky-header
+  problem: the app has a nested scroll container instead of a page scroll.
+
+## Batch 2 — worth it, more work
+
+- `[ ]` **Active-filter chips** with a per-chip `×` and `Clear all`. Right now
+  there's no way to see what's filtering the view or clear it in one action.
+- `[ ]` **Validate on blur, focus the first error on submit, keep submit
+  enabled.** Geist Input is explicit that validation should not fire per
+  keystroke and that a pristine form's submit shouldn't be disabled.
+- `[ ]` **Dirty-form guard** on Onboard Dealer, New Transaction and the dealer
+  edit modal — warn before navigating away, and block outside-click/Esc
+  dismissal on the modal while dirty.
+- `[ ]` **Oversell block as a persistent inline `Note`**, not a toast. Geist:
+  a problem the user must fix belongs next to the field, and must persist.
+- `[ ]` **Confirm-modal copy discipline.** Title = Title Case statement, never
+  a question. Primary button = Verb + Noun matching the title. Cancel is
+  always literally `Cancel`.
+- `[ ]` **Toast copy discipline.** Success = past participle, never the word
+  "successfully". Error = two sentences ending in the recovery step. One
+  terminal toast per flow, never a narration.
+- `[ ]` **Real Undo where a real undo exists** — SIM Delivery bulk mark-sent
+  and Verify/Flag are status flips and are genuinely reversible. 5–10s
+  snackbar, label always literally `Undo`.
+- `[ ]` **`Reverse transaction` on the ledger — never labelled Undo.** Posting
+  a contra entry is the accounting-standard answer (SAP/Oracle/QuickBooks all
+  work this way) and the app already has the mechanism; this is naming and UI.
+- `[ ]` **Optimistic for status flips, pessimistic for anything touching
+  money.** An optimistic ledger row that later fails is worse than a 400ms wait.
+- `[ ]` **Per-row `•••` overflow menu** on Transactions instead of three
+  always-visible buttons across 50 rows.
+
+## Batch 3 — bigger, genuinely valuable
+
+- `[ ]` **⌘K command palette.** 249 dealers + 11 pages + ~8 actions. Grouped,
+  recents shown before typing, imperative labels. Loudest single "this is a
+  real product" signal available.
+- `[ ]` **Global search in the topbar.** The desktop header is a full-width
+  sticky bar holding one widget — and renders completely empty for `cs`.
+- `[ ]` **`?` shortcuts overlay** once there are shortcuts worth listing.
+- `[ ]` **Dashboard restructure.** Lead with one number, not four equal tiles;
+  promote the actionable alerts (already computed in `buildNotifications`) to
+  the top; collapse the 44-series trend chart to a single line with an opt-in
+  breakdown.
+- `[ ]` **Saved views** replacing the three hardcoded Dealers tabs.
+- `[ ]` **Sentence case sweep.** Atlassian and Polaris both specify sentence
+  case for every heading, label, menu item and button. The app is Title Case
+  throughout.
+
+## Explicitly NOT doing
+
+Recorded so it doesn't get re-litigated. Each of these is real in Linear or
+Stripe and wrong for a three-person internal tool:
+
+`j`/`k` list navigation · `x` to select · `g`-then-key nav · Space-to-peek /
+split view · nested AND/OR filter builder · Stripe's typed query syntax
+(`amount:>149.99`) · AI natural-language filters · density toggle · Redo ·
+local-first sync engine · inline editing in the ledger (the append-only
+invariant is the product) · user-configurable shortcuts · customisable
+dashboard widgets · onboarding tours · changelog page.
+
+The calibration argument: **Vercel could ship Linear's entire keyboard system
+tomorrow and deliberately ships one shortcut (`⌘K`).** Three users at forty
+minutes a day are not triagers.
+
+## Settled — do not change back
+
+- IBM Plex Sans stays. PostHog and Amplitude ship it, and Stripe's dashboard
+  uses the plain OS system stack. The typeface was never the problem.
+- 14px body at ~49px rows stays. Linear and Mercury both run *larger* (15px).
+- Five status hues stay. Stripe ships exactly five.
+- Tinted (not pure-black) shadow stays — that one was already right.
+- Near-black primary button with purple as accent-only stays.

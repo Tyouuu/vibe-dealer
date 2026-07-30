@@ -282,7 +282,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   return (
     <div className="flex flex-col gap-5">
       <Link href="/dealers" className="text-xs font-semibold text-paper-dim hover:text-paper">
-        ← Back to Dealers
+        ← Back to dealers
       </Link>
 
       {error && <div className="alert alert-bad">{error}</div>}

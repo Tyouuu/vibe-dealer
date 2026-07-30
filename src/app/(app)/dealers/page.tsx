@@ -10,6 +10,7 @@ import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
 import { Listbox } from '../listbox'
 import { PageHeader } from '../page-header'
+import { EmptyState } from '../empty-state'
 
 export const metadata: Metadata = {
   title: 'Dealers — DealerHub',
@@ -243,40 +244,47 @@ export default async function DealersPage({ searchParams }: PageProps) {
               <div className="flex items-center gap-2">
                 {pageNum > 1 ? (
                   <Link href={pageHref(pageNum - 1)} className="btn-ghost py-1.5 text-xs">
-                    ← Prev
+                    Previous
                   </Link>
                 ) : (
-                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
                 )}
                 {pageNum < totalPages ? (
                   <Link href={pageHref(pageNum + 1)} className="btn-ghost py-1.5 text-xs">
-                    Next →
+                    Next
                   </Link>
                 ) : (
-                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
                 )}
               </div>
             </div>
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">
-            <IconSearch className="h-5 w-5" />
-          </span>
-          <p className="text-sm text-paper-dim">
-            {hasFilter
-              ? `No dealers match${q ? ` "${q}"` : ''}${region !== 'all' ? ` in ${region}` : ''}.`
-              : view === 'inactive'
-                ? 'No dealers need a follow-up right now.'
-                : 'No dealers yet.'}
-          </p>
-          {hasFilter && (
-            <Link href={viewHref(view)} className="btn-ghost text-xs">
-              Clear filters
-            </Link>
-          )}
-        </div>
+        hasFilter ? (
+          <EmptyState
+            variant="filtered"
+            icon={<IconSearch className="h-5 w-5" />}
+            title="No dealers match your filters"
+            description={`Nothing matches${q ? ` "${q}"` : ''}${region !== 'all' ? ` in ${region}` : ''}. Clear the filters to see all dealers.`}
+            action={{ href: viewHref(view), label: 'Clear filters' }}
+          />
+        ) : view === 'inactive' ? (
+          <EmptyState
+            variant="cleared"
+            icon={<IconSearch className="h-5 w-5" />}
+            title="Nobody needs a follow-up"
+            description="Every dealer has had a verified top-up in the last 30 days."
+          />
+        ) : (
+          <EmptyState
+            variant="empty"
+            icon={<IconSearch className="h-5 w-5" />}
+            title="No dealers yet"
+            description="Dealers you onboard appear here with their region, package and rate."
+            action={canManage ? { href: '/onboard', label: 'Onboard dealer' } : undefined}
+          />
+        )
       )}
       </div>
     </>

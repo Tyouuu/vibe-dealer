@@ -192,17 +192,17 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                   <div className="flex items-center gap-2">
                     {pageNum > 1 ? (
                       <Link href={pageHref(pageNum - 1)} className="btn-ghost py-1.5 text-xs">
-                        ← Prev
+                        Previous
                       </Link>
                     ) : (
-                      <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">← Prev</span>
+                      <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
                     )}
                     {pageNum < totalPages ? (
                       <Link href={pageHref(pageNum + 1)} className="btn-ghost py-1.5 text-xs">
-                        Next →
+                        Next
                       </Link>
                     ) : (
-                      <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next →</span>
+                      <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
                     )}
                   </div>
                 </div>

@@ -150,33 +150,18 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </p>
         )}
 
-        {/* The form is visible and permanent. It was briefly folded behind a
-            button on the reasoning that buying credit happens monthly — which
-            applied the "rare occasion" test to how often a purchase happens
-            rather than to what this page is for. The page is called Credit
-            Purchases; someone opening it is most likely here to log one. That
-            is the primary task, and hiding the primary task is the failure
-            NN/g's progressive-disclosure article warns about. Second time
-            that mistake was made here, after gating New Transaction behind
-            the dealer.
+        {/* Balance full width, then a two-column row: the history on the
+            left where a table needs the room, the form on the right where a
+            date and two amounts sit comfortably in a narrow column.
 
-            It sits above the history because that is the order of the work:
-            see what's left, record what was bought, then check the record.
-            Fields are capped rather than the page — a date and two amounts
-            stretched across 1136px is the field-width mismatch Baymard warns
-            about. */}
-        <div className="app-card">
-          <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
-          <p className="mt-0.5 text-[11.5px] leading-relaxed text-paper-dim">
-            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
-            is what&apos;s left to sell.
-          </p>
-          <div className="mt-4 max-w-xl">
-            {error && <div className="alert alert-bad">{error}</div>}
-            <PurchaseForm today={today} />
-          </div>
-        </div>
-
+            The previous pass stacked all three full width and capped the form
+            at max-w-xl, which left two thirds of that card empty — the dead
+            right-hand gutter this project has complained about before. That
+            was subtraction, not composition: the fix for a card that is only
+            a third full is to give the space something to do, not to delete a
+            column. Two columns where both are genuinely full is denser and
+            calmer than three stacked rows where one is mostly air. */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
         <div className="app-card">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-bold text-paper">
@@ -241,6 +226,35 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             <p className="text-sm text-paper-dim">No purchases recorded yet.</p>
           )}
         </div>
+
+        {/* The form is visible and permanent. It was briefly folded behind a
+            button on the reasoning that buying credit happens monthly — which
+            applied the "rare occasion" test to how often a purchase happens
+            rather than to what this page is for. The page is called Credit
+            Purchases; someone opening it is most likely here to log one. That
+            is the primary task, and hiding the primary task is the failure
+            NN/g's progressive-disclosure article warns about. Second time
+            that mistake was made here, after gating New Transaction behind
+            the dealer.
+
+            It sits above the history because that is the order of the work:
+            see what's left, record what was bought, then check the record.
+            Fields are capped rather than the page — a date and two amounts
+            stretched across 1136px is the field-width mismatch Baymard warns
+            about. */}
+        <div className="app-card">
+          <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
+          <p className="mt-0.5 text-[11.5px] leading-relaxed text-paper-dim">
+            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
+            is what&apos;s left to sell.
+          </p>
+          <div className="mt-4">
+            {error && <div className="alert alert-bad">{error}</div>}
+            <PurchaseForm today={today} />
+          </div>
+        </div>
+        </div>
+
       </div>
     </>
   )

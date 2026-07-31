@@ -275,10 +275,12 @@ body {
   .form-section-head .tile {
     @apply hidden;
   }
-  /* Same icon tile, reusable outside .form-section-head — AnnotatedSection
-     needs it in its own heading. */
+  /* Hidden, for the same reason the form section tiles are: a purple rounded
+     icon block beside "Profile", "Notifications" and "Sessions" decorates a
+     heading that already names itself. Kept as a no-op so AnnotatedSection's
+     callers don't need editing. */
   .section-icon {
-    @apply grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary;
+    @apply hidden;
   }
   .section-icon svg {
     @apply h-[14px] w-[14px];

@@ -19,7 +19,7 @@ export function LogoutButton() {
       type="button"
       className="rounded-lg border border-ink-800 px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper"
     >
-      Log Out
+      Log out
     </button>
   )
 }

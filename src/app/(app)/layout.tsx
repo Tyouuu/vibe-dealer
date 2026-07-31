@@ -159,7 +159,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             )}
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8 lg:overflow-y-auto">
+          {/* The vertical padding lives on the inner wrapper, not here, and
+              that placement is load-bearing. <main> is the scroll container
+              on lg (lg:overflow-y-auto inside the lg:overflow-hidden shell),
+              and a sticky offset resolves against the scrollport's *content*
+              box — inside its padding. With py-8 on <main>, every `sticky
+              top-0` table header pinned 32px below the visible top of the
+              scroller, leaving a 32px strip that rows scrolled through above
+              the header. It read as the header drifting while scrolling.
+              Horizontal padding stays here so the scrollbar sits at the far
+              right edge rather than inset from it. */}
+          <main className="flex-1 px-4 sm:px-7 lg:overflow-y-auto">
             {/* No max-width here — the shell above already caps out at 1440px
                 total (md:max-w-[1440px]), so this only needs w-full to use
                 whatever room that leaves past the rail. A redundant narrower
@@ -168,7 +178,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Pages that genuinely want a narrower reading column (Account
                 Settings, Notifications) already set their own max-width on
                 their own root element, so this doesn't affect those. */}
-            <div className="mx-auto w-full">{children}</div>
+            <div className="mx-auto w-full py-6 sm:py-8">{children}</div>
           </main>
         </div>
       </div>

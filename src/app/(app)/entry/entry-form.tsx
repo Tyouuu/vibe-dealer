@@ -209,16 +209,6 @@ export function EntryForm({
 
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
-          {!dealerId && (
-            <div className="mb-1">
-              <h2 className="text-[15px] font-semibold text-paper">Who is this for?</h2>
-              <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-paper-dim">
-                The dealer&apos;s rate is what turns an amount into points, so nothing else can be worked out until
-                you pick one.
-              </p>
-            </div>
-          )}
-
           {recentDealers.length > 0 && !dealerId && (
             <div className="-mb-1 flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-semibold text-paper-dim">Recent:</span>
@@ -278,8 +268,6 @@ export function EntryForm({
           </div>
           )}
 
-          {dealerId && (
-          <>
           <div className="form-grid">
             <div>
               <label className="field-label">Type</label>
@@ -522,8 +510,6 @@ export function EntryForm({
               {uploading ? 'Uploading receipt…' : 'Submit for verification'}
             </button>
           </div>
-          </>
-          )}
         </form>
       </div>
 

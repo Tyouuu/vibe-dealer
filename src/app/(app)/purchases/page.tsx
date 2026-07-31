@@ -150,30 +150,38 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </p>
         )}
 
-        {/* Logging a purchase happens when stock is bought from Vibe — once
-            a month at this volume, and the table below holds a single row.
-            Xero's Bills, QuickBooks' Expenses and Stripe's Payments all put
-            creation behind a button rather than docking the form permanently
-            beside the list; a form used monthly does not earn a 465x559
-            column that is empty the rest of the time. (Observed convention in
-            those products rather than a fetched citation — weaker, and
-            flagged as such.) */}
+        {/* The form is visible and permanent. It was briefly folded behind a
+            button on the reasoning that buying credit happens monthly — which
+            applied the "rare occasion" test to how often a purchase happens
+            rather than to what this page is for. The page is called Credit
+            Purchases; someone opening it is most likely here to log one. That
+            is the primary task, and hiding the primary task is the failure
+            NN/g's progressive-disclosure article warns about. Second time
+            that mistake was made here, after gating New Transaction behind
+            the dealer.
+
+            It sits above the history because that is the order of the work:
+            see what's left, record what was bought, then check the record.
+            Fields are capped rather than the page — a date and two amounts
+            stretched across 1136px is the field-width mismatch Baymard warns
+            about. */}
+        <div className="app-card">
+          <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
+          <p className="mt-0.5 text-[11.5px] leading-relaxed text-paper-dim">
+            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
+            is what&apos;s left to sell.
+          </p>
+          <div className="mt-4 max-w-xl">
+            {error && <div className="alert alert-bad">{error}</div>}
+            <PurchaseForm today={today} />
+          </div>
+        </div>
+
         <div className="app-card">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-bold text-paper">
               Purchase history <span className="ml-1 font-medium text-paper-dim">{totalCount}</span>
             </h2>
-            <details className="group">
-              <summary className="btn-ghost cursor-pointer list-none py-1.5 text-xs">Log a purchase</summary>
-              <div className="mt-4 max-w-xl border-t border-ink-800 pt-4">
-                {error && <div className="alert alert-bad">{error}</div>}
-                <PurchaseForm today={today} />
-                <p className="mt-3 text-[11.5px] leading-relaxed text-paper-dim">
-                  Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance
-                  above is what&apos;s left to sell.
-                </p>
-              </div>
-            </details>
           </div>
           {rows.length ? (
             <>

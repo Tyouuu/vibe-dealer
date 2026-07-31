@@ -14,6 +14,7 @@ import { Avatar } from '../../avatar'
 import { EditDealerButton } from './edit-dealer-button'
 import { ScrollFade } from '../../scroll-fade'
 import { formatMYR } from '@/lib/money'
+import { HeroCard } from '../../hero-card'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -279,6 +280,14 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
   const rateHistoryDisplayName = (changedBy: string | null) => (changedBy ? (rateHistoryNameById.get(changedBy) ?? '—') : '—')
 
+  // Lifetime figures used to be computed 300 lines further down, inside the
+  // last card on the page. "What is this dealer worth to us" is the question
+  // this page exists to answer, so it's hoisted to the top; the footer card
+  // now reads these same values instead of recomputing them.
+  const verifiedTx = txRows.filter((t) => t.status === 'verified')
+  const lifetimePoints = verifiedTx.reduce((sum, t) => sum + Number(t.points), 0)
+  const lifetimeCommission = verifiedTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
+
   return (
     <div className="flex flex-col gap-5">
       <Link href="/dealers" className="text-xs font-semibold text-paper-dim hover:text-paper">
@@ -290,6 +299,39 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
       {activity?.isInactive && (
         <div className="alert alert-warn">{activity.daysSinceLastActivity} days since the last verified top-up.</div>
+      )}
+
+      {isFinance && (
+        <HeroCard
+          label="Lifetime top-up"
+          value={`${lifetimePoints.toLocaleString()} pts`}
+          chgSuffix={
+            activity?.daysSinceLastActivity == null
+              ? 'no verified top-up on record yet'
+              : `last verified ${activity.daysSinceLastActivity} day${activity.daysSinceLastActivity === 1 ? '' : 's'} ago`
+          }
+          href={`/records?dealer=${id}&status=verified`}
+          stats={[
+            {
+              label: 'Your 2% from them',
+              value: formatMYR(lifetimeCommission),
+              href: `/records?dealer=${id}&status=verified`,
+              sub: 'verified transactions only',
+            },
+            {
+              label: 'Verified transactions',
+              value: String(verifiedTx.length),
+              href: `/records?dealer=${id}&status=verified`,
+              sub: `${txRows.length} recorded in total`,
+            },
+            {
+              label: 'Rank by top-up',
+              value: ranking ? `#${ranking.rank}` : '—',
+              href: '/dealers',
+              sub: ranking ? 'across all dealers' : 'nothing recorded yet',
+            },
+          ]}
+        />
       )}
 
       <div className="app-card">
@@ -572,9 +614,6 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
           {isFinance ? (
             (() => {
-              const verified = txRows.filter((t) => t.status === 'verified')
-              const lifetimePoints = verified.reduce((s, t) => s + Number(t.points), 0)
-              const lifetimeCommission = verified.reduce((s, t) => s + Number(t.commission_rm), 0)
               return (
                 <div className="rounded-2xl bg-paper p-5 shadow-sm">
                   <h3 className="mb-3.5 text-sm font-bold text-white">Lifetime</h3>

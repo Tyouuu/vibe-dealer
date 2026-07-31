@@ -31,7 +31,7 @@ export function NeedsAttention({ items }: { items: BuiltNotification[] }) {
     <div className="app-card flex flex-col">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-bold text-paper">Needs attention</h3>
-        {items.length > 0 && <span className="pill pill-brass">{items.length}</span>}
+        {items.length > 0 && <span className="pill pill-neutral">{items.length}</span>}
       </div>
 
       {shown.length === 0 ? (

@@ -24,9 +24,13 @@ export type DealerRow = {
 
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank == null) return <span className="text-paper-dim/50">—</span>
+  // No status dot. #1 used to render as `pill pill-brass`, which now draws the
+  // amber dot that means "pending" everywhere else — a rank is a position, not
+  // a state. The top three are distinguished by weight and a chip; the rest
+  // are plain figures.
   if (rank <= 3) {
     return (
-      <span className={`pill ${rank === 1 ? 'pill-brass' : 'pill-neutral'}`} title={`#${rank} by cumulative top-up`}>
+      <span className={`pill pill-neutral ${rank === 1 ? 'font-semibold text-paper' : ''}`} title={`#${rank} by cumulative top-up`}>
         #{rank}
       </span>
     )

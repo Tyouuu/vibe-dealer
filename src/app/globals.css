@@ -375,7 +375,12 @@ body {
   .pill-info::before {
     @apply bg-info;
   }
-  /* No dot: neutral is for a category or a count, which is not a state. */
+  /* No dot: neutral is for a category or a count, which is not a state.
+     Use this for SIM type, package code, rank, and any "N items" count.
+     The dotted variants are reserved for things that can change state:
+     verified / pending / flagged / sent. Handing a category a status hue is
+     how eSIM ended up rendering in the green that means "verified" and
+     Package B in the same, so a category read as a verdict. */
   .pill-neutral {
     @apply text-paper-dim;
   }

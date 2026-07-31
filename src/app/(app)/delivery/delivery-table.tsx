@@ -117,9 +117,9 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                 <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
                 <td className="td">
                   {row.sim_type === 'esim' ? (
-                    <span className="pill pill-jade">eSIM</span>
+                    <span className="pill pill-neutral">eSIM</span>
                   ) : (
-                    <span className="pill pill-slate">Physical SIM</span>
+                    <span className="pill pill-neutral">Physical SIM</span>
                   )}
                 </td>
                 <td className="td">

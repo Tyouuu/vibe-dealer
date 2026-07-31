@@ -95,7 +95,7 @@ function StatusPill({ status }: { status: 'pending' | 'verified' | 'flagged' }) 
 }
 
 function SimPill({ simType }: { simType: 'physical' | 'esim' | null }) {
-  if (simType === 'esim') return <span className="pill pill-slate">eSIM</span>
+  if (simType === 'esim') return <span className="pill pill-neutral">eSIM</span>
   return <span className="text-paper-dim">Physical SIM</span>
 }
 

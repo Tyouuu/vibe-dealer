@@ -84,9 +84,16 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <>
+      {/* Header on the page surface, not nested inside the left card. A page
+          title inside a box reads as a section heading — the same thing SIM
+          Card Stock was doing. */}
+      <PageHeader
+        title="Credit Purchases"
+        subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers."
+      />
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="app-card">
-        <PageHeader title="Credit Purchases" subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers" />
 
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
@@ -208,7 +215,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Log a Purchase</h3>
+        <h3 className="mb-3.5 text-sm font-bold text-paper">Log a purchase</h3>
         {error && <div className="alert alert-bad">{error}</div>}
         <PurchaseForm today={today} />
         <p className="note-strip">
@@ -217,5 +224,6 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         </p>
       </div>
     </div>
+    </>
   )
 }

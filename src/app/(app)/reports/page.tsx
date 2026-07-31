@@ -220,7 +220,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
                     <td className="td figure-money relative text-right">
-                      <span className="absolute -left-1.5 bottom-[3px] top-[3px] rounded-md bg-primary-soft" style={{ width: `${pct}%` }} />
+                      <span className="absolute bottom-0 left-0 h-[3px] rounded-full bg-primary/40" style={{ width: `${pct}%` }} />
                       <span className="relative">{formatMYR(d.money)}</span>
                     </td>
                     <td className="td figure-money text-right">{formatMYR(d.commission)}</td>

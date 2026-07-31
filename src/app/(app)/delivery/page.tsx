@@ -4,9 +4,10 @@ import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, DELIVERY_STALLED_DAYS_THRESHOLD } from '@/lib/dealer-activity'
-import { IconInfo, IconTruck } from '../icons'
+import { IconTruck } from '../icons'
 import { DeliveryTable } from './delivery-table'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 
 export const metadata: Metadata = {
   title: 'SIM Delivery — DealerHub',
@@ -73,31 +74,61 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
 
   return (
     <>
+      {/* The page's real answer used to sit in grey subtitle text: the oldest
+          item had been waiting 56 days. This is a work queue, so what it owes
+          the reader is "how much is waiting and how bad is the worst of it" —
+          not a count in small print above a table.
+
+          The unit explanation moved into the subtitle, where it earns its
+          place instead of sitting as a permanent banner between the controls
+          and the rows it describes. */}
       <PageHeader
         title="SIM Delivery"
-        subtitle={`${pendingRows.length} pending${oldestDays ? ` · oldest is ${oldestDays}d old` : ''}`}
+        subtitle="Physical SIMs ship to the office and then on to the dealer; eSIMs activate instantly and never appear here."
+      />
+
+      <HeroCard
+        label={showAll ? 'Deliveries pending' : 'Waiting to be sent'}
+        value={String(pendingRows.length)}
+        chgSuffix={
+          pendingRows.length === 0
+            ? 'nothing waiting on you'
+            : oldestDays >= DELIVERY_STALLED_DAYS_THRESHOLD
+              ? `oldest has waited ${oldestDays} days — well past the ${DELIVERY_STALLED_DAYS_THRESHOLD}-day mark`
+              : `oldest has waited ${oldestDays} day${oldestDays === 1 ? '' : 's'}`
+        }
+        href="/delivery"
+        stats={[
+          {
+            label: 'Overdue',
+            value: String(pendingRows.filter((r) => r.days >= DELIVERY_STALLED_DAYS_THRESHOLD).length),
+            href: '/delivery',
+            tone: pendingRows.some((r) => r.days >= DELIVERY_STALLED_DAYS_THRESHOLD) ? 'warn' : 'normal',
+            sub: `${DELIVERY_STALLED_DAYS_THRESHOLD}+ days waiting`,
+          },
+          {
+            label: 'Queued today',
+            value: String(pendingRows.filter((r) => r.days < DELIVERY_WARN_DAYS_THRESHOLD).length),
+            href: '/delivery',
+            sub: 'not late yet',
+          },
+          { label: 'Showing', value: `${typed.length} item${typed.length === 1 ? '' : 's'}`, href: '/delivery?all=1', sub: showAll ? 'all deliveries' : 'pending only' },
+        ]}
       />
 
       <div className="app-card">
+      {/* Polaris puts filtering at the top of the index itself rather than in
+          the page header — these are controls over the list below, not
+          actions on the page. */}
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-        <div className="flex items-center gap-3">
-          <div className="segmented">
-            <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
-              Show pending only
-            </Link>
-            <Link href="/delivery?all=1" className={`segmented-btn ${showAll ? 'active' : ''}`}>
-              Show all
-            </Link>
-          </div>
-          <span className="pill pill-neutral">{typed.length} items</span>
+        <div className="segmented">
+          <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
+            Show pending only
+          </Link>
+          <Link href="/delivery?all=1" className={`segmented-btn ${showAll ? 'active' : ''}`}>
+            Show all
+          </Link>
         </div>
-      </div>
-      <div className="info-strip">
-        <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
-        <span>
-          Physical SIMs ship to the office then to the dealer (shipping cost applies); eSIMs activate instantly, no
-          delivery needed.
-        </span>
       </div>
 
       {deliveryRows.length ? (

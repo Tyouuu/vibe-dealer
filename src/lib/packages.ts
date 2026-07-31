@@ -11,12 +11,15 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 
 export const COMMISSION_RATE = 0.02
 
-// Shared with the Dealers list and the Audit Log's package-change rows so a
-// given package code always reads as the same color everywhere it appears.
+// A package code is a category, not a state. It used to be rendered with the
+// status palette — B in jade, C in brass — which are the colours that mean
+// "verified" and "pending" everywhere else in the app, so a dealer on Package
+// B read at a glance as a dealer in a good state. All three are neutral now;
+// the code itself is the identifier, and A/B/C don't rank against each other.
 export const PACKAGE_PILL_CLASS: Record<PackageCode, string> = {
   A: 'pill-neutral',
-  B: 'pill-jade',
-  C: 'pill-brass',
+  B: 'pill-neutral',
+  C: 'pill-neutral',
 }
 
 // What master effectively pays Vibe per point: the same 8% total margin

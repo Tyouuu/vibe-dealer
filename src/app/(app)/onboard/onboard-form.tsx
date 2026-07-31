@@ -51,7 +51,10 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
     // max-w-2xl left a third of a wide screen unclaimed; stretching the fields
     // instead would put a 500px box around a phone number.
     <div className="w-full">
-      <PageHeader title="Onboard Dealer" subtitle="Add a new dealer to the network" />
+      <PageHeader
+        title="Onboard dealer"
+        subtitle="Company name is the only thing required. Everything else can be filled in later from the dealer's own page."
+      />
 
       {initialError && <div className="alert alert-bad">{initialError}</div>}
       {duplicate && (

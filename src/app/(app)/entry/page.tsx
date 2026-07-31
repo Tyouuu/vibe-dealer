@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { EntryForm, type LastTxInfo } from './entry-form'
+import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
   title: 'New Transaction — DealerHub',
@@ -48,6 +49,16 @@ export default async function EntryPage({ searchParams }: PageProps) {
 
   return (
     <>
+      {/* The title lived inside the form's card as a bare <h1>, so this page
+          had no header on the page surface the way every other one does.
+          The subtitle carries the two rules that actually govern this form:
+          nothing counts until it's verified, and the credit balance is a hard
+          stop rather than a warning — the insert is refused outright if it
+          would oversell. */}
+      <PageHeader
+        title="New Transaction"
+        subtitle={`Saves as pending until someone verifies it. ${balance.available.toLocaleString()} pts of credit available — a sale that would go past it is refused, not warned about.`}
+      />
       {error && <div className="alert alert-bad">{error}</div>}
       <EntryForm
         dealers={dealers ?? []}

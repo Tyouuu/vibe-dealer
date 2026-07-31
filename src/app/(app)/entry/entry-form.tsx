@@ -6,7 +6,8 @@ import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
 import { createTransaction } from './actions'
-import { IconDocument, IconCoin, IconPaperclip, IconUpload } from '../icons'
+import { IconCoin, IconUpload, IconChevronDown } from '../icons'
+import { Avatar } from '../avatar'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
 import { DatePicker } from '../date-picker'
@@ -194,21 +195,29 @@ export function EntryForm({
     }
   }
 
+  // One column. This was a 1.3fr form beside a 1fr card that measured
+  // 485x942px and, until a dealer was picked, said "Select a dealer first." —
+  // a third of the page reserved for something that cannot exist yet. NN/g's
+  // sixth guideline for complex applications is to "show options to the user
+  // only when they are relevant"; without a dealer there is no rate, so the
+  // amount fields compute nothing and the totals have nothing to total.
   return (
-    <div className="grid gap-5 md:grid-cols-[1.3fr_1fr]">
+    <div className="flex w-full flex-col gap-5">
       <div className="app-card">
 
         {error && <div className="alert alert-bad">{error}</div>}
 
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
-          <div className="form-section-head">
-            <span className="tile">
-              <IconDocument />
-            </span>
-            <span>Transaction</span>
-            <span className="rule" />
-          </div>
+          {!dealerId && (
+            <div className="mb-1">
+              <h2 className="text-[15px] font-semibold text-paper">Who is this for?</h2>
+              <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-paper-dim">
+                The dealer&apos;s rate is what turns an amount into points, so nothing else can be worked out until
+                you pick one.
+              </p>
+            </div>
+          )}
 
           {recentDealers.length > 0 && !dealerId && (
             <div className="-mb-1 flex flex-wrap items-center gap-1.5">
@@ -226,6 +235,31 @@ export function EntryForm({
             </div>
           )}
 
+          {dealerId && dealer ? (
+            /* Collapsed to a one-line summary with a Change affordance once
+               chosen — the same GOV.UK check-answers move Reconciliation uses
+               for the statement. Leaving the full picker open implies the
+               step is still outstanding. */
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-800 bg-ink-850/50 px-3.5 py-3">
+              <span className="flex min-w-0 items-center gap-2.5">
+                <Avatar name={dealer.company_name} size={28} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] font-semibold text-paper">{dealer.company_name}</span>
+                  <span className="block text-[11.5px] text-paper-dim">
+                    {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : 'No package or rate yet'}
+                  </span>
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => selectDealer('')}
+                className="shrink-0 text-[12px] font-semibold text-primary-deep hover:underline"
+              >
+                Change
+              </button>
+              <input type="hidden" name="dealer_id" value={dealerId} />
+            </div>
+          ) : (
           <div>
             <label className="field-label">Dealer</label>
             <Combobox
@@ -242,7 +276,10 @@ export function EntryForm({
               }))}
             />
           </div>
+          )}
 
+          {dealerId && (
+          <>
           <div className="form-grid">
             <div>
               <label className="field-label">Type</label>
@@ -356,14 +393,80 @@ export function EntryForm({
             </div>
           )}
 
-          <div className="form-section-head">
-            <span className="tile">
-              <IconPaperclip />
-            </span>
-            <span>Attachments and notes</span>
-            <span className="rule" />
-          </div>
-          <div className="form-grid">
+
+
+          {/* The answer, at the size of an answer. It was a row in a
+              six-line table in the other column, so the figure the page
+              exists to produce was the same size as the amount just typed.
+              Wise puts the converted figure immediately under the amount and
+              at display size for exactly this reason.
+
+              Two of those six rows also repeated what was already on screen:
+              "Amount Collected" is the number in the field above it, and
+              "Rate" is in the dealer row at the top. They stay in the
+              breakdown, not in front of the reader twice. */}
+          {preview ? (
+            <div className="mt-3 rounded-xl border border-ink-800 bg-ink-850/50 p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="text-[11.5px] font-medium text-paper-dim">
+                  {type === 'package' ? 'Package value' : 'Top-up value'}
+                </div>
+                <span className="live-badge">
+                  <span className="live-dot" />
+                  Live
+                </span>
+              </div>
+              <div
+                className={`figure-points mt-1 text-[34px] font-semibold leading-none ${
+                  insufficientBalance ? 'text-clay-bright' : 'text-paper'
+                }`}
+              >
+                {preview.points.toLocaleString()} pts
+              </div>
+              <p className="mt-2 text-[13px] text-paper-dim">
+                {insufficientBalance
+                  ? `Only ${availableBalance.toLocaleString()} pts of credit left — this is ${(preview.points - availableBalance).toLocaleString()} pts over. Log a credit purchase first.`
+                  : `${formatMYR(preview.money)} in at ${preview.rate}% — you earn ${formatMYR(preview.commission)}. ${(availableBalance - preview.points).toLocaleString()} pts of credit left after this.`}
+              </p>
+
+              <details className="group mt-3 border-t border-ink-800 pt-3">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold text-paper-dim hover:text-paper">
+                  <IconChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+                  Full breakdown
+                </summary>
+                <div className="mt-2 flex flex-col text-sm">
+                  <Row label="Amount collected" value={`${formatMYR(preview.money)}`} unit="money" />
+                  <Row label="Rate" value={`${preview.rate}%`} />
+                  {type === 'topup' && couponAmount > 0 && (
+                    <Row
+                      label="Coupons"
+                      value={`${couponAmount / COUPON_DENOMINATION_RM} × RM${COUPON_DENOMINATION_RM}`}
+                      warn={couponExceedsMoney}
+                    />
+                  )}
+                  <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
+                  <Row label="Credit balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
+                </div>
+              </details>
+            </div>
+          ) : dealer && !dealer.rate ? (
+            <p className="mt-3 text-[13px] text-brass-bright">
+              This dealer has no package or rate yet — buy them a package first.
+            </p>
+          ) : null}
+          {/* Folded. NN/g: disclose up front what people frequently need so the
+              secondary display is reached only on rare occasions. Both fields
+              are labelled optional by the product itself, and across the
+              transactions on record a receipt appears on none and a note on
+              roughly one in ten. One level only, never nested, and the label
+              names what is inside rather than saying "More" so the
+              progression carries information scent. */}
+          <details className="group mt-2">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-paper-dim hover:text-paper">
+              <IconChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+              Add a receipt or note
+            </summary>
+          <div className="form-grid mt-3">
             <div>
               <label className="field-label">Receipt (optional)</label>
               <label className="upload-box">
@@ -394,7 +497,7 @@ export function EntryForm({
               {(id) => <textarea id={id} name="note" rows={2} className="field-input resize-none" />}
             </Field>
           </div>
-
+          </details>
           {/* The submit lived in the right-hand card, above the live totals.
               Someone filling this form works top-to-bottom down the left
               column, so on reaching the last field the action was off in
@@ -419,38 +522,9 @@ export function EntryForm({
               {uploading ? 'Uploading receipt…' : 'Submit for verification'}
             </button>
           </div>
+          </>
+          )}
         </form>
-      </div>
-
-      <div className="app-card">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-paper">Auto-calculated for you</h3>
-          <span className="live-badge">
-            <span className="live-dot" />
-            Live
-          </span>
-        </div>
-        {preview ? (
-          <div className="flex flex-col text-sm">
-            <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
-            <Row label="Rate" value={`${preview.rate}%`} />
-            <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
-            {type === 'topup' && couponAmount > 0 && (
-              <Row
-                label="Coupons"
-                value={`${couponAmount / COUPON_DENOMINATION_RM} × RM${COUPON_DENOMINATION_RM}`}
-                warn={couponExceedsMoney}
-              />
-            )}
-            <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
-            <Row label="Credit Balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
-          </div>
-        ) : (
-          <p className="text-sm text-paper-dim">
-            {dealer ? 'This dealer has no package/rate yet — buy them a package first.' : 'Select a dealer first.'}
-          </p>
-        )}
-        <p className="note-strip">Buying a package automatically updates the dealer&apos;s rate for future transactions.</p>
       </div>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>

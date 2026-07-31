@@ -216,6 +216,37 @@ Cap removed; measured gutter went from ~200px to 0.
   case for every heading, label, menu item and button. The app is Title Case
   throughout.
 
+### `[~]` Growth-by-Region map — removed 2026-07-31, rebuild only with full data
+
+Removed from the dashboard. The concept was the client's own and it's a good
+one ("click Penang and zoom into that area to see which dealers sell best") —
+what failed was coverage, not design.
+
+Measured before removing: the app has **44 distinct regions and the map could
+plot 6**. Of 249 dealers, **109 (44%) appeared on it and 140 (56%) did not** —
+including Hutan Melintang (12), Cameron Highlands (11), Parit Buntar (10),
+Kuala Kangsar (8), Seri Manjung (8). A map reads as "here is where my dealers
+are", so one that omits more than half the business misinforms rather than
+informs. It was also the tallest element on the page, which stretched its grid
+row and left a ~400px void inside the chart card beside it (the client spotted
+that void). The region list next to it already answers the same question over
+*all* regions, with rank and share.
+
+**What a rebuild needs — the blocker is data, not design.** Reference designs
+are not the hard part: proportional-symbol maps (Datawrapper's symbol map,
+Observable Plot's `dot` with an `r` scale) are the standard form for "one
+value per place", and the conventions are well documented. What's missing is a
+coordinate for each of the 44 town names the `dealers.region` column actually
+contains — `Ipoh`, `Kamunting`, `Gerik`, `Hutan Melintang` and so on are towns,
+while the open datasets (DOSM, geoBoundaries) are published at district level,
+so the names have to be geocoded and mapped onto districts first. Until every
+region resolves to a point, any map repeats the same defect.
+
+The removed SVG district paths are recoverable from git history — see
+`src/app/(app)/dashboard/districts.ts` at the commit that deleted it. Some
+geo source files were also downloaded into the scratchpad during earlier
+research (`mys-adm2.geojson`, `dosm-districts.geojson`, `osm_perak.json`).
+
 ## Explicitly NOT doing
 
 Recorded so it doesn't get re-litigated. Each of these is real in Linear or

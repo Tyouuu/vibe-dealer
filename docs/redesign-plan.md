@@ -141,63 +141,54 @@ Measured at 1440×1000 as master. "Blank" is unused viewport below the content.
 | SIM Card Stock | 10 equal figures, 2 explanation blocks, 1780px | hero + 3 pools with sub-lines, economics in subtitle |
 | SIM Delivery | 485px blank, answer buried in grey subtitle | hero states the queue and the worst wait |
 
-### TO DO
+### DONE — the rest
 
-**Notifications** — 422px content, **499px blank**, no hero.
-The page's answer is "what needs you, and how urgent". It already has the data
-(`buildNotifications`, five categories, each with a `staleDays`). Plan: hero
-states the count and the oldest unresolved item; group by category rather than
-one flat list; each row keeps its action label. Empty state uses the `cleared`
-variant — no CTA on finished work. Reference: Linear's inbox (grouped, aged),
-Geist's rule that persistent warnings belong in the header, not as a banner.
+| Page | Was | Is now |
+|---|---|---|
+| Notifications | 499px blank, count in grey subtitle, "Manage" link rendered twice | hero states the count and oldest wait, split by the severity build.ts already assigns |
+| Dealers | 3025px, said nothing about its 249 rows, stray "Details" label above the table | header answers the state of the book; ever-topped-up / gone quiet / no region set |
+| Transactions | pending count spent on a fragment of subtitle | leads with what's waiting for review, and why a pending entry counts toward nothing |
+| Dealer detail | lifetime figures computed 300 lines down, in the last card | hoisted to a hero under the identity card; footer reads the same values |
+| New Transaction | bare `<h1>` inside the form's card, no PageHeader | real header; subtitle carries both governing rules, including that credit is a hard stop |
+| Onboard Dealer | subtitle restated the title | says company name is the only required field |
+| Account Settings | already correct — AnnotatedSection is the settings archetype | copy only |
+| Audit Log | last page still carrying a note-strip preamble | explanation moved into the subtitle; **deliberately no hero** |
 
-**Dealers** — **3025px**, one card, no hero, no summary at all.
-This is the resource index. Polaris's prescription — "use the resource type as
-page title", filtering and multi-select at the top of the index itself,
-primary action top-right — plus Geist's table rules. Plan: header states the
-population and what's actionable in it (how many active, how many gone quiet,
-how many with no region). Saved views replace the three hardcoded tabs. Filter
-chips with per-chip removal (already built, needs wiring here). `tabular-nums`
-on every numeric column. Sortable headers become buttons announcing next sort
-state.
+**Two pages deliberately have no hero figure: Audit Log and Account Settings.**
+Neither has a "what needs you" to state — one is a record, the other is
+configuration. Applying the pattern to every page regardless of whether the
+page has an answer would be cargo-culting it.
 
-**Dealer detail** — needs the same treatment as a record page: identity and
-status at the top, the money answer next, history folded below.
+### Cross-cutting — done
 
-**Transactions** — 1694px, no summary.
-The ledger. Its answer is "what's waiting on me" — pending count and the
-oldest. Plan: hero states pending/verified/flagged split for the current
-filter; per-row `•••` overflow menu instead of three always-visible buttons
-across 50 rows; `Reverse transaction` named correctly (never "Undo" — posting
-a contra entry is the accounting-standard answer and the app already has the
-mechanism).
+- **`Field` component** (`useId`) so a label cannot come unassociated again.
+  60 such labels existed across 17 files; axe reported only six because it
+  accepts a placeholder as a fallback name, which made a systemic problem look
+  like scattered one-offs.
+- **Scroll restoration on Back.** The browser restores the *document*
+  scroller; this app scrolls `<main>`, so there was nothing to restore.
+  Measured 1500 → 1500 across a Back navigation.
+- **Disabled pagination is genuinely disabled.** `Previous`/`Next` at the ends
+  of a range were `<span>`s with `opacity-40` — assistive tech was never told
+  they were disabled, so axe measured them as ordinary text at 2.43:1. Real
+  `<button disabled>` across all six paginated tables.
+- **/login audited for the first time** — it sits outside the app shell and had
+  never been checked. "Forgot your password?" was distinguished from the
+  surrounding sentence by colour alone.
 
-**New Transaction** — 997px, one explanation strip.
-A form page. Plan: Polaris annotated layout (description left, fields right) so
-the page reads at full width without a dead gutter; the oversell block becomes
-a persistent inline `Note` beside the field, not a toast, because it's a
-problem the user must fix; validate on blur, keep submit enabled, focus the
-first error on submit; dirty-form guard.
+**All 13 in-shell pages plus /login pass axe at wcag2a/wcag2aa on 1440×1000 and
+390×844, with no horizontal scroll.**
 
-**Onboard Dealer** — 792px, 129px blank.
-Already uses AnnotatedSection. Remaining: the same form discipline as above,
-plus a duplicate-check result in the right column so the space earns itself.
+### Still open
 
-**Account Settings** — 1216px.
-Settings archetype: annotated sections, each with its own save, sentence-case
-headings, no page-level save button.
-
-**Audit Log** — 2300px, one strip.
-Deliberately left alone so far and it holds up. Revisit last, only to check it
-still reads as part of the same product once everything around it changes.
-Two things noted: the filter row mixes two mechanisms (three selects plus an
-apply button, alongside tabs that apply on click), and the explanatory banner
-is permanent.
-
-**Login / Forgot password** — outside the shell, never audited. Check they
-carry the same type scale and button treatment.
-
----
+- **Loading discipline** — show-delay 150–300ms, minimum visible 300–500ms,
+  skeletons that mirror the final layout. Not started.
+- **The remaining 54 weakly-labelled fields** — placeholder-as-name rather than
+  unlabelled. Migrate to `Field` as each form is next touched.
+- **`tabular-nums` audit**, copy sweep, URL-as-state for every filter and
+  expanded panel.
+- **Growth-by-Region map** — removed; rebuild needs coordinates for all 44
+  towns. See ui-backlog.md.
 
 ## Part 4 — Cross-cutting work
 

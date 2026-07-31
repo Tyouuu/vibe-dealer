@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buildNotifications } from '@/lib/notifications/build'
 import { NotificationsList } from './notifications-list'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 
 export const metadata: Metadata = {
   title: 'Notifications — DealerHub',
@@ -14,6 +15,11 @@ export default async function NotificationsPage() {
   const supabase = await createClient()
 
   const notifications = await buildNotifications(supabase, user.id, user.role)
+  // "Urgent" is the notification's own severity, not a second opinion — clay
+  // is what build.ts assigns to the conditions that actually block work
+  // (out of credit, a stalled delivery), brass to the ones worth knowing.
+  const urgent = notifications.filter((n) => n.variant === 'clay').length
+  const oldest = notifications.reduce((m, n) => Math.max(m, n.staleDays), 0)
 
   return (
     // Full content width, no cap. This is a list of single-line rows, not
@@ -25,18 +31,57 @@ export default async function NotificationsPage() {
     // right-aligned action button is what gives a wide row its far edge, so
     // the width reads as deliberate rather than empty.
     <div className="flex w-full flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader
+      {/* The "manage" link was rendered twice — once as PageHeader's action
+          and again as a sibling right next to it. Only the header one is
+          needed. */}
+      <PageHeader
         title="Notifications"
-        subtitle={`${notifications.length} notification${notifications.length === 1 ? '' : 's'}`}
-        action={<a href="/account" className="text-xs font-semibold text-paper-dim hover:text-paper hover:underline">Manage what you get notified about →</a>}
+        subtitle="Everything the system has noticed that still needs someone to act on it."
+        action={
+          <a href="/account" className="btn-ghost shrink-0 py-1.5 text-xs">
+            Manage
+          </a>
+        }
       />
-        {/* inline-block + py-1.5 so this standalone link is a 24px-tall touch
-            target (WCAG 2.5.8) rather than just its 16px line box. */}
-        <a href="/account" className="inline-block py-1.5 text-xs font-semibold text-paper-dim hover:text-paper hover:underline">
-          Manage what you get notified about →
-        </a>
-      </div>
+
+      {/* A count in grey subtitle text isn't an answer. What the reader wants
+          to know on arrival is whether anything is actually waiting and how
+          long the worst of it has been sitting — the same reasoning as SIM
+          Delivery, and the same reasoning that made Reconciliation work. */}
+      <HeroCard
+        label={notifications.length ? 'Needs your attention' : 'Nothing needs you'}
+        value={String(notifications.length)}
+        chgSuffix={
+          notifications.length === 0
+            ? 'everything the system checks is clear right now'
+            : oldest > 0
+              ? `oldest has been waiting ${oldest} day${oldest === 1 ? '' : 's'}`
+              : 'all raised recently'
+        }
+        href="/notifications"
+        stats={[
+          {
+            label: 'Needs action now',
+            value: String(urgent),
+            href: '/notifications',
+            tone: urgent ? 'warn' : 'normal',
+            sub: 'flagged as blocking',
+          },
+          {
+            label: 'Worth a look',
+            value: String(notifications.length - urgent),
+            href: '/notifications',
+            sub: 'not blocking anything',
+          },
+          {
+            label: 'Categories',
+            value: String(new Set(notifications.map((n) => n.category)).size),
+            href: '/account',
+            sub: 'of 5 the system checks',
+          },
+        ]}
+      />
+
       <NotificationsList notifications={notifications} />
     </div>
   )

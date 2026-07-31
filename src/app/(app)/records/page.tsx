@@ -313,19 +313,11 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      {/* Pending / verified / flagged used to repeat here, a few hundred pixels
+          below the header that already states all three. Only the page-scoped
+          commission is unique to this strip — it's the one figure that changes
+          as you page through, which the header's filter-wide totals can't say. */}
       <div className="txn-summary">
-        <span className="txn-summary-item">
-          <span className="status-dot" style={{ background: 'var(--color-brass-bright)' }} />
-          Pending <b>{pendingCount ?? 0}</b>
-        </span>
-        <span className="txn-summary-item">
-          <span className="status-dot" style={{ background: 'var(--color-jade-bright)' }} />
-          Verified <b>{verifiedCount ?? 0}</b>
-        </span>
-        <span className="txn-summary-item">
-          <span className="status-dot" style={{ background: 'var(--color-clay-bright)' }} />
-          Flagged <b>{flaggedCount ?? 0}</b>
-        </span>
         <span className="txn-summary-item accent">
           Your 2% on this page <b>{formatMYR(pageCommission)}</b>
         </span>
@@ -362,7 +354,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
                   <tr key={tx.id} className="tr-row relative">
-                    <td className="td text-paper-dim">{tx.tx_date}</td>
+                    <td className="td whitespace-nowrap text-paper-dim">{tx.tx_date}</td>
                     <td className="td">
                       <div className="flex items-center gap-2.5">
                         <Avatar name={dealerName ?? '?'} size={24} />
@@ -375,7 +367,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                       </div>
                     </td>
                     <td className="td text-paper-dim">
-                      {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                      <span className="whitespace-nowrap">
+                        {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
+                      </span>
                       {tx.type === 'topup' && tx.coupon_rm > 0 && (
                         <div className="mt-0.5 text-[10.5px] text-paper-dim">
                           {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)

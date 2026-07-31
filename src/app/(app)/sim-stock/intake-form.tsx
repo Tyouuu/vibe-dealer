@@ -48,12 +48,16 @@ export function IntakeForm() {
         <DatePicker name="intake_date" required />
       </div>
       <div>
-        <label className="field-label">Quantity (cards)</label>
-        <input name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
+        <label htmlFor="si-qty" className="field-label">
+          Quantity (cards)
+        </label>
+        <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
       </div>
       <div>
-        <label className="field-label">Cost per Unit (RM)</label>
-        <input name="cost_per_unit_rm" type="number" step="0.01" min="0" defaultValue={SIM_UNIT_COST_RM} required className="field-input" />
+        <label htmlFor="si-cost" className="field-label">
+          Cost per unit (RM)
+        </label>
+        <input id="si-cost" name="cost_per_unit_rm" type="number" step="0.01" min="0" defaultValue={SIM_UNIT_COST_RM} required className="field-input" />
       </div>
       <div>
         <label className="field-label">Note (optional)</label>

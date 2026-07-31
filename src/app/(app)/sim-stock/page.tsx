@@ -8,8 +8,8 @@ import { OrderForm } from './order-form'
 import { IntakeForm } from './intake-form'
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
-import { IconInfo } from '../icons'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -84,6 +84,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const balanceByType = new Map((balanceRows as BalanceRow[] | null ?? []).map((b) => [b.sim_type, b]))
   const emptyBalanceFor = (t: SimStockType): BalanceRow => ({ sim_type: t, total_intake: 0, total_sold: 0, available: 0 })
   const balances = SIM_STOCK_TYPES.map((t) => balanceByType.get(t) ?? emptyBalanceFor(t))
+  const totalAvailable = balances.reduce((sum, b) => sum + b.available, 0)
   const availableByType = Object.fromEntries(balances.map((b) => [b.sim_type, b.available])) as Record<SimStockType, number>
 
   const dealerList = (dealers ?? []) as { id: string; company_name: string; address: string | null }[]
@@ -126,60 +127,50 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="app-card">
-        <PageHeader title="SIM Card Stock" subtitle="Physical, physical (no number) and eSIM — three separate stock pools" />
-        <div className="info-strip mb-4">
-          <IconInfo className="mt-0.5 h-[15px] w-[15px] shrink-0" />
-          <span>
-            SIM cards — physical, physical with no number, or eSIM — bought from Vibe Mobile in bulk (a box is{' '}
-            {SIM_BOX_SIZE}), resold to dealers in batches. Same system across all three, each its own stock pool; only
-            physical has a real shipment. Kept separate from the points/topup ledger — this is a flat per-card
-            margin, not a %-rate commission.
-          </span>
-        </div>
+      {/* PageHeader was nested inside a card here — every other page puts it
+          at the top level, and a page title inside a box reads as a section
+          heading rather than as the page's own name.
 
-        {error && <div className="alert alert-bad">{error}</div>}
-        {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
-        {order_saved && <div className="alert alert-ok">Order recorded.</div>}
+          Two permanent explanation blocks used to sit above the figures: a
+          five-line info strip and a note strip. Both are now gone. What they
+          said that mattered is the unit economics, which belongs beside the
+          margin it explains, not above everything as a preamble. */}
+      <PageHeader
+        title="SIM Card Stock"
+        subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} at ${formatMYR(SIM_UNIT_COST_RM)}/card and resold at ${formatMYR(SIM_SELL_PRICE_RM)} — a flat ${formatMYR(SIM_MARGIN_RM)} per card, separate from the points ledger.`}
+      />
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          {balances.map((b) => (
-            <div key={b.sim_type} className="app-tile">
-              <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">{SIM_TYPE_LABEL[b.sim_type]}</div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Available</div>
-                  <div className={`figure mt-1 text-lg font-semibold ${b.available <= 0 ? 'text-clay-bright' : 'text-paper'}`}>
-                    {b.available.toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Bought In</div>
-                  <div className="figure mt-1 text-lg font-semibold text-paper">{b.total_intake.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-semibold text-paper-dim">Total Sold</div>
-                  <div className="figure mt-1 text-lg font-semibold text-paper">{b.total_sold.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      {error && <div className="alert alert-bad">{error}</div>}
+      {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
+      {order_saved && <div className="alert alert-ok">Order recorded.</div>}
 
-        {isFinance && (
-          <>
-            <div className="mt-3.5 app-tile">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin So Far (all types)</div>
-              <div className="figure-money mt-1.5 text-xl font-semibold">{formatMYR(totalOrderMargin)}</div>
-              <div className="mt-0.5 text-[11px] text-paper-dim">{formatMYR(SIM_MARGIN_RM)}/card</div>
-            </div>
-            <p className="note-strip mt-3.5">
-              Cost {formatMYR(SIM_UNIT_COST_RM)}/card from Vibe Mobile, resold at {formatMYR(SIM_SELL_PRICE_RM)}/card — spent RM{' '}
-              {totalIntakeCost.toLocaleString()} on stock so far, collected {formatMYR(totalOrderRevenue)} from dealer orders.
-            </p>
-          </>
-        )}
-      </div>
+      {/* Was three tiles of three equal figures each — nine numbers at one
+          weight — plus a fourth tile for margin. Only one of the nine stops
+          work: how many cards are left to sell. Bought In and Total Sold are
+          reference figures, and both tables further down already carry them
+          row by row. */}
+      <HeroCard
+        label="Cards available to sell"
+        value={totalAvailable.toLocaleString()}
+        chgSuffix={
+          balances.some((b) => b.available <= 0)
+            ? 'one pool is empty — log a stock intake before taking that order'
+            : 'across three separate pools — an order can only draw from its own type'
+        }
+        href="/sim-stock"
+        stats={balances.map((b) => ({
+          label: SIM_TYPE_LABEL[b.sim_type],
+          value: b.available.toLocaleString(),
+          href: '/sim-stock',
+          tone: b.available <= 0 ? ('warn' as const) : b.available < SIM_BOX_SIZE ? ('caution' as const) : ('normal' as const),
+          sub: `${b.total_intake.toLocaleString()} in · ${b.total_sold.toLocaleString()} sold`,
+        }))}
+        footnote={
+          isFinance
+            ? `Margin so far ${formatMYR(totalOrderMargin)} — spent RM ${totalIntakeCost.toLocaleString()} on stock, collected ${formatMYR(totalOrderRevenue)} from dealer orders.`
+            : undefined
+        }
+      />
 
       {/* minmax(0, …) instead of a bare 1.4fr/1fr — a plain fr track's
           implicit minimum is its content's min-content width, so this grid

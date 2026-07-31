@@ -190,6 +190,40 @@ Cap removed; measured gutter went from ~200px to 0.
   `main.scrollTop` across navigations. Same root cause as the sticky-header
   problem: the app has a nested scroll container instead of a page scroll.
 
+### `[x]` SIM Card Stock — rebuilt 2026-07-31
+
+Measured before touching it: 1780px tall, four equal-weight tiles carrying ten
+figures, two permanent explanation blocks stacked above them, and no hero — the
+page never said what it was for. Its `PageHeader` was also nested *inside* a
+card, which no other page does; a page title inside a box reads as a section
+heading rather than the page's own name.
+
+Checked the one thing that would have been a real bug before restyling
+anything: whether `available` accounts for orders that are placed but not yet
+shipped. It does — migration 0024 defines it as total intake minus *all*
+orders, pending included — so there is no oversell hole and the label is
+honest. (Shopify's inventory model separates on-hand / committed / available
+for exactly this reason; ours collapses to "available to sell", which is the
+figure that governs whether an order can be taken.)
+
+Rebuilt as: page title at the top level, the unit economics moved into the
+subtitle (it explains the margin, so it belongs beside it rather than as a
+preamble above everything), one hero — cards available to sell — with the
+three pools as stats carrying `N in · N sold` sub-lines, and the margin as a
+footnote. Both explanation blocks are gone.
+
+## Systemic
+
+- `[ ]` **Form labels are not associated with their inputs, app-wide.** Every
+  form writes `<label className="field-label">X</label>` as a *sibling* of its
+  input, with no `htmlFor`/`id` and no wrapping — so a screen reader cannot
+  name the field. axe only catches the subset that also lack a placeholder
+  (it accepts a placeholder as a fallback), which is why this surfaced two
+  violations at a time on Credit Purchases and two more on SIM Card Stock
+  rather than dozens at once. Those four are fixed; the rest are not. The
+  real fix is a shared `Field` wrapper generating ids with React's `useId`,
+  which would also stop this recurring every time a form is added.
+
 ## Batch 2 — worth it, more work
 
 - `[x]` **Active-filter chips** with per-chip removal and `Clear all`. Each

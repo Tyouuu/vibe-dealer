@@ -111,8 +111,10 @@ export function OrderForm({
         <DatePicker name="order_date" required />
       </div>
       <div>
-        <label className="field-label">Quantity (min {SIM_MIN_ORDER_QTY})</label>
-        <input name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
+        <label htmlFor="so-qty" className="field-label">
+          Quantity (min {SIM_MIN_ORDER_QTY})
+        </label>
+        <input id="so-qty" name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
         <p className="mt-1 text-[11px] text-paper-dim">
           {formatMYR(SIM_SELL_PRICE_RM)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
         </p>

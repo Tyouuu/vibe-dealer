@@ -193,7 +193,19 @@ export default async function DashboardPage() {
   const prevMonthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey)
   const prevMonthCommission = prevMonthTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
 
-  const commissionChg = pctChange(totalCommission, prevMonthCommission)
+  // A partial month compared against a complete one always reads as a
+  // collapse. On 1 August the dashboard showed "RM 0.00, down 100%" — true
+  // arithmetic, useless information, and alarming. On the 5th it would say
+  // down 80% purely because 26 days hadn't happened yet. The comparison is
+  // only honest once the month is over, so it is withheld until then and the
+  // reader is told where they are in the month instead.
+  //
+  // Same rule as Reconciliation's empty state: don't show a verdict that
+  // can't exist yet. A month in progress has no verdict against last month.
+  const dayOfMonth = Number(today.slice(8, 10))
+  const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate()
+  const monthComplete = dayOfMonth >= daysInMonth
+  const commissionChg = monthComplete ? pctChange(totalCommission, prevMonthCommission) : null
   // Six trailing months of commission for the hero sparkline — same trendTx
   // fetch the chart below already uses, no extra query.
   const commissionSpark = trendMonths.map(({ key }) =>
@@ -233,7 +245,13 @@ export default async function DashboardPage() {
           label={`Your commission — ${formatMonthLabel(currentMonthStr)}`}
           value={formatMYR(totalCommission)}
           chg={commissionChg}
-          chgSuffix={`vs ${formatMYR(prevMonthCommission)} last month`}
+          chgSuffix={
+            monthComplete
+              ? `vs ${formatMYR(prevMonthCommission)} last month`
+              : totalCommission === 0
+                ? `nothing recorded yet — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
+                : `day ${dayOfMonth} of ${daysInMonth} — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
+          }
           spark={commissionSpark}
           sparkLabel={`Last ${trendMonths.length} months`}
           href={`/records?status=verified&month=${currentMonthStr}`}

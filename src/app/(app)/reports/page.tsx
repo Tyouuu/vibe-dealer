@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
@@ -14,12 +15,13 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; by?: string }>
 }
 
 export default async function ReportsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month = currentMonth() } = await searchParams
+  const { month = currentMonth(), by: byRaw } = await searchParams
+  const by: 'dealer' | 'type' = byRaw === 'type' ? 'type' : 'dealer'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view monthly reports" />
@@ -80,7 +82,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const prevTotalPoints = (prevRows ?? []).reduce((s, t) => s + Number(t.points), 0)
   const prevTotalCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
   const prevTxCount = prevRows?.length ?? 0
-  const prevActiveDealers = new Set((prevRows ?? []).map((t) => t.dealer_id)).size
 
   return (
     <div className="flex flex-col gap-5">
@@ -137,17 +138,50 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             chg: pctChange(rows?.length ?? 0, prevTxCount),
           },
           {
-            label: 'Active dealers',
-            value: String(breakdown.length),
-            href: '/dealers',
-            chg: pctChange(breakdown.length, prevActiveDealers),
+            // Was "Active dealers", which is just the row count of the table
+            // below it. Money collected is the one figure of the four that
+            // appears nowhere else on the page.
+            label: 'Money collected',
+            value: formatMYR(totalMoney),
+            href: `/records?month=${month}&status=verified`,
           },
         ]}
       />
 
+      {/* One card, two axes.
+          These were two cards each carrying its own Total row, and both
+          totals were identical: 34,799 pts / RM 32,486.00 / RM 695.98 —
+          figures the hero above already states. Measured on the live page,
+          "34,799 pts" appeared three times and the money and commission
+          twice each.
+
+          They are not two datasets. They are the same month sliced two ways,
+          which is what Stripe's reports let you pivot rather than stack. The
+          grand total lives in the hero and is stated once; each table now
+          carries only its own rows.
+
+          The axis is in the URL so the view is shareable and survives
+          Back/Forward, per Geist. */}
       <div className="app-card">
-        <h3 className="mb-0.5 text-sm font-bold text-paper">By Package</h3>
-        <p className="mb-3.5 text-[11.5px] text-paper-dim">This month&apos;s verified total, split by transaction type.</p>
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-paper">Where it came from</h3>
+            <p className="mt-0.5 text-[11.5px] text-paper-dim">
+              {by === 'type'
+                ? 'The same month split by what was sold. Click nothing here — the totals are in the header.'
+                : 'Click a dealer to see its individual transactions for this month.'}
+            </p>
+          </div>
+          <div className="segmented shrink-0">
+            <Link href={`/reports?month=${month}`} className={`segmented-btn ${by === 'dealer' ? 'active' : ''}`}>
+              By dealer
+            </Link>
+            <Link href={`/reports?month=${month}&by=type`} className={`segmented-btn ${by === 'type' ? 'active' : ''}`}>
+              By type
+            </Link>
+          </div>
+        </div>
+        {by === 'type' ? (
         <ScrollFade label="This month by package">
           <table className="w-full min-w-[660px] border-collapse text-sm">
             <thead>
@@ -169,15 +203,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="td figure-money text-right">{formatMYR(t.commission)}</td>
                 </tr>
               ))}
-              {typeBreakdown.length > 0 && (
-                <tr className="border-t-2 border-paper bg-ink-850/60 font-semibold">
-                  <td className="td text-paper">Total</td>
-                  <td className="td text-right text-paper">{typeBreakdown.reduce((s, t) => s + t.count, 0)}</td>
-                  <td className="td figure-points text-right">{typeBreakdown.reduce((s, t) => s + t.points, 0).toLocaleString()} pts</td>
-                  <td className="td figure-money text-right">{formatMYR(typeBreakdown.reduce((s, t) => s + t.money, 0))}</td>
-                  <td className="td figure-money text-right">{formatMYR(typeBreakdown.reduce((s, t) => s + t.commission, 0))}</td>
-                </tr>
-              )}
               {!typeBreakdown.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
@@ -188,11 +213,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </tbody>
           </table>
         </ScrollFade>
-      </div>
 
-      <div className="app-card">
-        <h3 className="mb-0.5 text-sm font-bold text-paper">By Dealer</h3>
-        <p className="mb-3.5 text-[11.5px] text-paper-dim">Click a dealer to see its individual transactions for this month.</p>
+        ) : (
         <ScrollFade label="This month by dealer">
           <table className="w-full min-w-[660px] border-collapse text-sm">
             <thead>
@@ -227,15 +249,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   </tr>
                 )
               })}
-              {breakdown.length > 0 && (
-                <tr className="border-t-2 border-paper bg-ink-850/60 font-semibold">
-                  <td className="td" />
-                  <td className="td text-paper">Total</td>
-                  <td className="td figure-points text-right">{totalPoints.toLocaleString()} pts</td>
-                  <td className="td figure-money text-right">{formatMYR(totalMoney)}</td>
-                  <td className="td figure-money text-right">{formatMYR(totalCommission)}</td>
-                </tr>
-              )}
               {!breakdown.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
@@ -246,6 +259,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </tbody>
           </table>
         </ScrollFade>
+        )}
       </div>
     </div>
   )

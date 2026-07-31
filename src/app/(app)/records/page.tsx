@@ -458,14 +458,18 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 Previous
               </Link>
             ) : (
-              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
+              <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Previous
+                  </button>
             )}
             {pageNum < totalPages ? (
               <Link href={buildHref({ page: pageNum + 1 })} className="btn-ghost py-1.5 text-xs">
                 Next
               </Link>
             ) : (
-              <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
+              <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Next
+                  </button>
             )}
           </div>
         </div>

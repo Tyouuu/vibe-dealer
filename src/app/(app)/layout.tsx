@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
@@ -8,6 +9,7 @@ import { ROLE_LABEL, type Notification } from './types'
 import { MobileNav } from './mobile-nav'
 import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
+import { RestoreScroll } from './restore-scroll'
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
@@ -178,6 +180,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Pages that genuinely want a narrower reading column (Account
                 Settings, Notifications) already set their own max-width on
                 their own root element, so this doesn't affect those. */}
+            <Suspense fallback={null}>
+              <RestoreScroll />
+            </Suspense>
             <div className="mx-auto w-full py-6 sm:py-8">{children}</div>
           </main>
         </div>

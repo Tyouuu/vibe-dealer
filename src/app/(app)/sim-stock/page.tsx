@@ -233,14 +233,18 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     Previous
                   </Link>
                 ) : (
-                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
+                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Previous
+                  </button>
                 )}
                 {ordersPage < ordersTotalPages ? (
                   <Link href={ordersPageHref(ordersPage + 1)} className="btn-ghost py-1.5 text-xs">
                     Next
                   </Link>
                 ) : (
-                  <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
+                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Next
+                  </button>
                 )}
               </div>
             </div>
@@ -294,14 +298,18 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                       Previous
                     </Link>
                   ) : (
-                    <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Previous</span>
+                    <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Previous
+                  </button>
                   )}
                   {intakesPage < intakesTotalPages ? (
                     <Link href={intakePageHref(intakesPage + 1)} className="btn-ghost py-1.5 text-xs">
                       Next
                     </Link>
                   ) : (
-                    <span className="btn-ghost cursor-not-allowed py-1.5 text-xs opacity-40">Next</span>
+                    <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                    Next
+                  </button>
                   )}
                 </div>
               </div>

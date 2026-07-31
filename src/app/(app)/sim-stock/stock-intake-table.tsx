@@ -37,7 +37,7 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
           const toggle = () => setOpenId(open ? null : r.id)
           return (
             <Fragment key={r.id}>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim ${border}`}>
                 {r.intake_date}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 ${border}`}>

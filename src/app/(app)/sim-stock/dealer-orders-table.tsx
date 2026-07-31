@@ -49,7 +49,7 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
           const toggle = () => setOpenId(open ? null : o.id)
           return (
             <Fragment key={o.id}>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim ${border}`}>
                 {o.order_date}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 font-semibold text-paper ${border}`}>

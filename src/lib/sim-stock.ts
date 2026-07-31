@@ -28,10 +28,14 @@ export const SIM_TYPE_LABEL: Record<SimStockType, string> = {
   esim: 'eSIM',
 }
 
+// All neutral. These were slate / info / jade — three status hues for what is
+// a category, so eSIM rendered in the green that means "verified" and a SIM
+// type read as a verdict. The status palette is reserved for things that can
+// change state; a SIM type never changes. See the note beside .pill-neutral.
 export const SIM_TYPE_PILL_CLASS: Record<SimStockType, string> = {
-  physical: 'pill-slate',
-  physical_no_number: 'pill-info',
-  esim: 'pill-jade',
+  physical: 'pill-neutral',
+  physical_no_number: 'pill-neutral',
+  esim: 'pill-neutral',
 }
 
 // Both physical variants have a real shipment (shipping fee/invoice, mark-

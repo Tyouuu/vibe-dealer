@@ -78,7 +78,25 @@ function buildTrendRows(
 
 // Shared by master + cs — both show "Growth by Region" as this month's
 // verified top-up points, top 4 regions, each with its own categorical color.
-const REGION_GROWTH_COLORS = ['var(--color-info)', 'var(--color-jade)', 'var(--color-clay)', 'var(--color-brass)']
+// One hue, four weights — not four hues.
+//
+// This used to hand the top four regions info / jade / clay / brass: the
+// semantic status palette. The third-best region therefore rendered in the
+// colour that means "flagged" everywhere else in the app, and the fourth in
+// the colour that means "pending". A region isn't in a bad state because it
+// sold third-most.
+//
+// Colour was also doing no work here. The bars are sorted by value and their
+// length already encodes magnitude, so a different hue per row adds nothing a
+// reader can act on — it only competes with the status colours that do carry
+// meaning. Stepping one accent from full strength down to a quiet tint keeps
+// the ranking legible and gives the palette back to states.
+const REGION_GROWTH_COLORS = [
+  'var(--color-primary)',
+  'color-mix(in srgb, var(--color-primary) 72%, transparent)',
+  'color-mix(in srgb, var(--color-primary) 48%, transparent)',
+  'color-mix(in srgb, var(--color-primary) 30%, transparent)',
+]
 
 // Aggregates twice in one pass: by region (the top-level ranking) and, within
 // each region, by dealer — the region card drills down to "which dealers are
@@ -113,7 +131,7 @@ function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRe
       region,
       points: entry.points,
       pct: totalPoints ? Math.round((entry.points / totalPoints) * 100) : 0,
-      color: i < REGION_GROWTH_COLORS.length ? REGION_GROWTH_COLORS[i] : 'var(--color-slate)',
+      color: i < REGION_GROWTH_COLORS.length ? REGION_GROWTH_COLORS[i] : 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
       dealers: [...entry.dealers.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([name, points]) => ({ name, points })),

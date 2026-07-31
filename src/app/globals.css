@@ -383,16 +383,21 @@ body {
   /* Small "up/down/warn" change-indicator pill for KPI cards
      (e.g. "↑ 8.2%" against last month). */
   .chg {
-    @apply inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11.5px] font-bold;
+    @apply inline-flex items-center gap-0.5 text-[11.5px] font-semibold tabular-nums;
   }
+  /* No fill. A change indicator sits beside a figure that is already the
+     largest thing on the page; wrapping it in a tinted blob makes it compete
+     with the number it annotates, and puts the text in the weakest contrast
+     available. The arrow and the colour carry the direction, the digits stay
+     readable. Same reasoning as the status chips above. */
   .chg-up {
-    @apply bg-jade/12 text-jade-bright;
+    @apply text-jade-bright;
   }
   .chg-down {
-    @apply bg-clay/12 text-clay-bright;
+    @apply text-clay-bright;
   }
   .chg-warn {
-    @apply bg-brass/12 text-brass-bright;
+    @apply text-brass-bright;
   }
 
   /* sticky so the column names survive scrolling a 50-row page. Needs an
@@ -422,14 +427,19 @@ body {
   .alert {
     @apply mb-4 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold;
   }
+  /* An alert does earn a tinted ground — it has to be noticed. What it doesn't
+     earn is putting its message in the tint's own hue, which is the lowest
+     contrast on the page for the text that carries the meaning. The hue moves
+     to a left accent; the words stay at full reading contrast. Geist's Note
+     works the same way. */
   .alert-ok {
-    @apply bg-jade/10 text-jade-bright;
+    @apply border-l-2 border-jade bg-jade/8 text-paper;
   }
   .alert-warn {
-    @apply bg-brass/10 text-brass-bright;
+    @apply border-l-2 border-brass bg-brass/8 text-paper;
   }
   .alert-bad {
-    @apply bg-clay/10 text-clay-bright;
+    @apply border-l-2 border-clay bg-clay/8 text-paper;
   }
 
   /* purple "info strip" — a step above alert-ok/warn/bad in tone, used for

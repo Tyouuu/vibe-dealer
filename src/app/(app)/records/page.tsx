@@ -17,6 +17,7 @@ import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 import { formatMYR } from '@/lib/money'
@@ -200,14 +201,47 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   return (
     <>
       {/* Header on the page surface, card holds only the data — see PageHeader. */}
+      {/* The ledger's answer is not "how many rows exist" — it's "what is
+          waiting on me". Pending review was already computed here and spent
+          on a fragment of grey subtitle text. It leads now, because a pending
+          transaction counts toward nothing until someone verifies it: not
+          reconciliation, not the monthly report, not the 2%. */}
       <PageHeader
         title="Transactions"
-        subtitle={
-          totalCount > PAGE_SIZE
-            ? `Showing ${rangeStart}–${rangeEnd} of ${totalCount} · ${pendingCount ?? 0} pending review`
-            : `${totalCount} transaction${totalCount === 1 ? '' : 's'} · ${pendingCount ?? 0} pending review`
+        subtitle="Every top-up, package and adjustment. Append-only — corrections post as new linked entries, nothing is edited or deleted."
+        action={{ href: '/entry', label: 'New transaction' }}
+      />
+
+      <HeroCard
+        label={pendingCount ? 'Waiting for review' : 'Nothing waiting for review'}
+        value={String(pendingCount ?? 0)}
+        chgSuffix={
+          pendingCount
+            ? 'a pending entry counts toward nothing until it is verified'
+            : 'every transaction on record has been checked'
         }
-        action={{ href: '/entry', label: '+ New Transaction' }}
+        href="/records?status=pending"
+        stats={[
+          {
+            label: 'Verified',
+            value: (verifiedCount ?? 0).toLocaleString(),
+            href: '/records?status=verified',
+            sub: 'counts toward reports and the 2%',
+          },
+          {
+            label: 'Flagged',
+            value: (flaggedCount ?? 0).toLocaleString(),
+            href: '/records?status=flagged',
+            tone: flaggedCount ? 'warn' : 'normal',
+            sub: 'needs a correction posting',
+          },
+          {
+            label: 'Matching this filter',
+            value: totalCount.toLocaleString(),
+            href: '/records',
+            sub: totalCount > PAGE_SIZE ? `showing ${rangeStart}–${rangeEnd}` : 'all shown',
+          },
+        ]}
       />
 
       {submitted && (

@@ -92,7 +92,7 @@ export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
       </button>
 
       <p className="text-center text-[11.5px] text-paper-dim">
-        <Link href="/forgot-password" className="text-primary-deep hover:underline">
+        <Link href="/forgot-password" className="text-primary-deep underline underline-offset-2 hover:no-underline">
           Forgot your password?
         </Link>{' '}
         · No account? Contact your admin.

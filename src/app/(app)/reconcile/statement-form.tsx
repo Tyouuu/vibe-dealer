@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { saveStatement } from './actions'
 import { IconUpload } from '../icons'
+import { Field } from '../field'
 
 export function StatementForm({
   month,
@@ -80,9 +81,10 @@ export function StatementForm({
           field-width mismatch Baymard warns about; the note below is free
           text and keeps the wider row. */}
       <div className="grid grid-cols-1 gap-3.5 sm:max-w-xl sm:grid-cols-2">
-      <div>
-        <label className="field-label">Vibe total top-up (pts)</label>
+      <Field label="Vibe total top-up (pts)" required>
+        {(id) => (
         <input
+          id={id}
           name="company_total_points"
           type="number"
           step="0.01"
@@ -92,10 +94,12 @@ export function StatementForm({
           required
           className="field-input"
         />
-      </div>
-      <div>
-        <label className="field-label">Vibe&apos;s profit figure (RM)</label>
+        )}
+      </Field>
+      <Field label="Vibe&apos;s profit figure (RM)">
+        {(id) => (
         <input
+          id={id}
           name="company_profit_rm"
           type="number"
           step="0.01"
@@ -104,11 +108,13 @@ export function StatementForm({
           onChange={(e) => setProfit(e.target.value)}
           className="field-input"
         />
-      </div>
+        )}
+      </Field>
       </div>
       <div className="sm:max-w-xl">
-        <label className="field-label">Note</label>
-        <input name="note" type="text" defaultValue={initialNote} className="field-input" />
+        <Field label="Note">
+          {(id) => <input id={id} name="note" type="text" defaultValue={initialNote} className="field-input" />}
+        </Field>
       </div>
       {/* Content-width, like every other primary action in the app. */}
       <div>

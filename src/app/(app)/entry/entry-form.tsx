@@ -1,5 +1,7 @@
 'use client'
 
+import { Field } from '../field'
+
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
@@ -389,10 +391,9 @@ export function EntryForm({
                 />
               </label>
             </div>
-            <div>
-              <label className="field-label">Note (optional)</label>
-              <textarea name="note" rows={2} className="field-input resize-none" />
-            </div>
+            <Field label="Note (optional)">
+              {(id) => <textarea id={id} name="note" rows={2} className="field-input resize-none" />}
+            </Field>
           </div>
         </form>
       </div>

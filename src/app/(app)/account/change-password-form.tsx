@@ -1,5 +1,7 @@
 'use client'
 
+import { Field } from '../field'
+
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -44,32 +46,35 @@ export function ChangePasswordForm() {
       {error && <div className="alert alert-bad">{error}</div>}
       {success && <div className="alert alert-ok">Password updated.</div>}
       <div className="form-grid">
-        <div>
-          <label className="field-label">New Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            required
-            minLength={8}
-            className="field-input"
-          />
-        </div>
-        <div>
-          <label className="field-label">Confirm New Password</label>
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
-            required
-            minLength={8}
-            className="field-input"
-          />
-        </div>
+        <Field label="New password" hint="Must be at least 8 characters." required>
+          {(id) => (
+            <input
+              id={id}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              minLength={8}
+              className="field-input"
+            />
+          )}
+        </Field>
+        <Field label="Confirm new password" required>
+          {(id) => (
+            <input
+              id={id}
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              required
+              minLength={8}
+              className="field-input"
+            />
+          )}
+        </Field>
       </div>
-      <span className="hint">Must be at least 8 characters.</span>
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-fit">
         {pending ? 'Updating…' : 'Update Password'}
       </button>

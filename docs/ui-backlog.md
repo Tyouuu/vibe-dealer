@@ -178,10 +178,39 @@ Cap removed; measured gutter went from ~200px to 0.
 - `[ ]` **Global search in the topbar.** The desktop header is a full-width
   sticky bar holding one widget — and renders completely empty for `cs`.
 - `[ ]` **`?` shortcuts overlay** once there are shortcuts worth listing.
-- `[ ]` **Dashboard restructure.** Lead with one number, not four equal tiles;
-  promote the actionable alerts (already computed in `buildNotifications`) to
-  the top; collapse the 44-series trend chart to a single line with an opt-in
-  breakdown.
+- `[x]` **Dashboard restructure.** Done 2026-07-31. Two corrections to what
+  this entry originally claimed, both found by looking at the running page
+  before changing it:
+  - The 44-series trend chart was **already** a single line with an
+    "All Regions" picker. That part of the entry was stale.
+  - The fourth "KPI" tile was never a metric — it was Reconciliation status
+    with an *Action needed* pill, i.e. already doing alert duty inside a
+    metric's shell.
+
+  The real defect was narrower and worse: `buildNotifications` computes **five**
+  kinds of alert (pending review, low balance, SIM deliveries, month not
+  reconciled, dealers gone quiet) and the dashboard surfaced exactly **one**.
+  Nothing on the page could tell you three transactions were waiting or that
+  the balance was about to block a sale — you had to know to open the bell.
+
+  Shipped: four equal tiles → one `HeroCard` (headline figure, trailing
+  6-month sparkline, three supporting stats) + one `NeedsAttention` card
+  fed by the same `buildNotifications` the bell and /notifications use.
+  **Four blocks became two, so density went down, not up** — which is the
+  constraint that matters here, because a denser dashboard was explicitly
+  rejected once before (see the design-system note). Applied to all three
+  roles, each with its own headline: master → commission, accountant →
+  top-up volume, cs → SIM deliveries pending.
+
+  Grounding: Stripe's dashboard home opens with one primary volume figure
+  plus a trailing chart rather than a row of peers; NN/g's visual-hierarchy
+  guidance is that scale is the signal for importance, and their eighth
+  guideline for complex applications is to make important information
+  salient *or remove what isn't essential*. Verified across master /
+  accountant / cs at 1440 and 390px: axe-core clean, no horizontal scroll.
+  Also removed three `text-paper-dim/70` opacity modifiers in `growth-map`
+  that were failing contrast at 2.92:1 — same class of bug as the token fix
+  that took the app to zero contrast failures.
 - `[ ]` **Saved views** replacing the three hardcoded Dealers tabs.
 - `[ ]` **Sentence case sweep.** Atlassian and Polaris both specify sentence
   case for every heading, label, menu item and button. The app is Title Case

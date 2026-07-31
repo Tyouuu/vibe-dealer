@@ -1,5 +1,7 @@
 import 'server-only'
+import { cache } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import type { Role } from '@/lib/auth/dal'
 import { getDealerActivityMap, daysSince, PENDING_REVIEW_STALE_DAYS, DELIVERY_WARN_DAYS_THRESHOLD } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
@@ -123,3 +125,15 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
 
   return list
 }
+
+// The app shell renders the notification bell on every page, and the dashboard
+// now shows the same list in its "Needs attention" card. Both need the same
+// answer within one request, and buildNotifications costs ~7 queries — so this
+// is the entry point both should use. React's cache() dedupes per request,
+// keyed on (userId, role) rather than on a Supabase client instance, because
+// createClient() returns a fresh object each call and would never hit.
+// Same pattern as getCurrentUser in lib/auth/dal.ts.
+export const getNotifications = cache(async (userId: string, role: Role): Promise<BuiltNotification[]> => {
+  const supabase = await createClient()
+  return buildNotifications(supabase, userId, role)
+})

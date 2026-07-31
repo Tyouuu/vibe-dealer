@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireUser, type Role } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { buildNotifications } from '@/lib/notifications/build'
+import { getNotifications } from '@/lib/notifications/build'
 import { RailNav, type RailItem } from './rail-nav'
 import { ROLE_LABEL, type Notification } from './types'
 import { MobileNav } from './mobile-nav'
@@ -36,7 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending'),
     getAvailablePointsBalance(supabase),
-    buildNotifications(supabase, user.id, user.role),
+    getNotifications(user.id, user.role),
   ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))

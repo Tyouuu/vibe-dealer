@@ -14,8 +14,9 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { RegionGrowthCard } from './growth-map'
+import { HeroCard, NeedsAttention } from './summary'
+import { getNotifications } from '@/lib/notifications/build'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
-import { IconTrendUp, IconCoin, IconUsers, IconCheckCircle, IconAlertCircle, IconTruck, ReconciledStamp } from '../icons'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
 
@@ -129,8 +130,8 @@ export default async function DashboardPage() {
   const user = await requireUser()
   const supabase = await createClient()
 
-  if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} />
-  if (user.role === 'cs') return <CsDashboard supabase={supabase} />
+  if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} userId={user.id} />
+  if (user.role === 'cs') return <CsDashboard supabase={supabase} userId={user.id} />
 
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
@@ -140,17 +141,13 @@ export default async function DashboardPage() {
 
   const [
     { count: dealerCount },
-    { count: dealerCountLastMonth },
     { data: dealerRows },
     { data: trendTx },
-    { data: currentStatement },
     { data: recentTxRows },
+    creditBalance,
+    alerts,
   ] = await Promise.all([
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
-    // "last month end" baseline for the Total Dealers chg badge — dealers
-    // created before this month started, i.e. how many existed as of last
-    // month's close.
-    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
     supabase.from('dealers_directory').select('id, company_name, package, region'),
     supabase
       .from('transactions')
@@ -158,12 +155,15 @@ export default async function DashboardPage() {
       .eq('status', 'verified')
       .gte('tx_date', trendStart)
       .lte('tx_date', today),
-    supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
     supabase
       .from('transactions')
       .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
       .order('created_at', { ascending: false })
       .limit(10),
+    getAvailablePointsBalance(supabase),
+    // Same list the bell and /notifications show — getNotifications is
+    // request-cached, so this doesn't re-run the layout's queries.
+    getNotifications(user.id, 'master'),
   ])
 
   // trendTx already covers the whole 6-month window (which fully contains the
@@ -179,12 +179,14 @@ export default async function DashboardPage() {
   // rather than a second query.
   const prevMonthKey = trendMonths[trendMonths.length - 2].key
   const prevMonthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey)
-  const prevMonthPoints = prevMonthTx.reduce((sum, t) => sum + Number(t.points), 0)
   const prevMonthCommission = prevMonthTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
 
-  const pointsChg = pctChange(totalPoints, prevMonthPoints)
   const commissionChg = pctChange(totalCommission, prevMonthCommission)
-  const dealerChg = pctChange(dealerCount ?? 0, dealerCountLastMonth ?? 0)
+  // Six trailing months of commission for the hero sparkline — same trendTx
+  // fetch the chart below already uses, no extra query.
+  const commissionSpark = trendMonths.map(({ key }) =>
+    (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t.commission_rm), 0)
+  )
 
   const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
   const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
@@ -212,40 +214,33 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={<IconTrendUp className="h-4 w-4" />}
-          label="Top-up This Month"
-          value={`${totalPoints.toLocaleString()} pts`}
-          chg={pointsChg}
-          footer={`Last month: ${prevMonthPoints.toLocaleString()} pts`}
-          href={`/records?status=verified&month=${currentMonthStr}`}
-        />
-        <KpiCard
-          icon={<IconCoin className="h-4 w-4" />}
-          label="Your Commission (2%)"
-          value={`${formatMYR(totalCommission)}`}
+      {/* Commission is master's headline: it's the money the business actually
+          keeps, and every other figure here is an input to it. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <HeroCard
+          label={`Your commission — ${formatMonthLabel(currentMonthStr)}`}
+          value={formatMYR(totalCommission)}
           chg={commissionChg}
-          footer={`Last month: ${formatMYR(prevMonthCommission)}`}
+          chgSuffix={`vs ${formatMYR(prevMonthCommission)} last month`}
+          spark={commissionSpark}
+          sparkLabel={`Last ${trendMonths.length} months`}
           href={`/records?status=verified&month=${currentMonthStr}`}
+          stats={[
+            {
+              label: 'Top-up this month',
+              value: `${totalPoints.toLocaleString()} pts`,
+              href: `/records?status=verified&month=${currentMonthStr}`,
+            },
+            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers' },
+            {
+              label: 'Credit balance',
+              value: `${creditBalance.available.toLocaleString()} pts`,
+              href: '/purchases',
+              tone: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'warn' : 'normal',
+            },
+          ]}
         />
-        <KpiCard
-          icon={<IconUsers className="h-4 w-4" />}
-          label="Total Dealers"
-          value={String(dealerCount ?? 0)}
-          chg={dealerChg}
-          footer={`Last month: ${dealerCountLastMonth ?? 0}`}
-          href="/dealers"
-        />
-        <KpiCard
-          icon={<IconCheckCircle className="h-4 w-4" />}
-          label="Reconciliation"
-          value={currentStatement?.reconciled ? 'Reconciled' : 'Not yet'}
-          statusPill={currentStatement?.reconciled ? undefined : 'Action needed'}
-          footer={`For ${currentMonthStr}`}
-          href="/reconcile"
-          stamp={currentStatement?.reconciled ? <ReconciledStamp sub={currentMonthStr} /> : undefined}
-        />
+        <NeedsAttention items={alerts} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -271,14 +266,14 @@ export default async function DashboardPage() {
 // an accountant actually acts on (Pending Review, Credit Balance) instead of
 // the ones that are master's business-owner concern (Total Dealers,
 // Commission earned).
-async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
+async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseClient; userId: string }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
   const currentMonthStr = today.slice(0, 7)
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: dealerRows }, { data: trendTx }, { data: recentTxRows }] =
+  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: dealerRows }, { data: trendTx }, { data: recentTxRows }, alerts] =
     await Promise.all([
       supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
       getAvailablePointsBalance(supabase),
@@ -295,6 +290,7 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
         .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
         .order('created_at', { ascending: false })
         .limit(10),
+      getNotifications(userId, 'accountant'),
     ])
 
   const pendingCount = pendingRows?.length ?? 0
@@ -305,6 +301,9 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
   const prevMonthKey = trendMonths[trendMonths.length - 2].key
   const prevMonthPoints = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey).reduce((sum, t) => sum + Number(t.points), 0)
   const pointsChg = pctChange(totalPoints, prevMonthPoints)
+  const pointsSpark = trendMonths.map(({ key }) =>
+    (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t.points), 0)
+  )
 
   const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
   const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
@@ -329,46 +328,39 @@ async function AccountantDashboard({ supabase }: { supabase: SupabaseClient }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={<IconAlertCircle className="h-4 w-4" />}
-          label="Pending Review"
-          value={String(pendingCount)}
-          footer={
-            pendingCount
-              ? oldestPendingDays >= PENDING_REVIEW_STALE_DAYS
-                ? `Oldest is ${oldestPendingDays}d old`
-                : 'All recently recorded'
-              : 'Nothing waiting on you'
-          }
-          href="/records?status=pending"
-        />
-        <KpiCard
-          icon={<IconCoin className="h-4 w-4" />}
-          label="Credit Balance"
-          value={`${creditBalance.available.toLocaleString()} pts`}
-          statusPill={
-            creditBalance.available <= 0 ? 'Out of credit' : creditBalance.available < LOW_BALANCE_THRESHOLD ? 'Running low' : undefined
-          }
-          footer="Points bought from Vibe Mobile"
-          href="/purchases"
-        />
-        <KpiCard
-          icon={<IconTrendUp className="h-4 w-4" />}
-          label="Top-up This Month"
+      {/* An accountant's headline is the volume they're responsible for
+          recording and verifying, not master's commission. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <HeroCard
+          label={`Top-up — ${formatMonthLabel(currentMonthStr)}`}
           value={`${totalPoints.toLocaleString()} pts`}
           chg={pointsChg}
-          footer={`Last month: ${prevMonthPoints.toLocaleString()} pts`}
+          chgSuffix={`vs ${prevMonthPoints.toLocaleString()} pts last month`}
+          spark={pointsSpark}
+          sparkLabel={`Last ${trendMonths.length} months`}
           href={`/records?status=verified&month=${currentMonthStr}`}
+          stats={[
+            {
+              label: 'Pending review',
+              value: String(pendingCount),
+              href: '/records?status=pending',
+              tone: pendingCount && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS ? 'warn' : 'normal',
+            },
+            {
+              label: 'Credit balance',
+              value: `${creditBalance.available.toLocaleString()} pts`,
+              href: '/purchases',
+              tone: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'warn' : 'normal',
+            },
+            {
+              label: `Reconciliation ${currentMonthStr}`,
+              value: statement?.reconciled ? 'Closed' : 'Open',
+              href: '/reconcile',
+              tone: statement?.reconciled ? 'normal' : 'warn',
+            },
+          ]}
         />
-        <KpiCard
-          icon={<IconCheckCircle className="h-4 w-4" />}
-          label="Reconciliation"
-          value={statement?.reconciled ? 'Reconciled' : 'Not yet'}
-          statusPill={statement?.reconciled ? undefined : 'Action needed'}
-          footer={`For ${currentMonthStr}`}
-          href="/reconcile"
-        />
+        <NeedsAttention items={alerts} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -394,7 +386,7 @@ const DELIVERY_TABLE_LIMIT = 8
 // the pending-delivery queue (with the real Mark as Sent action, not a
 // read-only count) and the regional dealer-network map, instead of the
 // finance-facing trend chart.
-async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
+async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; userId: string }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
 
@@ -405,6 +397,7 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
     activityMap,
     { data: monthTx },
     { data: dealerRegionRows },
+    alerts,
   ] = await Promise.all([
     supabase
       .from('delivery_queue')
@@ -421,11 +414,11 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
     // dealers_directory, which cs can read.
     supabase.from('transactions').select('dealer_id, points').eq('status', 'verified').gte('tx_date', monthStart).lte('tx_date', today),
     supabase.from('dealers_directory').select('id, region, company_name'),
+    getNotifications(userId, 'cs'),
   ])
 
   const oldestDeliveryDays = deliveryListRows?.length ? daysSince(deliveryListRows[0].tx_date) : 0
   const inactiveCount = [...activityMap.values()].filter((a) => a.isInactive).length
-  const dealerChg = pctChange(dealerCount ?? 0, dealerCountLastMonth ?? 0)
 
   const deliveryRows: DeliveryRow[] = (deliveryListRows ?? []).map((row) => {
     const days = daysSince(row.tx_date)
@@ -456,35 +449,36 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-        <KpiCard
-          icon={<IconTruck className="h-4 w-4" />}
-          label="Pending Deliveries"
+      {/* cs has no financial visibility, so the headline is the queue that
+          is actually their job to clear. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <HeroCard
+          label="SIM deliveries pending"
           value={String(pendingDeliveryCount ?? 0)}
-          footer={
+          chgSuffix={
             pendingDeliveryCount
               ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
-                ? `Oldest is ${oldestDeliveryDays}d old`
-                : 'All recently queued'
-              : 'Nothing waiting on you'
+                ? `oldest is ${oldestDeliveryDays}d old`
+                : 'all recently queued'
+              : 'nothing waiting on you'
           }
           href="/delivery"
+          stats={[
+            {
+              label: 'Needs follow-up',
+              value: String(inactiveCount),
+              href: '/dealers?view=inactive',
+              tone: inactiveCount ? 'warn' : 'normal',
+            },
+            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers' },
+            {
+              label: 'New this month',
+              value: String((dealerCount ?? 0) - (dealerCountLastMonth ?? 0)),
+              href: '/dealers',
+            },
+          ]}
         />
-        <KpiCard
-          icon={<IconUsers className="h-4 w-4" />}
-          label="Needs Follow-up"
-          value={String(inactiveCount)}
-          footer={inactiveCount ? 'No verified top-up in 30+ days' : 'Nothing to follow up on'}
-          href="/dealers?view=inactive"
-        />
-        <KpiCard
-          icon={<IconUsers className="h-4 w-4" />}
-          label="Total Dealers"
-          value={String(dealerCount ?? 0)}
-          chg={dealerChg}
-          footer={`Last month: ${dealerCountLastMonth ?? 0}`}
-          href="/dealers"
-        />
+        <NeedsAttention items={alerts} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -510,67 +504,3 @@ async function CsDashboard({ supabase }: { supabase: SupabaseClient }) {
   )
 }
 
-// Renders nothing when pct is null — the caller (page-level pctChange) uses
-// null to mean "no meaningful last-period baseline," which must stay silent
-// rather than render 0%/NaN/Infinity.
-function ChgBadge({ pct, className = '' }: { pct: number | null; className?: string }) {
-  if (pct === null) return null
-  const rounded = Math.round(pct * 10) / 10
-  if (rounded === 0) {
-    return (
-      <span className={`chg chg-warn w-fit ${className}`} title="vs last month">
-        → 0.0%
-      </span>
-    )
-  }
-  return (
-    <span className={`chg ${rounded > 0 ? 'chg-up' : 'chg-down'} w-fit ${className}`} title="vs last month">
-      {rounded > 0 ? '↑' : '↓'} {Math.abs(rounded).toFixed(1)}%
-    </span>
-  )
-}
-
-// Uniform KPI card — all four dashboard headline metrics share this exact
-// treatment (icon tile, label, big number, chg/status pill, footer) rather
-// than each getting its own visual weight, per design review: no single
-// metric should read as more "important" than the others at a glance.
-function KpiCard({
-  label,
-  value,
-  href,
-  icon,
-  chg,
-  statusPill,
-  footer,
-  stamp,
-}: {
-  label: string
-  value: string
-  href: string
-  icon: React.ReactNode
-  chg?: number | null
-  statusPill?: string
-  footer: string
-  stamp?: React.ReactNode
-}) {
-  return (
-    <a href={href} className="app-tile relative flex flex-col gap-3 overflow-visible transition-colors hover:border-jade/50">
-      <div className="flex items-start justify-between">
-        {/* min-w-0 lets truncate actually engage on a flex item (the default
-            min-width:auto otherwise blocks it) — without it, a label like
-            "Top-up This Month" wraps to 2 lines the moment this row's real
-            width dips slightly, which happens between 80%/100% browser zoom
-            on the same window since zoom changes the CSS px this row gets. */}
-        <span className="min-w-0 truncate text-[13px] font-semibold text-paper-dim">{label}</span>
-        <span className="stat-tile-icon">{icon}</span>
-      </div>
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="page-title tabular-nums">{value}</span>
-        {chg !== undefined && <ChgBadge pct={chg ?? null} />}
-        {statusPill && <span className="chg chg-down w-fit">{statusPill}</span>}
-      </div>
-      <div className="text-[12.5px] text-paper-dim">{footer}</div>
-      {stamp && <div className="pointer-events-none absolute -right-3 -top-4">{stamp}</div>}
-    </a>
-  )
-}

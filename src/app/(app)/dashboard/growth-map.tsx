@@ -184,7 +184,7 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
         ) : regions.length ? (
           <>
             All {regions.length} region{regions.length === 1 ? '' : 's'} with verified top-up this month, best first.{' '}
-            <span className="text-paper-dim/70">Click one to see its dealers.</span>
+            <span className="text-paper-dim">Click one to see its dealers.</span>
           </>
         ) : (
           'No verified transactions this month yet.'
@@ -365,7 +365,7 @@ function GrowthMap({
             return (
               <span
                 key={`label-${d.state}-${d.district}`}
-                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[8px] font-semibold uppercase tracking-wide text-paper-dim/70"
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[8px] font-semibold uppercase tracking-wide text-paper-dim"
                 style={{ left: `${left}%`, top: `${top}%` }}
               >
                 {d.district}
@@ -457,7 +457,7 @@ function GrowthMap({
           when it isn't. The list above is the complete picture; this line is
           what stops the map quietly contradicting it. */}
       {!selected && unmapped > 0 && (
-        <p className="mt-1.5 text-center text-[9.5px] text-paper-dim/70">
+        <p className="mt-1.5 text-center text-[9.5px] text-paper-dim">
           Map shows the {mapped} main town{mapped === 1 ? '' : 's'} · {unmapped} more region{unmapped === 1 ? '' : 's'} in the list above
         </p>
       )}

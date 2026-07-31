@@ -92,9 +92,12 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         title="Credit Purchases"
         subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers."
       />
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <div className="app-card">
-
+      {/* Single column, and the hero is no longer a card inside a card.
+          Measured before: three cards at 651x460, 603x227 (nested in the
+          first) and 465x559, each about a third full — 35%, 30% and 37% of
+          their own area carrying content. Two thirds of every card was
+          empty, which reads as unfinished rather than restrained. */}
+      <div className="mt-5 flex w-full flex-col gap-5">
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
         {/* Was four equal tiles. Only two of them are decisions — "how much
@@ -105,8 +108,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
 
             Balance leads because it is the one that stops work: the New
             Transaction form hard-blocks a sale that would oversell it. */}
-        <div className="mt-4">
-          <HeroCard
+        <HeroCard
             label="Credit balance"
             value={`${balance.toLocaleString()} pts`}
             chgSuffix={
@@ -139,8 +141,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                 ? `Cash margin is negative while stock is unsold — ${formatPoints(balance)} pts still to sell. It settles toward ${formatMYR(expectedCommission)}.`
                 : `Cash margin against the ${formatMYR(expectedCommission)} expected at 2%.`
             }
-          />
-        </div>
+        />
 
         {totalPurchasedPoints === 0 && (
           <p className="note-strip mt-3.5">
@@ -149,10 +150,30 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           </p>
         )}
 
-        <div className="mt-5 border-t border-ink-800 pt-4">
-          <div className="mb-2.5 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-paper">Purchase History</h2>
-            <span className="pill pill-neutral">{totalCount} purchase{totalCount === 1 ? '' : 's'}</span>
+        {/* Logging a purchase happens when stock is bought from Vibe — once
+            a month at this volume, and the table below holds a single row.
+            Xero's Bills, QuickBooks' Expenses and Stripe's Payments all put
+            creation behind a button rather than docking the form permanently
+            beside the list; a form used monthly does not earn a 465x559
+            column that is empty the rest of the time. (Observed convention in
+            those products rather than a fetched citation — weaker, and
+            flagged as such.) */}
+        <div className="app-card">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-paper">
+              Purchase history <span className="ml-1 font-medium text-paper-dim">{totalCount}</span>
+            </h2>
+            <details className="group">
+              <summary className="btn-ghost cursor-pointer list-none py-1.5 text-xs">Log a purchase</summary>
+              <div className="mt-4 max-w-xl border-t border-ink-800 pt-4">
+                {error && <div className="alert alert-bad">{error}</div>}
+                <PurchaseForm today={today} />
+                <p className="mt-3 text-[11.5px] leading-relaxed text-paper-dim">
+                  Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance
+                  above is what&apos;s left to sell.
+                </p>
+              </div>
+            </details>
           </div>
           {rows.length ? (
             <>
@@ -213,17 +234,6 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           )}
         </div>
       </div>
-
-      <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Log a purchase</h3>
-        {error && <div className="alert alert-bad">{error}</div>}
-        <PurchaseForm today={today} />
-        <p className="note-strip">
-          Each entry adds to the points balance. Verified dealer transactions subtract from it — the Balance tile
-          shows what&apos;s left to sell.
-        </p>
-      </div>
-    </div>
     </>
   )
 }

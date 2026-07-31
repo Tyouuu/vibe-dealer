@@ -43,8 +43,11 @@ export function PurchaseForm({ today }: { today: string }) {
           <DatePicker name="purchase_date" max={today} todayIso={today} required />
         </div>
         <div>
-          <label className="field-label">Amount Paid (RM)</label>
+          <label htmlFor="cp-money" className="field-label">
+            Amount paid (RM)
+          </label>
           <input
+            id="cp-money"
             name="money_rm"
             type="number"
             step="0.01"
@@ -56,8 +59,11 @@ export function PurchaseForm({ today }: { today: string }) {
           />
         </div>
         <div>
-          <label className="field-label">Points/Credit Received</label>
+          <label htmlFor="cp-points" className="field-label">
+            Points / credit received
+          </label>
           <input
+            id="cp-points"
             type="number"
             step="0.01"
             min="0"
@@ -70,8 +76,10 @@ export function PurchaseForm({ today }: { today: string }) {
           <span className="hint">Auto-calculated at the usual rate — editable if Vibe charged something else this time.</span>
         </div>
         <div>
-          <label className="field-label">Note (optional)</label>
-          <input name="note" type="text" className="field-input" />
+          <label htmlFor="cp-note" className="field-label">
+            Note (optional)
+          </label>
+          <input id="cp-note" name="note" type="text" className="field-input" />
         </div>
         <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
           {submitting ? 'Saving…' : 'Save'}

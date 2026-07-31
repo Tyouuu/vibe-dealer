@@ -6,24 +6,8 @@ import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLa
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { HeroCard, pctChange } from '../hero-card'
 import { formatMYR } from '@/lib/money'
-
-function formatDelta(current: number, prior: number): { label: string; positive: boolean } | null {
-  if (prior === 0) return current === 0 ? null : { label: 'New this month', positive: current > 0 }
-  const pct = ((current - prior) / Math.abs(prior)) * 100
-  const rounded = Math.round(pct * 10) / 10
-  return { label: `${rounded > 0 ? '+' : ''}${rounded}% vs last month`, positive: rounded >= 0 }
-}
-
-function Delta({ current, prior }: { current: number; prior: number }) {
-  const delta = formatDelta(current, prior)
-  if (!delta) return <div className="mt-1 text-[11px] font-semibold text-paper-dim">No data last month</div>
-  return (
-    <div className={`mt-1 text-[11px] font-bold ${delta.positive ? 'text-jade-bright' : 'text-clay-bright'}`}>
-      {delta.positive ? '↑' : '↓'} {delta.label}
-    </div>
-  )
-}
 
 export const metadata: Metadata = {
   title: 'Monthly Report — DealerHub',
@@ -100,52 +84,66 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Month lives in the header beside Export, not inside the content —
+          same placement as Reconciliation. It used to appear twice: once in
+          the subtitle and again as a picker directly below it. */}
       <PageHeader
         title="Monthly Report"
-        subtitle={`${formatMonthLabel(month)} · generated ${formatDateLabel(todayInMalaysia())}`}
-        action={<a href={`/api/reports/export?month=${month}`} className="btn-ghost shrink-0">⤓ Export Excel (CSV)</a>}
+        subtitle={`Generated ${formatDateLabel(todayInMalaysia())}`}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <form className="flex items-center gap-2" action="/reports" method="GET">
+              <div className="w-40">
+                <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
+              </div>
+              <button type="submit" className="btn-ghost py-1.5 text-xs">
+                View
+              </button>
+            </form>
+            <a href={`/api/reports/export?month=${month}`} className="btn-ghost shrink-0">
+              Export CSV
+            </a>
+          </div>
+        }
       />
 
-      <div className="app-card border-t-[3px] border-t-primary">
+      {/* Was four equal tiles inside a card carrying a 3px purple top rail —
+          a treatment that existed on no other page in the app, which is the
+          same thing that made Reconciliation read as imported from elsewhere.
 
-        <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
-          <form className="flex items-center gap-3" action="/reports" method="GET">
-            <div className="w-44">
-              <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
-            </div>
-            <button type="submit" className="btn-primary">
-              View
-            </button>
-          </form>
-        </div>
-
-        <div className="grid grid-cols-2 divide-x divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 shadow-sm sm:grid-cols-4 sm:divide-y-0">
-          <div className="p-4 sm:p-5">
-            <div className="text-[13px] font-semibold text-paper-dim">This Month&apos;s Total Top-up</div>
-            <div className="figure-points mt-2 text-2xl font-semibold">
-              {totalPoints.toLocaleString()} <span className="text-xs font-semibold text-paper-dim">pts</span>
-            </div>
-            <Delta current={totalPoints} prior={prevTotalPoints} />
-          </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-[13px] font-semibold text-paper-dim">Your 2%</div>
-            <div className="figure-money mt-2 text-2xl font-semibold">{formatMYR(totalCommission)}</div>
-            <Delta current={totalCommission} prior={prevTotalCommission} />
-          </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-[13px] font-semibold text-paper-dim">Transactions</div>
-            <a href={`/records?month=${month}&status=verified`} className="mt-2 block text-2xl font-semibold text-paper hover:text-primary">
-              {rows?.length ?? 0}
-            </a>
-            <Delta current={rows?.length ?? 0} prior={prevTxCount} />
-          </div>
-          <div className="p-4 sm:p-5">
-            <div className="text-[13px] font-semibold text-paper-dim">Active Dealers</div>
-            <div className="mt-2 text-2xl font-semibold text-paper">{breakdown.length}</div>
-            <Delta current={breakdown.length} prior={prevActiveDealers} />
-          </div>
-        </div>
-      </div>
+          Three of those four figures were also repeated verbatim in the By
+          Package total row a few hundred pixels below (top-up, your 2%, and
+          the transaction count). They stay, because what they carry that the
+          table cannot is the comparison against last month — but as supporting
+          figures rather than as four equal shouts. Your 2% leads: it is the
+          number this report exists to produce. */}
+      <HeroCard
+        label={`Your 2% — ${formatMonthLabel(month)}`}
+        value={formatMYR(totalCommission)}
+        chg={pctChange(totalCommission, prevTotalCommission)}
+        chgSuffix={`vs ${formatMYR(prevTotalCommission)} last month`}
+        href={`/records?month=${month}&status=verified`}
+        stats={[
+          {
+            label: 'Total top-up',
+            value: `${totalPoints.toLocaleString()} pts`,
+            href: `/records?month=${month}&status=verified`,
+            chg: pctChange(totalPoints, prevTotalPoints),
+          },
+          {
+            label: 'Transactions',
+            value: String(rows?.length ?? 0),
+            href: `/records?month=${month}&status=verified`,
+            chg: pctChange(rows?.length ?? 0, prevTxCount),
+          },
+          {
+            label: 'Active dealers',
+            value: String(breakdown.length),
+            href: '/dealers',
+            chg: pctChange(breakdown.length, prevActiveDealers),
+          },
+        ]}
+      />
 
       <div className="app-card">
         <h3 className="mb-0.5 text-sm font-bold text-paper">By Package</h3>

@@ -92,8 +92,60 @@ is unsold — 21,501 pts still to sell. Settles toward RM 769.98", in brass
 rather than alarming red. Four tiles in the 1.4fr column also gave each ~140px,
 which truncated labels to "TOTAL BO…" and broke "-RM 19,512.00" across two
 lines with the minus stranded on its own — now two across, figures
-`whitespace-nowrap`. Still open: demoting Total Bought / Total Cost Paid,
-which are reference figures rather than decisions.
+`whitespace-nowrap`.
+
+**Finished 2026-07-31.** The remaining item — demoting Total Bought / Total
+Cost Paid — is done. Only two of the four figures are decisions ("how much can
+I still sell", "am I ahead or behind"); the other two are reference. Credit
+balance now leads as the hero, because it is the figure that stops work: New
+Transaction hard-blocks a sale that would oversell it. Cash margin, total
+bought and total cost paid sit under it as supporting stats, with the
+negative-margin explanation as a footnote.
+
+Note for whoever touches this next: cash margin uses tone `caution` (brass),
+not `warn` (clay). Negative is its normal state while stock is unsold, and red
+would announce an error every single month. The first pass of this rebuild got
+that wrong and had to be corrected.
+
+Also wired `htmlFor`/`id` on three inputs in the Log a Purchase form — the
+labels were siblings of their inputs with no association, so axe reported two
+`label` violations and a screen reader could not name the fields.
+
+### `[x]` Monthly Report — consistency pass, 2026-07-31
+
+Not a complaint the client raised; found when they asked whether this page,
+Audit Log and Credit Purchases needed the same deep research Reconciliation
+got. They didn't — the defects here were nameable without it:
+
+- The summary card carried a **3px purple top rail that existed on no other
+  page in the app** (`border-t-[3px] border-t-primary`, in the page and its
+  loading skeleton). That is the same one-off-decoration problem that made
+  Reconciliation read as imported from another product.
+- **Three of the four summary figures were repeated verbatim** in the By
+  Package total row a few hundred pixels below: total top-up, your 2%, and the
+  transaction count. Only Active Dealers was unique to the summary.
+- The **month appeared twice** — in the subtitle and again as a picker
+  directly beneath it.
+
+Fixed by moving the month picker into the header beside Export (same placement
+as Reconciliation), dropping the purple rail, and replacing the four equal
+tiles with the shared `HeroCard`: Your 2% leads, since it is the number the
+report exists to produce, with total top-up / transactions / active dealers as
+supporting figures. The repeated numbers stay — what they carry that the table
+cannot is the comparison against last month — but as small stats rather than
+four equal shouts.
+
+`HeroCard` moved out of `dashboard/` to `src/app/(app)/hero-card.tsx` and is
+now shared by Dashboard, Monthly Report and Credit Purchases, so all three
+open the same way. `pctChange` moved with it.
+
+### `[x]` Audit Log — looked at, deliberately not changed
+
+Already redesigned once into the dense day-grouped table. Two small things
+noted and left: the filter row mixes two mechanisms (three selects plus an
+apply button, alongside segmented tabs that apply on click), and the
+explanatory banner is permanent. Neither justifies reworking a page that
+works.
 
 ### `[x]` Onboard Dealer — "right side too empty"
 

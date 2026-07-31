@@ -5,11 +5,11 @@ import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { COMMISSION_RATE } from '@/lib/packages'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { IconCoin, IconTrendUp, IconDocument, IconCheckCircle } from '../icons'
 import { todayInMalaysia } from '@/lib/month'
 import { PurchaseForm } from './purchase-form'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 import { formatMYR, formatPoints } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -90,75 +90,49 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
 
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
-        {/* Each label sits next to a shrink-0 icon in a flex row, so without
-            min-w-0 (flex items default to min-width:auto, which blocks
-            truncate from ever engaging) "Cash Margin vs 2%" would wrap to
-            2-3 lines the moment this row's actual width dips even slightly —
-            exactly what happened between 80%/100% browser zoom on the same
-            window, since zoom changes how many CSS px this row actually
-            gets. truncate keeps every label a single line at any width. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="app-tile">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Balance</div>
-              <span className="stat-tile-icon">
-                <IconCoin className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            <div
-              className={`figure-points mt-1.5 whitespace-nowrap text-xl font-semibold ${
-                balance <= 0 ? 'text-clay-bright' : balance < LOW_BALANCE_THRESHOLD ? 'text-brass-bright' : ''
-              }`}
-            >
-              {balance.toLocaleString()} pts
-            </div>
-            {balance > 0 && balance < LOW_BALANCE_THRESHOLD && (
-              <div className="mt-0.5 text-[11px] text-brass-bright">Running low — log a purchase soon</div>
-            )}
-          </div>
-          <div className="app-tile">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Bought</div>
-              <span className="stat-tile-icon">
-                <IconTrendUp className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            <div className="figure-points mt-1.5 whitespace-nowrap text-xl font-semibold">{totalPurchasedPoints.toLocaleString()} pts</div>
-          </div>
-          <div className="app-tile">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Total Cost Paid</div>
-              <span className="stat-tile-icon">
-                <IconDocument className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            <div className="figure-money mt-1.5 whitespace-nowrap text-xl font-semibold">{formatMYR(totalPurchasedCost)}</div>
-          </div>
-          <div className="app-tile">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cash Margin vs 2%</div>
-              <span className="stat-tile-icon">
-                <IconCheckCircle className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            <div
-              className={`figure-money mt-1.5 whitespace-nowrap text-xl font-semibold ${
-                actualCashMargin < 0 ? 'text-brass-bright' : ''
-              }`}
-            >
-              {formatMYR(actualCashMargin)}
-            </div>
-            {/* A large negative number with no explanation reads as a bug.
-                It isn't one: points are paid for up front and earn their
-                margin only as they're resold, so this sits negative until
-                the batch is sold through. Saying that is the difference
-                between "something is broken" and "this is how it works". */}
-            <div className="mt-0.5 text-[11px] leading-snug text-paper-dim">
-              {actualCashMargin < 0
-                ? `Normal while stock is unsold — ${formatPoints(balance)} pts still to sell. Settles toward ${formatMYR(expectedCommission)}.`
-                : `Expected ${formatMYR(expectedCommission)} at 2%`}
-            </div>
-          </div>
+        {/* Was four equal tiles. Only two of them are decisions — "how much
+            can I still sell" (Balance) and "am I ahead or behind" (Cash
+            margin). Total Bought and Total Cost Paid are reference figures:
+            useful for context, never the reason anyone opens this page. They
+            keep their place but not their weight.
+
+            Balance leads because it is the one that stops work: the New
+            Transaction form hard-blocks a sale that would oversell it. */}
+        <div className="mt-4">
+          <HeroCard
+            label="Credit balance"
+            value={`${balance.toLocaleString()} pts`}
+            chgSuffix={
+              balance <= 0
+                ? 'out of credit — log a purchase before the next sale'
+                : balance < LOW_BALANCE_THRESHOLD
+                  ? 'running low — log a purchase soon'
+                  : 'points bought from Vibe Mobile, still to sell'
+            }
+            href="/purchases"
+            stats={[
+              {
+                label: 'Cash margin vs 2%',
+                value: formatMYR(actualCashMargin),
+                href: '/reports',
+                // brass, not red: negative here is the normal state while stock
+                // is unsold, and red would cry error every month.
+                tone: actualCashMargin < 0 ? 'caution' : 'normal',
+              },
+              { label: 'Total bought', value: `${totalPurchasedPoints.toLocaleString()} pts`, href: '/purchases' },
+              { label: 'Total cost paid', value: formatMYR(totalPurchasedCost), href: '/purchases' },
+            ]}
+            footnote={
+              /* A large negative number with no explanation reads as a bug.
+                 It isn't one: points are paid for up front and earn their
+                 margin only as they're resold, so this sits negative until
+                 the batch is sold through. Saying that is the difference
+                 between "something is broken" and "this is how it works". */
+              actualCashMargin < 0
+                ? `Cash margin is negative while stock is unsold — ${formatPoints(balance)} pts still to sell. It settles toward ${formatMYR(expectedCommission)}.`
+                : `Cash margin against the ${formatMYR(expectedCommission)} expected at 2%.`
+            }
+          />
         </div>
 
         {totalPurchasedPoints === 0 && (
@@ -189,7 +163,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                   <tbody>
                     {rows.map((p) => (
                       <tr key={p.id} className="tr-row">
-                        <td className="td text-paper-dim">{p.purchase_date}</td>
+                        <td className="td whitespace-nowrap text-paper-dim">{p.purchase_date}</td>
                         <td className="td figure-money text-right">{formatMYR(Number(p.money_rm))}</td>
                         <td className="td figure-points text-right">{Number(p.points).toLocaleString()}</td>
                         <td className="td text-paper-dim">{p.note ?? '—'}</td>

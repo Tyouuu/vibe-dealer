@@ -5,7 +5,7 @@ function Bone({ className = '' }: { className?: string }) {
 export default function ReportsLoading() {
   return (
     <div className="flex flex-col gap-5">
-      <div className="app-card border-t-[3px] border-t-primary">
+      <div className="app-card">
         <Bone className="h-8 w-52" />
         <Bone className="mt-2 h-3 w-64" />
         <div className="mb-4 mt-4 flex items-center justify-between">

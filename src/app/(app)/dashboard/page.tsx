@@ -14,18 +14,12 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { RegionGrowthCard } from './growth-map'
-import { HeroCard, NeedsAttention } from './summary'
+import { NeedsAttention } from './summary'
+import { HeroCard, pctChange } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
-
-// null means "no meaningful baseline" (previous period was 0) — callers must
-// skip rendering the chg badge rather than show a divide-by-zero NaN/Infinity.
-function pctChange(curr: number, prev: number): number | null {
-  if (!prev) return null
-  return ((curr - prev) / prev) * 100
-}
 
 export const metadata: Metadata = {
   title: 'Dashboard — DealerHub',

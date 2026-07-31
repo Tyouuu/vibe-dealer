@@ -264,8 +264,16 @@ body {
   .form-section-head {
     @apply mb-4 mt-6 flex items-center gap-2.5 first:mt-0;
   }
+  /* The icon tile is gone.
+     Each section head carried three separate devices — a purple rounded icon
+     tile, an uppercase letter-spaced label, and a rule — on a form with three
+     sections. None of the icons encoded anything the label didn't already say
+     (a document beside "Transaction", a coin beside "Amount"), so all three
+     tiles were decoration competing with the fields underneath. Neither Linear
+     nor Vercel decorates a section heading; the label and a hairline are the
+     whole treatment. Kept as a no-op selector so callers don't need editing. */
   .form-section-head .tile {
-    @apply grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary;
+    @apply hidden;
   }
   /* Same icon tile, reusable outside .form-section-head — AnnotatedSection
      needs it in its own heading. */
@@ -278,9 +286,11 @@ body {
   .form-section-head .tile svg {
     @apply h-[14px] w-[14px];
   }
+  /* Sentence case at reading weight rather than spaced-out uppercase. An
+     all-caps tracked label is a display treatment; these are structural
+     headings inside a form and should read as quickly as the fields do. */
   .form-section-head span {
-    @apply whitespace-nowrap text-[12px] font-medium uppercase text-paper-dim;
-    letter-spacing: 0.08em;
+    @apply whitespace-nowrap text-[12.5px] font-semibold text-paper;
   }
   .form-section-head .rule {
     @apply h-px flex-1 bg-ink-800;
@@ -624,8 +634,12 @@ body {
     @apply h-3.5 w-3.5 shrink-0 rounded;
   }
 
+  /* Same neutral chip as every other non-status marker. This was a filled
+     purple pill with purple text — the last tinted blob on the form, and the
+     loudest thing in a panel whose job is to be read, not noticed. The dot
+     already says "live"; the fill was saying it a second time. */
   .live-badge {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-primary-soft py-1 pl-1.5 pr-2.5 text-[10.5px] font-bold text-primary-deep;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 py-[3px] pl-1.5 pr-2 text-[10.5px] font-semibold text-paper-dim;
   }
   .live-dot {
     @apply h-1.5 w-1.5 shrink-0 rounded-full bg-primary;

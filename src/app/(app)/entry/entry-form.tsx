@@ -294,7 +294,7 @@ export function EntryForm({
                 />
               </div>
               <div>
-                <label className="field-label">SIM Type</label>
+                <label className="field-label">SIM type</label>
                 <Listbox
                   name="sim_type"
                   defaultValue="esim"
@@ -308,7 +308,7 @@ export function EntryForm({
           ) : (
             <div className="form-grid">
               <div>
-                <label className="field-label">Amount Collected (RM)</label>
+                <label className="field-label">Amount collected (RM)</label>
                 <input
                   name="money_rm"
                   type="number"
@@ -322,7 +322,7 @@ export function EntryForm({
                 />
               </div>
               <div>
-                <label className="field-label">Top-up Value (points)</label>
+                <label className="field-label">Top-up value (points)</label>
                 <input
                   name="points"
                   type="number"
@@ -335,7 +335,7 @@ export function EntryForm({
                 <span className="hint">Auto-calculated from rate — editable.</span>
               </div>
               <div className="sm:col-span-2">
-                <label className="field-label">Coupon Amount (RM, optional)</label>
+                <label className="field-label">Coupon amount (RM, optional)</label>
                 <input
                   name="coupon_rm"
                   type="number"
@@ -360,7 +360,7 @@ export function EntryForm({
             <span className="tile">
               <IconPaperclip />
             </span>
-            <span>Attachments &amp; Notes</span>
+            <span>Attachments and notes</span>
             <span className="rule" />
           </div>
           <div className="form-grid">

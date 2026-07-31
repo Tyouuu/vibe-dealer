@@ -10,6 +10,7 @@ import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
 import { Listbox } from '../listbox'
 import { PageHeader } from '../page-header'
+import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 
@@ -132,6 +133,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // sitting right below it (and the "Needs Follow-up" KPI card that links here).
   const displayCount = view === 'inactive' ? rows.length : (count ?? 0)
 
+  // Summary figures for the header. Derived from `rows` — the set matching the
+  // current filters — rather than from the whole table, so the summary can
+  // never contradict the list sitting directly beneath it. That was already a
+  // live problem here: `count` is the DB's pre-filter total, and the inactive
+  // view filters afterward in JS, which is why displayCount exists at all.
+  const sellingCount = rows.filter((r) => r.totalPoints > 0).length
+  const quietCount = rows.filter((r) => r.isInactive).length
+  const noRegionCount = rows.filter((r) => !r.region).length
+
   // Sliced in JS rather than via .range() on the query (the pattern /records
   // uses) — rank comes from transactions.points aggregated separately, not a
   // column the DB query can .order() by, so the full filtered set has to be
@@ -188,10 +198,46 @@ export default async function DealersPage({ searchParams }: PageProps) {
     <>
       {/* Header lives on the page surface, not inside the card — see
           PageHeader for why. */}
+      {/* Polaris's resource index prescription — resource type as the page
+          title, the create action top right, filtering at the top of the index
+          itself — was already followed here. What the page never did was say
+          anything about the population it lists: 249 rows, and no answer to
+          "how many of these are actually trading". */}
       <PageHeader
         title="Dealers"
-        subtitle={`${displayCount} dealer${displayCount === 1 ? '' : 's'}${regions.length ? ` · ${regions.length} regions` : ''}`}
-        action={canManage ? { href: '/onboard', label: '+ Onboard Dealer' } : undefined}
+        subtitle="Everyone who buys points from us, ranked by what they've topped up."
+        action={canManage ? { href: '/onboard', label: 'Onboard dealer' } : undefined}
+      />
+
+      <HeroCard
+        label={view === 'inactive' ? 'Dealers needing follow-up' : q || region !== 'all' ? 'Dealers matching this filter' : 'Dealers'}
+        value={displayCount.toLocaleString()}
+        chgSuffix={regions.length ? `across ${regions.length} region${regions.length === 1 ? '' : 's'}` : undefined}
+        href="/dealers"
+        stats={[
+          {
+            // getDealerRankingMap sums every verified transaction ever, not
+            // the current month — so this cannot be labelled "this period".
+            label: 'Ever topped up',
+            value: sellingCount.toLocaleString(),
+            href: '/records?status=verified',
+            sub: 'has verified volume on record',
+          },
+          {
+            label: 'Gone quiet',
+            value: quietCount.toLocaleString(),
+            href: viewHref('inactive'),
+            tone: quietCount ? 'caution' : 'normal',
+            sub: 'no verified top-up in 30+ days',
+          },
+          {
+            label: 'No region set',
+            value: noRegionCount.toLocaleString(),
+            href: '/dealers',
+            tone: noRegionCount ? 'caution' : 'normal',
+            sub: 'invisible to region filters',
+          },
+        ]}
       />
 
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}

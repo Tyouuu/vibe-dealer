@@ -60,8 +60,14 @@ export function DealersTable({
 
   return (
     <ScrollFade label="Dealer directory">
-      {groups.map(([region, rows]) => (
-        <details key={region || 'flat'} open className="mb-3 last:mb-0">
+      {groups.map(([region, rows]) => {
+        // A <details> with no <summary> is not an empty disclosure — the
+        // browser supplies its own default label, and "Details" was rendering
+        // above the table on the ungrouped view. Only the grouped view has
+        // anything to disclose, so only it gets a <details>.
+        const Wrapper = groupByRegion ? 'details' : 'div'
+        return (
+        <Wrapper key={region || 'flat'} {...(groupByRegion ? { open: true } : {})} className="mb-3 last:mb-0">
           {groupByRegion && (
             <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-xs font-bold uppercase tracking-wide text-paper-dim">
               <IconChevronDown className="h-3.5 w-3.5 -rotate-90 transition-transform [details[open]_&]:rotate-0" />
@@ -176,8 +182,9 @@ export function DealersTable({
               ))}
             </tbody>
           </table>
-        </details>
-      ))}
+        </Wrapper>
+        )
+      })}
     </ScrollFade>
   )
 }

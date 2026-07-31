@@ -63,13 +63,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // for the single source of truth both pull from.
   const notifications: Notification[] = builtNotifications.slice(0, 4).map((n) => ({ title: n.title, subtitle: n.subtitle }))
 
+  // The canvas is the tinted surface; cards are the white ones that sit on it.
+  // This was bg-ink-900 — pure white — laid over a body that was already
+  // tinted, so every card was white-on-white and the only thing separating one
+  // from the page was a 1px hairline. That is why the app read as a wireframe
+  // no matter how the blocks were arranged: nothing had elevation, so nothing
+  // had weight.
   return (
-    // Edge-to-edge at every size — the app used to float as a card with a
-    // page margin/rounded corners/shadow on md+ (matching the original design
-    // reference literally), collapsing to a plain full-bleed page only below
-    // md. Dropped the floating-card treatment entirely per client feedback:
-    // now every size gets the plain full-bleed layout mobile already had.
-    <div className="min-h-screen bg-ink-900 text-paper">
+    <div className="min-h-screen bg-canvas text-paper">
       <NotificationToast notifications={builtNotifications.map((n) => ({ id: n.id, title: n.title, subtitle: n.subtitle, variant: n.variant }))} />
       {/* The rail appears at lg (1024px), not md (768px). At 768-1023 — an
           iPad in portrait, the single most common tablet size — a permanent

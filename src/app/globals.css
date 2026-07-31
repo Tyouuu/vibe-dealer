@@ -24,6 +24,12 @@
    points, but that predated this palette and was dropped once compared
    directly against the reference. */
 @theme {
+  /* The page canvas. Cards are pure white and sit on this; without the
+     separation a white card on a white page is only a hairline, which is
+     what made every screen read as a wireframe. Kept neutral-cool and very
+     close to white — Linear and Vercel both sit around this value in light
+     mode — so the lift is felt rather than noticed. */
+  --color-canvas: #f4f4f6;
   --color-ink-950: #eef0f4;
   --color-ink-900: #ffffff;
   --color-ink-850: #f5f5f8;
@@ -184,16 +190,27 @@ body {
     @apply flex flex-col gap-10;
   }
 
+  .bg-canvas {
+    background-color: var(--color-canvas);
+  }
+
   .app-card {
     @apply rounded-xl bg-ink-900 p-6;
     /* Border delivered as the first layer of the shadow stack (Vercel's
        --ds-shadow-border-base pattern) so it composites with the elevation
        instead of fighting it, and negative spread on the wide layer keeps it
        from washing out (Vercel --ds-shadow-medium). */
+    /* Three layers: the hairline that defines the edge, a tight direct
+       shadow that seats the card, and a wide ambient one that lifts it off
+       the canvas. Vercel's rule is at least two — "Mimic ambient + direct
+       light with at least two layers" — and combining border with shadow
+       rather than choosing one, since "semi-transparent borders improve edge
+       clarity". Deepened from the previous values, which were tuned against
+       a white page where nothing could read as raised anyway. */
     box-shadow:
       0 0 0 var(--hairline) var(--border-subtle),
-      0 1px 2px rgba(20, 20, 43, 0.05),
-      0 8px 8px -8px rgba(20, 20, 43, 0.04);
+      0 1px 2px rgba(19, 20, 26, 0.04),
+      0 4px 12px -4px rgba(19, 20, 26, 0.06);
   }
 
   .app-tile {

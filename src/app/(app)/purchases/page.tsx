@@ -97,7 +97,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           first) and 465x559, each about a third full — 35%, 30% and 37% of
           their own area carrying content. Two thirds of every card was
           empty, which reads as unfinished rather than restrained. */}
-      <div className="mt-5 flex w-full flex-col gap-5">
+      <div className="stack-loose mt-8 w-full">
         {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
         {/* Was four equal tiles. Only two of them are decisions — "how much
@@ -161,8 +161,8 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             a third full is to give the space something to do, not to delete a
             column. Two columns where both are genuinely full is denser and
             calmer than three stacked rows where one is mostly air. */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
-        <div className="app-card">
+        <div className="page-grid lg:items-start">
+        <div className="app-card lg:col-span-7">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-bold text-paper">
               Purchase history <span className="ml-1 font-medium text-paper-dim">{totalCount}</span>
@@ -242,7 +242,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             Fields are capped rather than the page — a date and two amounts
             stretched across 1136px is the field-width mismatch Baymard warns
             about. */}
-        <div className="app-card">
+        <div className="app-card lg:col-span-5">
           <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
           <p className="mt-0.5 text-[11.5px] leading-relaxed text-paper-dim">
             Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above

@@ -143,6 +143,47 @@ body {
 }
 
 @layer components {
+  /* ---- Page grid ----------------------------------------------------
+     Twelve columns with a 16px gutter, from Atlassian's published grid
+     (1024-1439 and 1440+ both resolve to 12 / 16px / 32px). Every page uses
+     the same column count and the same gutter, so blocks line up from page
+     to page rather than each layout inventing its own ratio — this app had
+     1.55fr/1fr on Reconciliation, 1.4fr/1fr on Credit Purchases and
+     1.3fr/1fr on New Transaction, three pages with three different splits.
+
+     Atlassian is explicit that content must not spill into the gutter:
+     "Don't allow content to overflow into gutters or margins. This breaks
+     visual alignment and makes layouts unpredictable."
+
+     Collapses to a single column below lg, matching where the rail appears.
+
+     Spans are written as plain utilities at the call site (lg:col-span-7)
+     rather than aliased here — Tailwind does not resolve col-span-* through
+     @apply, and the alias failed silently, collapsing every card to one
+     column at 80px wide. */
+  .page-grid {
+    @apply grid grid-cols-1 gap-4 lg:grid-cols-12;
+  }
+
+  /* ---- Vertical rhythm ----------------------------------------------
+     Not one constant. Material 3: "Use spacing to visually tie elements
+     together and establish boundaries between unrelated items." The app used
+     gap-5 everywhere — between the header and the content, between cards in
+     the same group, and between unrelated sections — so nothing read as
+     grouped. Three steps instead:
+       .stack-tight   16px — blocks that belong to each other
+       .stack         24px — the default between cards
+       .stack-loose   40px — between sections that are separate concerns */
+  .stack-tight {
+    @apply flex flex-col gap-4;
+  }
+  .stack {
+    @apply flex flex-col gap-6;
+  }
+  .stack-loose {
+    @apply flex flex-col gap-10;
+  }
+
   .app-card {
     @apply rounded-xl bg-ink-900 p-6;
     /* Border delivered as the first layer of the shadow stack (Vercel's

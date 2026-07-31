@@ -394,6 +394,31 @@ export function EntryForm({
               {(id) => <textarea id={id} name="note" rows={2} className="field-input resize-none" />}
             </Field>
           </div>
+
+          {/* The submit lived in the right-hand card, above the live totals.
+              Someone filling this form works top-to-bottom down the left
+              column, so on reaching the last field the action was off in
+              another column and above the eye line. Polaris puts a single
+              primary action in the page header, but that only works when the
+              header is sticky — ours scrolls away on a form this long, so the
+              action goes where the reader actually arrives: the end of the
+              form. The oversell block stays with it, because it is the reason
+              the button can refuse. */}
+          <div className="mt-5 border-t border-ink-800 pt-4">
+            {insufficientBalance && (
+              <div className="alert alert-bad">
+                Not enough credit balance — {availableBalance.toLocaleString()} pts available, this needs{' '}
+                {preview!.points.toLocaleString()} pts. Log a credit purchase first.
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={uploading || submitting || insufficientBalance || couponExceedsMoney}
+              className="btn-primary disabled:opacity-60"
+            >
+              {uploading ? 'Uploading receipt…' : 'Submit for verification'}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -425,20 +450,6 @@ export function EntryForm({
             {dealer ? 'This dealer has no package/rate yet — buy them a package first.' : 'Select a dealer first.'}
           </p>
         )}
-        {insufficientBalance && (
-          <div className="alert alert-bad mt-3">
-            Not enough credit balance — {availableBalance.toLocaleString()} pts available, this needs{' '}
-            {preview!.points.toLocaleString()} pts. Log a Credit Purchase first.
-          </div>
-        )}
-        <button
-          type="submit"
-          form="entry-form"
-          disabled={uploading || submitting || insufficientBalance || couponExceedsMoney}
-          className="btn-primary mt-4 w-full"
-        >
-          {uploading ? 'Uploading receipt…' : 'Submit (pending verification)'}
-        </button>
         <p className="note-strip">Buying a package automatically updates the dealer&apos;s rate for future transactions.</p>
       </div>
 

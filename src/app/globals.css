@@ -77,10 +77,18 @@
   --color-jade: #1a9a4d;
   --color-jade-bright: #147a3c;
 
-  /* status: negative / flagged */
-  --color-clay: #e0393e;
-  --color-clay-bright: #c02329;
-  --color-clay-deep: #d33338;
+  /* status: negative / flagged
+     Cooled and de-saturated from the fire-engine red this used to be
+     (#e0393e / #c02329 / #d33338). That red was full-chroma at hue 358 with
+     no relationship to anything else here, so next to a page of navy-tinted
+     neutrals it read as an alarm rather than as a state. Same family, pulled
+     to hue 354 and about 40% saturation, which is where the rest of the
+     palette's bias already sits. Still a real red — it has to mean
+     something — just one that belongs in this room.
+     Contrast on white: clay-bright 6.0:1, clay 4.1:1 (graphics only). */
+  --color-clay: #bd616a;
+  --color-clay-bright: #a3444e;
+  --color-clay-deep: #b0505c;
 
   /* status: neutral / instant */
   --color-slate: #6b6d76;
@@ -900,22 +908,12 @@ body {
     @apply inline-flex items-center gap-2 text-xs font-semibold;
   }
 
-  /* Row-level urgency accent for queues where "how long has this been
-     waiting" matters (SIM delivery). Softer amber first, red once it's
-     crossed the stalled threshold — mirrors the approved design's
-     tr.warn/tr.urgent inset accent. */
-  .tr-warn {
-    box-shadow: inset 3px 0 0 0 var(--color-brass-bright);
-  }
-  .tr-urgent {
-    box-shadow: inset 3px 0 0 0 var(--color-clay-bright);
-  }
-  .tr-info {
-    box-shadow: inset 3px 0 0 0 var(--color-info);
-  }
-  .tr-slate {
-    box-shadow: inset 3px 0 0 0 var(--color-slate-bright);
-  }
+  /* Removed: .tr-warn / .tr-urgent / .tr-info / .tr-slate, the 3px inset
+     left-edge accents. SIM Delivery was the only page that ever used them,
+     and there an overdue row ended up saying the same thing three times —
+     red stripe, red dot, red text. The age now lives in its own Waiting
+     column and carries the colour alone. Nothing else in the app had picked
+     these up, so they go rather than sit as dead CSS. */
 
   .profile-grid {
     @apply grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2;

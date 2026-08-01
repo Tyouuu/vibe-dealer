@@ -88,12 +88,23 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
               <th className="th">Package</th>
               <th className="th">SIM Type</th>
               <th className="th">Status</th>
+              {/* The age was jammed into Status as "Pending · 58d". Those two
+                  answer different questions — one is the state, one is how
+                  long it has been in that state — and the age is the one you
+                  sort by and act on. Given its own right-aligned column the
+                  numbers line up, so the worst row is found by scanning
+                  straight down instead of reading every cell. */}
+              <th className="th text-right">Waiting</th>
               <th className="th">Action</th>
             </tr>
           </thead>
           <tbody>
+            {/* No urgency stripe on the row any more. An overdue row used to
+                carry a red left edge, a red dot and red text — three signals
+                for one fact, which is what made two late rows read as an
+                emergency. The Waiting cell says it once. */}
             {rows.map((row) => (
-              <tr key={row.id} className={`tr-row ${row.urgent ? 'tr-urgent' : row.warn ? 'tr-warn' : ''}`}>
+              <tr key={row.id} className="tr-row">
                 {pendingRows.length > 0 && (
                   <td className="td">
                     {row.delivery_status === 'pending' && (
@@ -122,13 +133,42 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                     <span className="pill pill-neutral">Physical SIM</span>
                   )}
                 </td>
+                {/* Status is the state and nothing else now, so pending is
+                    always brass — the same treatment it has on every other
+                    page. Lateness is the Waiting column's job. */}
                 <td className="td">
                   {row.delivery_status === 'sent' ? (
                     <StatusDot color="jade-bright" label="Sent" />
                   ) : row.delivery_status === 'pending' ? (
-                    <StatusDot color={row.urgent ? 'clay-bright' : 'brass-bright'} label={row.warn ? `Pending · ${row.days}d` : 'Pending'} pulse />
+                    <StatusDot color="brass-bright" label="Pending" pulse />
                   ) : (
                     <StatusDot color="slate-bright" label="Instant" />
+                  )}
+                </td>
+                {/* The one place on the row that carries urgency: dim while
+                    it is on time, brass once it is worth noticing, clay once
+                    it is past the stalled mark. Saying it once is what lets
+                    the colour still mean something. */}
+                <td
+                  className={`td whitespace-nowrap text-right ${
+                    row.delivery_status !== 'pending'
+                      ? 'text-paper-dim/50'
+                      : row.urgent
+                        ? 'font-semibold text-clay-bright'
+                        : row.warn
+                          ? 'font-semibold text-brass-bright'
+                          : 'text-paper-dim'
+                  }`}
+                >
+                  {/* .figure on the digits only. Applied to the whole cell
+                      the mono space between "58" and "days" takes a full
+                      character advance and the two read as separate words. */}
+                  {row.delivery_status === 'pending' ? (
+                    <>
+                      <span className="figure">{row.days}</span> day{row.days === 1 ? '' : 's'}
+                    </>
+                  ) : (
+                    '—'
                   )}
                 </td>
                 <td className="td">

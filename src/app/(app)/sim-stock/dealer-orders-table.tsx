@@ -5,6 +5,7 @@ import { markSimOrderSent } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { ScrollFade } from '../scroll-fade'
+import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
 
 export type OrderItem = {
@@ -71,7 +72,7 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                 {formatMYR(o.paid)}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5`}>
-                {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
+                {o.delivery_status === 'sent' ? <StatusDot color="jade-bright" label="Sent" /> : <StatusDot color="brass-bright" label="Pending" pulse />}
               </div>
               <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim`}>
                 <svg

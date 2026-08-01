@@ -206,11 +206,6 @@ export default async function DashboardPage() {
   const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate()
   const monthComplete = dayOfMonth >= daysInMonth
   const commissionChg = monthComplete ? pctChange(totalCommission, prevMonthCommission) : null
-  // Six trailing months of commission for the hero sparkline — same trendTx
-  // fetch the chart below already uses, no extra query.
-  const commissionSpark = trendMonths.map(({ key }) =>
-    (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t.commission_rm), 0)
-  )
 
   const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
   const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
@@ -240,8 +235,11 @@ export default async function DashboardPage() {
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
       {/* Commission is master's headline: it's the money the business actually
           keeps, and every other figure here is an input to it. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <HeroCard
+      {/* Full width, with the real six-month chart inside it. This card and
+          the "Monthly Top-up Trend" card below were drawing the SAME series
+          twice — a sparkline here, the full chart there. One series, one
+          chart, and it now gets 1500px instead of 900px. */}
+      <HeroCard
           label={`Your commission — ${formatMonthLabel(currentMonthStr)}`}
           value={formatMYR(totalCommission)}
           chg={commissionChg}
@@ -252,8 +250,7 @@ export default async function DashboardPage() {
                 ? `nothing recorded yet — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
                 : `day ${dayOfMonth} of ${daysInMonth} — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
           }
-          spark={commissionSpark}
-          sparkLabel={`Last ${trendMonths.length} months`}
+        chart={<MonthlyTrendChart rows={trendRows} regions={regions} />}
           href={`/records?status=verified&month=${currentMonthStr}`}
           stats={[
             {
@@ -269,16 +266,15 @@ export default async function DashboardPage() {
               tone: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'warn' : 'normal',
             },
           ]}
-        />
+      />
+
+      {/* Two short lists side by side, both about the same width of content.
+          Previously the 500px trend chart sat beside the ~150px Growth by
+          Region card, which left a void down the whole right-hand side of
+          the page. Pairing the two lists instead means neither column has
+          to stretch to meet the other. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <NeedsAttention items={alerts} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-semibold text-paper">Monthly Top-up Trend</h3>
-          <MonthlyTrendChart rows={trendRows} regions={regions} />
-        </div>
-
         <RegionGrowthCard regions={regionGrowth} />
       </div>
 
@@ -331,9 +327,6 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
   const prevMonthKey = trendMonths[trendMonths.length - 2].key
   const prevMonthPoints = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey).reduce((sum, t) => sum + Number(t.points), 0)
   const pointsChg = pctChange(totalPoints, prevMonthPoints)
-  const pointsSpark = trendMonths.map(({ key }) =>
-    (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t.points), 0)
-  )
 
   const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
   const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
@@ -360,14 +353,16 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
       {/* An accountant's headline is the volume they're responsible for
           recording and verifying, not master's commission. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <HeroCard
+      {/* Full width, with the real six-month chart inside it. This card and
+          the "Monthly Top-up Trend" card below were drawing the SAME series
+          twice — a sparkline here, the full chart there. One series, one
+          chart, and it now gets 1500px instead of 900px. */}
+      <HeroCard
           label={`Top-up — ${formatMonthLabel(currentMonthStr)}`}
           value={`${totalPoints.toLocaleString()} pts`}
           chg={pointsChg}
           chgSuffix={`vs ${prevMonthPoints.toLocaleString()} pts last month`}
-          spark={pointsSpark}
-          sparkLabel={`Last ${trendMonths.length} months`}
+        chart={<MonthlyTrendChart rows={trendRows} regions={regions} />}
           href={`/records?status=verified&month=${currentMonthStr}`}
           stats={[
             {
@@ -389,16 +384,15 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
               tone: statement?.reconciled ? 'normal' : 'warn',
             },
           ]}
-        />
+      />
+
+      {/* Two short lists side by side, both about the same width of content.
+          Previously the 500px trend chart sat beside the ~150px Growth by
+          Region card, which left a void down the whole right-hand side of
+          the page. Pairing the two lists instead means neither column has
+          to stretch to meet the other. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <NeedsAttention items={alerts} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-semibold text-paper">Monthly Top-up Trend</h3>
-          <MonthlyTrendChart rows={trendRows} regions={regions} />
-        </div>
-
         <RegionGrowthCard regions={regionGrowth} />
       </div>
 
@@ -481,8 +475,9 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
       {/* cs has no financial visibility, so the headline is the queue that
           is actually their job to clear. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <HeroCard
+      {/* Full width. cs has no trend chart — no financial series to plot —
+          so this card is the figure and its three supporting counts. */}
+      <HeroCard
           label="SIM deliveries pending"
           value={String(pendingDeliveryCount ?? 0)}
           chgSuffix={
@@ -507,12 +502,16 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
               href: '/dealers',
             },
           ]}
-        />
+      />
+
+      {/* Two short lists side by side rather than a table beside a short
+          card — same void this page had on the master and accountant views. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <NeedsAttention items={alerts} />
+        <RegionGrowthCard regions={regionGrowth} />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div className="app-card">
+      <div className="app-card">
           <div className="mb-3.5 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-paper">Pending Deliveries</h3>
             {(pendingDeliveryCount ?? 0) > DELIVERY_TABLE_LIMIT && (
@@ -526,9 +525,6 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
           ) : (
             <p className="text-sm text-paper-dim">No pending SIM deliveries right now.</p>
           )}
-        </div>
-
-        <RegionGrowthCard regions={regionGrowth} />
       </div>
     </div>
   )

@@ -63,18 +63,29 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
   return (
     <div>
       {regions.length > 0 && (
-        <div className="mb-4 w-40">
-          <Listbox
-            value={region}
-            onChange={setRegion}
-            options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]}
-          />
+        // Right-aligned above the plot rather than stacked under the headline
+        // figure, where it was sitting between the number and its own chart.
+        <div className="mb-3 flex justify-end">
+          <div className="w-40">
+            <Listbox
+              value={region}
+              onChange={setRegion}
+              options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]}
+            />
+          </div>
         </div>
       )}
 
+      {/* max-h caps the drawn height. The viewBox is 640x180, and `w-full`
+          alone makes an SVG scale that ratio to whatever width it is given —
+          fine in a 900px column, but this card is now full width, so six data
+          points were being stretched over ~450px of mostly empty green. The
+          aspect ratio stops mattering past the cap; preserveAspectRatio keeps
+          the line anchored to the bottom-left rather than floating. */}
       <svg
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-        className="w-full"
+        preserveAspectRatio="none"
+        className="max-h-[200px] w-full"
         onMouseMove={hasData ? handleMove : undefined}
         onMouseLeave={() => setHoverIdx(null)}
         role="img"

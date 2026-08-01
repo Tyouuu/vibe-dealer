@@ -30,6 +30,7 @@ export function HeroCard({
   stats,
   spark,
   sparkLabel,
+  chart,
   footnote,
   header,
   href,
@@ -60,6 +61,11 @@ export function HeroCard({
   /** Trailing monthly values, oldest first. Omit where there's no series. */
   spark?: number[]
   sparkLabel?: string
+  /** A real chart in place of the sparkline. The Dashboard was drawing the
+      same six-month series twice — once as this card's sparkline and again
+      as a full "Monthly Top-up Trend" card directly below it. One series,
+      one chart, and it gets the card's whole width. */
+  chart?: React.ReactNode
   /** Anything that needs to sit below the stats — an explanation the figures
       can't carry on their own. */
   footnote?: React.ReactNode
@@ -107,7 +113,7 @@ export function HeroCard({
         </div>
       </div>
 
-      {spark && spark.length > 1 && <Sparkline values={spark} label={sparkLabel} />}
+      {chart ?? (spark && spark.length > 1 ? <Sparkline values={spark} label={sparkLabel} /> : null)}
 
       <div>
         <div className="grid grid-cols-1 gap-3 border-t border-ink-800 pt-4 sm:grid-cols-3">

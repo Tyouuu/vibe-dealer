@@ -385,9 +385,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
                     <td className="td">
                       {tx.delivery_status === 'sent' ? (
-                        <span className="pill pill-jade">Sent</span>
+                        <StatusDot color="jade-bright" label="Sent" />
                       ) : tx.delivery_status === 'pending' ? (
-                        <span className="pill pill-brass">{deliveryWarn ? `Pending·${deliveryDays}d` : 'Pending'}</span>
+                        <StatusDot color="brass-bright" label={deliveryWarn ? `Pending · ${deliveryDays}d` : 'Pending'} pulse />
                       ) : (
                         <span className="text-paper-dim/50">—</span>
                       )}

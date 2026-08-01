@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { ScrollFade } from '../scroll-fade'
+import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
 
 export type RecentTxRow = {
@@ -84,13 +85,11 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                       : 'Regular Top-up'}
                 </td>
                 <td className="td">
-                  <span
-                    className={
-                      tx.status === 'verified' ? 'pill pill-jade' : tx.status === 'flagged' ? 'pill pill-clay' : 'pill pill-brass'
-                    }
-                  >
-                    {tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
-                  </span>
+                  <StatusDot
+                    color={tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'}
+                    label={tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : 'Pending'}
+                    pulse={tx.status === 'pending'}
+                  />
                 </td>
                 <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                 <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>

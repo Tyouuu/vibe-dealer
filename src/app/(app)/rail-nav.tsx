@@ -50,7 +50,6 @@ export function RailNav({
   roleLabel,
   role,
   actualRole,
-  creditBalance,
 }: {
   items: RailItem[]
   notifications: Notification[]
@@ -58,10 +57,6 @@ export function RailNav({
   roleLabel: string
   role: Role
   actualRole: Role
-  /** Finance roles only; cs has no financial visibility. `pct` is how full
-      the bar reads, computed by the layout against the low-balance
-      threshold — the rail shouldn't own that business rule. */
-  creditBalance?: { available: number; low: boolean; pct: number }
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -142,32 +137,6 @@ export function RailNav({
           </div>
         ))}
       </div>
-
-      {/* Credit balance used to be the sole occupant of a full-width white
-          bar across the top of every page — 57px of chrome for one widget,
-          and the only white surface sitting directly on the tinted canvas,
-          which is exactly what made it read as foreign. The rail is already
-          the app's white surface and already has the room, so it lives here
-          now and the bar is gone. Every page gains 57px of height. */}
-      {creditBalance && (
-        <a href="/purchases" className="rail-balance" title="Credit balance — points bought from Vibe Mobile, not yet resold">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] font-medium text-paper-dim">Credit balance</span>
-            <span className="text-[13px] font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
-          </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink-800">
-            <div
-              className={`h-full rounded-full ${
-                creditBalance.available <= 0 ? 'bg-clay-bright' : creditBalance.low ? 'bg-brass-bright' : 'bg-jade-bright'
-              }`}
-              // "Full" is pinned at 3x the low-balance threshold rather than a
-              // real ceiling — points has no natural max. This is "how far
-              // from the danger zone", not "% of quota used".
-              style={{ width: `${Math.max(0, Math.min(100, creditBalance.pct))}%` }}
-            />
-          </div>
-        </a>
-      )}
 
       <div className="shrink-0 border-t border-ink-800 pt-2">
         <Link href="/notifications" className={`rail-item${pathname === '/notifications' ? ' active' : ''}`}>

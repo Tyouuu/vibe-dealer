@@ -696,12 +696,6 @@ body {
   .rail {
     @apply fixed inset-y-0 left-0 z-20 flex h-screen w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
-  /* Credit balance, relocated out of the deleted top bar. Sits between the
-     scrolling nav list and the pinned footer, so it never scrolls away and
-     never pushes Notifications/Account off the bottom. */
-  .rail-balance {
-    @apply mb-2 mt-2 block shrink-0 rounded-lg border border-ink-800 bg-ink-850 px-3 py-2.5 transition-colors hover:border-ink-700 hover:bg-ink-800;
-  }
   .rail-group-label {
     @apply px-2.5 pb-1.5 pt-3.5 text-[12px] font-semibold text-paper-dim first:pt-1;
   }
@@ -807,18 +801,28 @@ body {
     }
   }
 
-  /* Was .status-dot / .status-dot-row — a bare coloured dot beside bold
-     coloured text, the app's second status treatment. See status-dot.tsx for
-     why that shape is gone; what survives is the pulse, which marks a state
-     that is still waiting on someone. It animates the chip's ::before dot,
-     so a pulsing state and a still one are otherwise identical. */
-  .pill-pulse::before {
+  /* THE status treatment, app-wide: a coloured dot beside the label, no box.
+     The client picked this over the bordered chip. A chip on every row of a
+     50-row table draws 50 boxes the eye has to parse before it reaches the
+     word inside; the bare dot puts the colour where the scan already is.
+
+     The chip (.pill + .pill-jade/brass/clay/slate) is now reserved for the
+     places a status appears *outside* a table row — a single badge on a
+     detail page, where there is nothing to scan and the box gives it edges.
+     Categories and counts keep .pill-neutral, dotless, as before. */
+  .status-dot {
+    @apply inline-block h-2 w-2 shrink-0 rounded-full;
+  }
+  .status-dot.pulse {
     animation: pulse-dot 1.6s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .pill-pulse::before {
+    .status-dot.pulse {
       animation: none;
     }
+  }
+  .status-dot-row {
+    @apply inline-flex items-center gap-2 text-xs font-semibold;
   }
 
   /* Row-level urgency accent for queues where "how long has this been

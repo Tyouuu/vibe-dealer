@@ -357,10 +357,10 @@ body {
 
   .field-input {
     @apply w-full rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 text-sm text-paper outline-none transition-all placeholder:text-paper-dim/70 focus:border-primary;
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 0 rgba(5, 112, 222, 0);
   }
   .field-input:focus {
-    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
+    box-shadow: 0 0 0 3px rgba(5, 112, 222, 0.14);
   }
 
   /* Read-only field that can never be edited by the signed-in user (e.g.
@@ -375,14 +375,14 @@ body {
      those render a native form control. */
   .trigger-btn {
     @apply flex w-full items-center gap-2.5 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 text-left text-sm font-semibold text-paper outline-none transition-all;
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 0 rgba(5, 112, 222, 0);
   }
   .trigger-btn:hover {
     @apply border-ink-700;
   }
   .trigger-btn.open {
     @apply border-primary;
-    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.14);
+    box-shadow: 0 0 0 3px rgba(5, 112, 222, 0.14);
   }
 
   .req {
@@ -430,6 +430,43 @@ body {
   }
   .form-section-head .rule {
     @apply h-px flex-1 bg-ink-800;
+  }
+
+  /* ---- Form layout --------------------------------------------------
+     A field is as wide as what goes in it. On the annotated two-column
+     pattern these pages used to run, the fields column got ~1300px of a
+     wide screen and split it in two, so a phone number sat in a 650px box —
+     the exact field-width mismatch Baymard warns makes people re-read the
+     label to check they understood it.
+
+     Twelve columns fixes both halves of the problem at once: each field
+     takes the span its content wants (a company name 5, an SSM number 3, a
+     phone 3), and because the spans fill the row there is no dead gutter to
+     "fix" by stretching anything. Same grid as .page-grid, so a form lines
+     up with every other page.
+
+     Written as native utilities at the call site, NOT aliased into a class
+     here. Tailwind does not resolve responsive grid utilities through
+     @apply: this was `.field-grid { @apply ... lg:grid-cols-12 }` and it
+     compiled to `grid-template-columns: none`, so every field spanned the
+     full 1088px row and the fix looked like it had done nothing. Same trap
+     as the col-span aliases removed from .page-grid earlier.
+
+       grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12 */
+
+  /* A section inside a form card: heading, one line of explanation, fields.
+     The explanation used to live in a 2fr column to the left of the fields,
+     which on a three-section form left two tall empty gaps in that column
+     (visible on Onboard Dealer) and pushed the fields into the remaining
+     5fr. One line under the heading says the same thing and costs 20px. */
+  .form-block {
+    @apply border-t border-ink-800 pt-6 first:border-t-0 first:pt-0;
+  }
+  .form-block-title {
+    @apply text-[13px] font-semibold text-paper;
+  }
+  .form-block-desc {
+    @apply mb-4 mt-1 max-w-[80ch] text-[12px] leading-relaxed text-paper-dim;
   }
 
   .form-grid {

@@ -7,8 +7,7 @@ import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
-import { IconInfo, IconUsers, IconBell, IconDevices, IconLock } from '../icons'
-import { AnnotatedSection } from '../annotated-section'
+import { IconInfo } from '../icons'
 import { ROLE_LABEL } from '../types'
 import { PageHeader } from '../page-header'
 
@@ -26,17 +25,7 @@ function formatSignInTime(iso: string): string {
   })
 }
 
-// Managed-by-admin note repeated under each disabled field — matches the
-// GitHub Primer treatment the client picked (a note per field, not one
-// shared banner for the whole section).
-function AdminManagedNote() {
-  return (
-    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-paper-dim">
-      <IconInfo className="h-3 w-3 shrink-0" />
-      Managed by your admin
-    </div>
-  )
-}
+
 
 export default async function AccountPage() {
   const user = await requireUser()
@@ -66,67 +55,92 @@ export default async function AccountPage() {
   const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
 
   return (
-    // Full content width, with each section splitting into an explanation
-    // column and a controls column (see AnnotatedSection). The page previously
-    // capped at max-w-2xl, which left a third of a 1440px screen unclaimed
-    // whichever way it was aligned.
-    <div className="flex w-full flex-col gap-1">
-      <PageHeader title="Account Settings" subtitle="Your profile, alerts, sessions and password" />
+    // Four cards, one per concern, each carrying its own heading and one
+    // line of explanation.
+    //
+    // This was the annotated two-column pattern — explanation in a 2fr
+    // column, controls in 5fr. Polaris does prescribe that for settings, and
+    // it is the right call when there are many sections to scan; with four,
+    // the left column mostly stood empty while the controls column got
+    // ~1300px, which is how a checkbox ended up 1800px from the label it
+    // belongs to. Stripe, GitHub and Linear all build settings as stacked
+    // cards instead, and that is what this is now.
+    <div className="flex w-full flex-col gap-5">
+      <PageHeader title="Account settings" subtitle="Your profile, alerts, sessions and password" />
 
-      <AnnotatedSection
-        icon={<IconUsers />}
-        title="Profile"
-        description="How you're identified across the app — on the audit log, and as the author of anything you verify."
-      >
-        <div className="grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <span className="field-label">Name</span>
-            <div className="field-disabled">{user.name ?? '—'}</div>
-            {user.role !== 'master' && <AdminManagedNote />}
-          </div>
-          <div>
-            <span className="field-label">Email</span>
-            <div className="field-disabled">{user.email ?? '—'}</div>
-            {user.role !== 'master' && <AdminManagedNote />}
-          </div>
-          <div>
-            <span className="field-label">Role</span>
-            <div className="field-disabled">{ROLE_LABEL[user.role]}</div>
-            {user.role !== 'master' && <AdminManagedNote />}
-          </div>
-        </div>
+      <section className="app-card">
+        <h2 className="form-block-title">Profile</h2>
+        <p className="form-block-desc">How you&apos;re identified across the app — on the audit log, and as the author of anything you verify.</p>
+
+        {/* A definition list, not three disabled inputs. None of these can be
+            edited here, and drawing an input box around a value that cannot
+            be typed into invites people to try. */}
+        <dl className="max-w-2xl divide-y divide-ink-800 border-y border-ink-800">
+          <ReadOnlyRow label="Name" value={user.name ?? '—'} note={user.role !== 'master'} />
+          <ReadOnlyRow label="Email" value={user.email ?? '—'} note={user.role !== 'master'} />
+          <ReadOnlyRow label="Role" value={ROLE_LABEL[user.role]} note={user.role !== 'master'} />
+        </dl>
+
         {user.role === 'master' && (
           <div className="mt-6 max-w-xl">
             <ReportSenderNameForm initialValue={profileRow?.report_sender_name ?? ''} />
           </div>
         )}
-      </AnnotatedSection>
+      </section>
 
-      <AnnotatedSection
-        icon={<IconBell />}
-        title="Notifications"
-        description="Pick which alerts reach you. Switching a category off silences it everywhere — the bell, the toast and the daily email."
-      >
-        <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
-      </AnnotatedSection>
+      <section className="app-card">
+        <h2 className="form-block-title">Notifications</h2>
+        <p className="form-block-desc">
+          Pick which alerts reach you. Switching a category off silences it everywhere — the bell, the toast and the daily email.
+        </p>
+        {/* Capped. A checkbox at the far right of a 1300px row is a long way
+            from the label that says what it does; Fitts's law aside, the eye
+            simply loses the pairing. */}
+        <div className="max-w-3xl">
+          <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
+        </div>
+      </section>
 
-      <AnnotatedSection
-        icon={<IconDevices />}
-        title="Sessions"
-        description="Every device currently signed in as you. If you don't recognise one, sign the others out and change your password."
-      >
-        <SessionsPanel currentDevice={currentDevice} since={since} history={pastHistory} />
-      </AnnotatedSection>
+      <section className="app-card">
+        <h2 className="form-block-title">Sessions</h2>
+        <p className="form-block-desc">
+          Every device currently signed in as you. If you don&apos;t recognise one, sign the others out and change your password.
+        </p>
+        <div className="max-w-3xl">
+          <SessionsPanel currentDevice={currentDevice} since={since} history={pastHistory} />
+        </div>
+      </section>
 
-      <AnnotatedSection
-        icon={<IconLock />}
-        title="Security"
-        description="Change your password. At least 8 characters; you'll stay signed in on this device."
-      >
+      <section className="app-card">
+        <h2 className="form-block-title">Security</h2>
+        <p className="form-block-desc">Change your password. At least 8 characters; you&apos;ll stay signed in on this device.</p>
         <div className="max-w-xl">
           <ChangePasswordForm />
         </div>
-      </AnnotatedSection>
+      </section>
+    </div>
+  )
+}
+
+// One immutable fact about the account. Label left, value right, hairline
+// between — the shape a value you can only read should have.
+function ReadOnlyRow({ label, value, note }: { label: string; value: string; note?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3">
+      <dt className="text-[13px] text-paper-dim">{label}</dt>
+      <dd className="flex items-center gap-3 text-[13px]">
+        {/* The per-field note the client picked from GitHub Primer, kept —
+            it just no longer needs a block of its own under a fake input.
+            It sits before the value so the value stays flush to the right
+            edge of the list and the three of them line up. */}
+        {note && (
+          <span className="inline-flex items-center gap-1 text-[12px] text-paper-dim">
+            <IconInfo className="h-3 w-3 shrink-0" />
+            Managed by your admin
+          </span>
+        )}
+        <span className="font-semibold text-paper">{value}</span>
+      </dd>
     </div>
   )
 }

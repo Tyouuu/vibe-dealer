@@ -4,10 +4,8 @@ import { useState } from 'react'
 import { PACKAGES } from '@/lib/packages'
 import { REGIONS } from '@/lib/regions'
 import { createDealer, checkDuplicateDealer } from './actions'
-import { IconBuilding, IconPhone, IconMapPin } from '../icons'
 import { Listbox } from '../listbox'
 import { TextAutocomplete } from '../text-autocomplete'
-import { AnnotatedSection } from '../annotated-section'
 import { PageHeader } from '../page-header'
 
 export function OnboardForm({ initialError }: { initialError?: string }) {
@@ -46,10 +44,22 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
   }
 
   return (
-    // Full content width, with each section split into an explanation column
-    // and a fields column (see AnnotatedSection). Capping the whole form at
-    // max-w-2xl left a third of a wide screen unclaimed; stretching the fields
-    // instead would put a 500px box around a phone number.
+    // One card, three sections divided by hairlines, fields on the app's
+    // twelve-column grid at the span their content actually wants.
+    //
+    // This was the annotated two-column pattern (explanation left, fields
+    // right). Two things were wrong with it here. The explanation column is
+    // 2fr of the page and this form has only three sections, so it stood
+    // mostly empty down its whole height — measurable as two tall gaps on
+    // the live page. And the fields column then split its ~1300px in two,
+    // which put a phone number in a 650px box.
+    //
+    // Polaris does prescribe the annotated pattern, but for *settings* —
+    // "separating the understanding from the configuring" so someone can
+    // scan headings to find one setting among many. This is not settings.
+    // It is one task, done once per dealer, top to bottom, and the whole
+    // thing fits on one screen. A create-record form is the archetype
+    // Attio, Linear and Salesforce all build as a single panel.
     <div className="w-full">
       <PageHeader
         title="Onboard dealer"
@@ -63,45 +73,51 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-1">
-        <AnnotatedSection
-          icon={<IconBuilding />}
-          title="Company Details"
-          description="The registered business, as it should appear on statements. Only the name is required — the SSM number can follow later."
-        >
-          <div className="form-grid">
-            <Field label="Company Name" name="company_name" required placeholder="e.g. Ipoh Trading" onChange={() => setDuplicate(null)} />
-            <Field label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
+      <form onSubmit={handleSubmit} className="app-card mt-6 flex flex-col gap-6">
+        <div className="form-block">
+          <h2 className="form-block-title">Company</h2>
+          <p className="form-block-desc">
+            The registered business, as it should appear on statements. Only the name is required — the SSM number can follow later.
+          </p>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+            <Field
+              className="sm:col-span-4 lg:col-span-5"
+              label="Company Name"
+              name="company_name"
+              required
+              placeholder="e.g. Ipoh Trading"
+              onChange={() => setDuplicate(null)}
+            />
+            <Field className="sm:col-span-2 lg:col-span-3" label="Company No. (SSM)" name="company_no" placeholder="2023xxxxxx-X" />
           </div>
-        </AnnotatedSection>
+        </div>
 
-        <AnnotatedSection
-          icon={<IconPhone />}
-          title="Contact Info"
-          description="Who to reach when a top-up needs confirming. WhatsApp is usually the fastest route — leave it blank if it's the same number."
-        >
-          <div className="form-grid">
-            <Field label="Contact Person" name="contact_person" placeholder="Person in charge" />
-            <Field label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
-            <Field label="WhatsApp Number" name="whatsapp" placeholder="Leave blank if same as phone" />
-            <div>
-              <Field label="Email" name="email" type="email" placeholder="dealer@mail.com" />
-            </div>
+        <div className="form-block">
+          <h2 className="form-block-title">Contact</h2>
+          <p className="form-block-desc">
+            Who to reach when a top-up needs confirming. WhatsApp is usually the fastest route — leave it blank if it&apos;s the same number.
+          </p>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+            <Field className="sm:col-span-3 lg:col-span-3" label="Contact Person" name="contact_person" placeholder="Person in charge" />
+            <Field className="sm:col-span-3 lg:col-span-3" label="Phone Number" name="phone" placeholder="01x-xxxxxxx" />
+            <Field className="sm:col-span-3 lg:col-span-3" label="WhatsApp Number" name="whatsapp" placeholder="Same as phone" />
+            <Field className="sm:col-span-3 lg:col-span-3" label="Email" name="email" type="email" placeholder="dealer@mail.com" />
           </div>
-        </AnnotatedSection>
+        </div>
 
-        <AnnotatedSection
-          icon={<IconMapPin />}
-          title="Region &amp; Package"
-          description="Region drives the dashboard's regional breakdown. The package sets their commission rate — you can assign or change it any time after onboarding."
-        >
-          <div className="form-grid">
-            <div>
+        <div className="form-block">
+          <h2 className="form-block-title">Region &amp; package</h2>
+          <p className="form-block-desc">
+            Region drives the dashboard&apos;s regional breakdown. The package sets their commission rate — you can assign or change it any time
+            after onboarding.
+          </p>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+            <div className="sm:col-span-3 lg:col-span-4">
               <label className="field-label">Region</label>
               <TextAutocomplete name="region" suggestions={REGIONS} placeholder="Select or type a region" />
             </div>
-            <div>
-              <label className="field-label">Initial Package (optional, can change later)</label>
+            <div className="sm:col-span-3 lg:col-span-4">
+              <label className="field-label">Initial package</label>
               <Listbox
                 name="package"
                 defaultValue=""
@@ -114,21 +130,25 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
                 ]}
               />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-6 lg:col-span-6">
               <label className="field-label">Address</label>
               <input name="address" placeholder="Unit, street, postcode, city — used for SIM delivery" className="field-input" />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-6 lg:col-span-6">
               <label className="field-label">Notes (optional)</label>
               <textarea name="notes" rows={2} placeholder="Anything worth remembering about this dealer" className="field-input resize-none" />
             </div>
           </div>
-        </AnnotatedSection>
+        </div>
 
-        <div className="mt-6 border-t border-ink-800 pt-6">
+        {/* Inside the card, on the same rule that closes the last section —
+            the submit used to sit on the bare canvas below everything with
+            nothing under it, so the page ended on 200px of nothing. */}
+        <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-6">
           <button type="submit" disabled={checking || submitting} className="btn-primary">
-            {checking ? 'Checking for duplicates…' : duplicate ? 'Yes, Onboard This Dealer' : 'Onboard Dealer'}
+            {checking ? 'Checking for duplicates…' : duplicate ? 'Yes, onboard this dealer' : 'Onboard dealer'}
           </button>
+          <span className="text-[12px] text-paper-dim">Only the company name is required.</span>
         </div>
       </form>
     </div>
@@ -142,6 +162,7 @@ function Field({
   required,
   placeholder,
   onChange,
+  className,
 }: {
   label: string
   name: string
@@ -149,9 +170,11 @@ function Field({
   required?: boolean
   placeholder?: string
   onChange?: () => void
+  /** Grid span. A field is as wide as what goes in it. */
+  className?: string
 }) {
   return (
-    <div>
+    <div className={className}>
       <label className="field-label">
         {label}
         {required && <span className="req"> *</span>}

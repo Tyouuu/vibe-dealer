@@ -13,7 +13,9 @@ import {
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import Link from 'next/link'
-import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars } from './elements'
+import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars, GhostEmpty } from './elements'
+import { PeriodSwitcher } from './period-switcher'
+import { balanceSeries, dealersTradingSeries, resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
 import { pctChange } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
@@ -145,103 +147,124 @@ function monthlySeries(
   )
 }
 
-export default async function DashboardPage() {
+type PageProps = { searchParams: Promise<{ month?: string }> }
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const user = await requireUser()
+  const { month: monthParam } = await searchParams
   const supabase = await createClient()
 
-  if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} userId={user.id} />
-  if (user.role === 'cs') return <CsDashboard supabase={supabase} userId={user.id} />
+  if (user.role === 'accountant') return <AccountantDashboard supabase={supabase} userId={user.id} monthParam={monthParam} />
+  if (user.role === 'cs') return <CsDashboard supabase={supabase} userId={user.id} monthParam={monthParam} />
 
   const today = todayInMalaysia()
-  const monthStart = `${today.slice(0, 7)}-01`
   const currentMonthStr = today.slice(0, 7)
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [
-    { count: dealerCount },
-    { data: trendTx },
-    { data: recentTxRows },
-    creditBalance,
-    alerts,
-    { data: statusRows },
-  ] = await Promise.all([
-    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
-    // The full dealer list went with the trend chart's region filter — the
-    // only thing that consumed it. This page no longer reads 249 rows on
-    // every load to populate a dropdown it does not have.
-    supabase
-      .from('transactions')
-      .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
-      .eq('status', 'verified')
-      .gte('tx_date', trendStart)
-      .lte('tx_date', today),
-    supabase
-      .from('transactions')
-      .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
-      .order('created_at', { ascending: false })
-      .limit(10),
-    getAvailablePointsBalance(supabase),
-    // Same list the bell and /notifications show — getNotifications is
-    // request-cached, so this doesn't re-run the layout's queries.
-    getNotifications(user.id, 'master'),
-    // trendTx is verified-only, so the status split needs its own read. Just
-    // the status column for this month — no joins, no ordering.
-    supabase.from('transactions').select('status').gte('tx_date', monthStart).lte('tx_date', today),
-  ])
+  const [{ count: dealerCount }, { data: trendTx }, { data: recentTxRows }, creditBalance, alerts, { data: windowRows }, { data: purchaseRows }] =
+    await Promise.all([
+      supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+      // The full dealer list went with the trend chart's region filter — the
+      // only thing that consumed it. This page no longer reads 249 rows on
+      // every load to populate a dropdown it does not have.
+      supabase
+        .from('transactions')
+        .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
+        .eq('status', 'verified')
+        .gte('tx_date', trendStart)
+        .lte('tx_date', today),
+      supabase
+        .from('transactions')
+        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      getAvailablePointsBalance(supabase),
+      // Same list the bell and /notifications show — getNotifications is
+      // request-cached, so this doesn't re-run the layout's queries.
+      getNotifications(user.id, 'master'),
+      // Every transaction in the charted window, any status. Two things read
+      // it: the status split for whichever month is selected, and the credit
+      // balance series, which needs pending as well as verified because a
+      // pending sale is already committed against the balance. It replaces
+      // the old this-month-only status query rather than adding to it, so
+      // changing period costs no extra round trip.
+      supabase.from('transactions').select('tx_date, points, status').gte('tx_date', trendStart).lte('tx_date', today),
+      supabase.from('credit_purchases').select('purchase_date, points').gte('purchase_date', trendStart),
+    ])
 
-  // trendTx already covers the whole 6-month window (which fully contains the
-  // current month), so this month's totals/ranking are derived from it
-  // instead of firing a second, overlapping query.
-  const monthTx = (trendTx ?? []).filter((t) => t.tx_date >= monthStart)
+  // ---- which month the page is showing ---------------------------------
+  const monthsWithData = new Set((trendTx ?? []).map((t) => t.tx_date.slice(0, 7)))
+  const period = resolvePeriod(monthParam, trendMonths, monthsWithData)
+  const periodKey = period.key
+  const periodIsCurrent = periodKey === currentMonthStr
+  const periodIdx = trendMonths.findIndex((m) => m.key === periodKey)
+  const prevMonthKey = periodIdx > 0 ? trendMonths[periodIdx - 1].key : null
+
+  const windowTx = (windowRows ?? []) as { tx_date: string; points: number | string; status: string }[]
+  const monthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === periodKey)
 
   const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
   const totalCommission = monthTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
 
-  // "vs last month" chg badges — trendTx already spans the trailing 6 months
-  // (see comment below), so last month's totals come from the same fetch
-  // rather than a second query.
-  const prevMonthKey = trendMonths[trendMonths.length - 2].key
-  const prevMonthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey)
-  const prevMonthCommission = prevMonthTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
-
-  // A partial month compared against a complete one always reads as a
-  // collapse. On 1 August the dashboard showed "RM 0.00, down 100%" — true
-  // arithmetic, useless information, and alarming. On the 5th it would say
-  // down 80% purely because 26 days hadn't happened yet. The comparison is
-  // only honest once the month is over, so it is withheld until then and the
-  // reader is told where they are in the month instead.
-  //
-  // Same rule as Reconciliation's empty state: don't show a verdict that
-  // can't exist yet. A month in progress has no verdict against last month.
+  // ---- the comparison --------------------------------------------------
+  // Day 1 to today against day 1 to the same day of the month before, not
+  // against the whole of it. Comparing two days of August with thirty-one
+  // days of July is what made this read "down 100%" on the 1st of every
+  // month. See sameSpanTotal.
   const dayOfMonth = Number(today.slice(8, 10))
-  const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate()
-  const monthComplete = dayOfMonth >= daysInMonth
-  const commissionChg = monthComplete ? pctChange(totalCommission, prevMonthCommission) : null
+  const daysInPeriod = new Date(Date.UTC(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)), 0)).getUTCDate()
+  const periodComplete = !periodIsCurrent || dayOfMonth >= daysInPeriod
+  const spanDays = periodComplete ? daysInPeriod : dayOfMonth
+  const prevSpanCommission = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'commission_rm') : 0
+  const prevSpanPoints = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'points') : 0
+  const prevMonthLabel = prevMonthKey ? formatMonthLabel(prevMonthKey) : null
+  const commissionChg = prevSpanCommission > 0 ? pctChange(totalCommission, prevSpanCommission) : null
+  const paceRatio = prevSpanCommission > 0 ? (totalCommission / prevSpanCommission) * 100 : null
+  const projected = periodComplete || dayOfMonth === 0 ? totalCommission : (totalCommission / dayOfMonth) * daysInPeriod
 
-  // No trendRows/regions here any more: master's single big trend chart is
-  // gone, replaced by a sparkline per figure, so the region-filtered series
-  // it needed is no longer built.
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
-
   const leaders = topDealers(monthTx)
+
+  // ---- what to show in place of an empty month -------------------------
+  // Not a line of grey text. The month before, drawn faint, so an empty
+  // section still tells you what belongs there and how it last looked.
+  const prevMonthTx = prevMonthKey ? (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey) : []
+  const prevMonthPoints = prevMonthTx.reduce((sum, t) => sum + Number(t.points), 0)
+  const ghostLeaders = topDealers(prevMonthTx)
+  const ghostRegions = buildRegionGrowth(prevMonthTx, prevMonthPoints)
+
   const commissionSeries = monthlySeries(trendTx ?? [], trendMonths, 'commission_rm')
   const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
+  const tradingSeries = dealersTradingSeries(trendTx ?? [], trendMonths)
+  // Committed = pending and verified, flagged excluded — the same definition
+  // the live balance uses, or the series would not land on the figure printed
+  // beside it. See computeAvailableBalance.
+  const balances = balanceSeries(
+    creditBalance.available,
+    purchaseRows ?? [],
+    windowTx.filter((t) => t.status !== 'flagged'),
+    trendMonths,
+  )
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
-  const statusCounts = { verified: 0, pending: 0, flagged: 0 }
-  for (const r of statusRows ?? []) {
-    const k = r.status as keyof typeof statusCounts
-    if (k in statusCounts) statusCounts[k] += 1
-  }
-  // Pace: how much of the month has passed against how much of last month's
-  // commission is booked. Withheld when there is no baseline to pace against.
-  const elapsedPct = (dayOfMonth / daysInMonth) * 100
-  const bookedPct = prevMonthCommission > 0 ? (totalCommission / prevMonthCommission) * 100 : 0
-  const projected = dayOfMonth > 0 ? (totalCommission / dayOfMonth) * daysInMonth : 0
 
-  // Recent Transactions — last 10 by created_at, any status. The dealer-name
-  // filter below is client-side (see recent-transactions-table.tsx) since
-  // it's just narrowing this already-fetched small batch, not a new query.
+  const countStatuses = (key: string | null) => {
+    const out = { verified: 0, pending: 0, flagged: 0 }
+    if (!key) return out
+    for (const r of windowTx.filter((t) => t.tx_date.slice(0, 7) === key)) {
+      const k = r.status as keyof typeof out
+      if (k in out) out[k] += 1
+    }
+    return out
+  }
+  const statusCounts = countStatuses(periodKey)
+  const ghostStatusCounts = countStatuses(prevMonthKey)
+  const statusTotal = statusCounts.verified + statusCounts.pending + statusCounts.flagged
+  const ghostStatusTotal = ghostStatusCounts.verified + ghostStatusCounts.pending + ghostStatusCounts.flagged
+
+  // Recent Transactions — last 10 by created_at, any status, and deliberately
+  // not scoped to the selected period: "what happened lately" is not a
+  // question about a calendar month.
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
     const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
     const dealerRel = Array.isArray(rel) ? rel[0] : rel
@@ -258,16 +281,26 @@ export default async function DashboardPage() {
     }
   })
 
+  const periodLabel = formatMonthLabel(periodKey)
+
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
+      {/* One period control, and every month-scoped block below follows it.
+          The page used to hardcode "this month", so on the 2nd of a month
+          five of its seven sections were empty by definition. */}
+      <PageHeader
+        title="Dashboard"
+        subtitle={
+          period.auto
+            ? `Showing ${periodLabel} — nothing verified in ${formatMonthLabel(currentMonthStr)} yet.`
+            : periodIsCurrent
+              ? `${periodLabel} · day ${dayOfMonth} of ${daysInPeriod}`
+              : periodLabel
+        }
+        action={<PeriodSwitcher months={trendMonths} selected={periodKey} compareLabel={prevMonthLabel ?? undefined} />}
+      />
 
-      {/* Seven bands, ranked by what the reader has to do. The page used to
-          open with a 550px chart whose headline figure was RM 0.00 — the
-          biggest thing on it was an empty month, and history is the one
-          thing on a dashboard nobody can act on.
-
-          The first band is a card and the rest are not. Measured across the
+      {/* The first band is a card and the rest are not. Measured across the
           app: every page the client rates as finished paints its first
           surface at y=104-124, right under the title, and the two he rates
           as unfinished opened at y=384 and y=768. It is not the amount of
@@ -276,80 +309,131 @@ export default async function DashboardPage() {
           read first gets the surface, and everything after it stays flat. */}
       <NeedsAttention items={alerts} />
 
-      {/* Four figures, four trends. This was one headline number with a
-          single big chart, so three of the four figures had no shape at all
-          and the fourth got 400px of it. */}
+      {/* Four figures and the pace, one row. All four carry a trend now:
+          two of them used to have none, and because a grid row is as tall as
+          its tallest cell that left a 100px hole under the other two. */}
       <div className="page-band">
         <StatTiles
           stats={[
             {
-              label: `Your commission — ${formatMonthLabel(currentMonthStr)}`,
+              label: `Your commission — ${periodLabel}`,
               value: formatMYR(totalCommission),
-              href: `/records?status=verified&month=${currentMonthStr}`,
+              href: `/records?status=verified&month=${periodKey}`,
               chg: commissionChg,
               spark: commissionSeries,
-              sub: monthComplete ? undefined : `day ${dayOfMonth} of ${daysInMonth}`,
+              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod}`,
             },
             {
-              label: 'Top-up this month',
+              label: `Top-up — ${periodLabel}`,
               value: `${totalPoints.toLocaleString()} pts`,
-              href: `/records?status=verified&month=${currentMonthStr}`,
+              href: `/records?status=verified&month=${periodKey}`,
+              chg: prevSpanPoints > 0 ? pctChange(totalPoints, prevSpanPoints) : null,
               spark: pointsSeries,
             },
             {
               label: 'Dealers trading',
               value: `${dealersTrading} / ${dealerCount ?? 0}`,
               href: '/dealers',
-              sub: 'recorded a verified top-up this month',
+              spark: tradingSeries,
+              sub: `recorded a verified top-up in ${periodLabel}`,
             },
             {
               label: 'Credit balance',
               value: `${creditBalance.available.toLocaleString()} pts`,
               href: '/purchases',
-              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : undefined,
+              spark: balances,
+              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
             },
           ]}
+          pace={
+            <PaceRing
+              label={prevMonthLabel ? `Pace vs ${prevMonthLabel}` : 'Pace'}
+              ratio={paceRatio}
+              value={formatMYR(totalCommission)}
+              target={
+                prevMonthLabel
+                  ? periodComplete
+                    ? `vs ${formatMYR(prevSpanCommission)} in ${prevMonthLabel}`
+                    : `vs ${formatMYR(prevSpanCommission)} by day ${spanDays} of ${prevMonthLabel}`
+                  : 'no earlier month to compare'
+              }
+              line={
+                !prevMonthLabel
+                  ? 'A comparison appears once there is a month behind this one.'
+                  : periodComplete
+                    ? `${periodLabel} finished at ${formatMYR(totalCommission)}.`
+                    : `Same ${spanDays} day${spanDays === 1 ? '' : 's'} either month. At this pace ${periodLabel} lands near ${formatMYR(projected)}.`
+              }
+            />
+          }
         />
       </div>
 
-      {/* Only once there is a prior month to pace against. A partial month
-          compared with a complete one always reads as a collapse. */}
-      {prevMonthCommission > 0 && (
-        <div className="page-band">
-          <h3 className="mb-4 text-sm font-semibold text-paper">Pace</h3>
-          <PaceRing
-            elapsedPct={elapsedPct}
-            bookedPct={bookedPct}
-            value={formatMYR(totalCommission)}
-            target={formatMYR(prevMonthCommission)}
-            line={`${Math.round(elapsedPct)}% of ${formatMonthLabel(currentMonthStr)} has passed and ${Math.round(bookedPct)}% of ${formatMonthLabel(prevMonthKey)}'s commission is booked. At this month's pace so far it lands near ${formatMYR(projected)}.`}
-          />
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
-        <div className="page-band">
-          <h3 className="mb-1 text-sm font-semibold text-paper">Top dealers this month</h3>
-          <p className="mb-3 text-[12px] text-paper-dim">By verified top-up. The bar is relative to the leader.</p>
-          <Leaderboard rows={leaders} />
-        </div>
-        <div className="page-band">
-          <h3 className="mb-1 text-sm font-semibold text-paper">This month by status</h3>
-          <p className="mb-4 text-[12px] text-paper-dim">Every transaction dated this month, whatever its state.</p>
-          <StatusSplit
-            parts={[
-              { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${currentMonthStr}` },
-              { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${currentMonthStr}` },
-              { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${currentMonthStr}` },
-            ]}
-          />
-        </div>
-      </div>
-
+      {/* Three sections became one. Top dealers, status split and region
+          ranking are three cuts of the same question — how did this month
+          sell — and each carried its own heading, its own description and,
+          on an empty month, its own line of "nothing yet". One heading, one
+          empty state, three columns. */}
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
-        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
-        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+        <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
+        <p className="mb-5 text-[12px] text-paper-dim">Who bought, what state it is in, and where it came from — three cuts of the same month.</p>
+        <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-3">
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
+            {leaders.length ? (
+              <Leaderboard rows={leaders} compact />
+            ) : ghostLeaders.length ? (
+              <GhostEmpty
+                note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
+                action={
+                  prevMonthKey ? (
+                    <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
+                      Open {prevMonthLabel} →
+                    </Link>
+                  ) : null
+                }
+              >
+                <Leaderboard rows={ghostLeaders} compact />
+              </GhostEmpty>
+            ) : (
+              <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
+            )}
+          </div>
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By status</h4>
+            {statusTotal > 0 || ghostStatusTotal === 0 ? (
+              <StatusSplit
+                parts={[
+                  { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${periodKey}` },
+                  { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${periodKey}` },
+                  { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${periodKey}` },
+                ]}
+              />
+            ) : (
+              <GhostEmpty note={`Nothing recorded in ${periodLabel} yet. ${prevMonthLabel} split like this:`}>
+                <StatusSplit
+                  parts={[
+                    { label: 'Verified', count: ghostStatusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: '#' },
+                    { label: 'Pending', count: ghostStatusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: '#' },
+                    { label: 'Flagged', count: ghostStatusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: '#' },
+                  ]}
+                />
+              </GhostEmpty>
+            )}
+          </div>
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By region</h4>
+            {regionGrowth.length ? (
+              <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+            ) : ghostRegions.length ? (
+              <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
+                <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
+              </GhostEmpty>
+            ) : (
+              <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="page-band">
@@ -366,18 +450,19 @@ export default async function DashboardPage() {
 // an accountant actually acts on (Pending Review, Credit Balance) instead of
 // the ones that are master's business-owner concern (Total Dealers,
 // Commission earned).
-async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseClient; userId: string }) {
+async function AccountantDashboard({ supabase, userId, monthParam }: { supabase: SupabaseClient; userId: string; monthParam?: string }) {
   const today = todayInMalaysia()
-  const monthStart = `${today.slice(0, 7)}-01`
   const currentMonthStr = today.slice(0, 7)
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: trendTx }, { data: recentTxRows }, alerts, { data: statusRows }] =
+  const [{ data: pendingRows }, creditBalance, { data: statements }, { data: trendTx }, { data: recentTxRows }, alerts, { data: windowRows }, { data: purchaseRows }] =
     await Promise.all([
       supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
       getAvailablePointsBalance(supabase),
-      supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
+      // Every statement in the window, not just this month's — the period
+      // switcher can point at any of them.
+      supabase.from('company_statements').select('month, reconciled').gte('month', trendStart),
       // The dealers_directory read went with the trend chart's region filter,
       // the only thing that consumed it. dealer_id is added below so the
       // leaderboard can group without a second query.
@@ -393,28 +478,66 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
         .order('created_at', { ascending: false })
         .limit(10),
       getNotifications(userId, 'accountant'),
-      supabase.from('transactions').select('status').gte('tx_date', monthStart).lte('tx_date', today),
+      supabase.from('transactions').select('tx_date, points, status').gte('tx_date', trendStart).lte('tx_date', today),
+      supabase.from('credit_purchases').select('purchase_date, points').gte('purchase_date', trendStart),
     ])
 
   const pendingCount = pendingRows?.length ?? 0
   const oldestPendingDays = pendingCount ? Math.max(...pendingRows!.map((t) => daysSince(t.tx_date))) : 0
 
-  const monthTx = (trendTx ?? []).filter((t) => t.tx_date >= monthStart)
+  const monthsWithData = new Set((trendTx ?? []).map((t) => t.tx_date.slice(0, 7)))
+  const period = resolvePeriod(monthParam, trendMonths, monthsWithData)
+  const periodKey = period.key
+  const periodLabel = formatMonthLabel(periodKey)
+  const periodIsCurrent = periodKey === currentMonthStr
+  const periodIdx = trendMonths.findIndex((m) => m.key === periodKey)
+  const prevMonthKey = periodIdx > 0 ? trendMonths[periodIdx - 1].key : null
+  const prevMonthLabel = prevMonthKey ? formatMonthLabel(prevMonthKey) : null
+
+  const windowTx = (windowRows ?? []) as { tx_date: string; points: number | string; status: string }[]
+  const monthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === periodKey)
   const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
-  const prevMonthKey = trendMonths[trendMonths.length - 2].key
-  const prevMonthPoints = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey).reduce((sum, t) => sum + Number(t.points), 0)
-  const pointsChg = pctChange(totalPoints, prevMonthPoints)
+
+  // Same span either side — see sameSpanTotal and the note in the master
+  // branch. Two days against a whole month is not a comparison.
+  const dayOfMonth = Number(today.slice(8, 10))
+  const daysInPeriod = new Date(Date.UTC(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)), 0)).getUTCDate()
+  const periodComplete = !periodIsCurrent || dayOfMonth >= daysInPeriod
+  const spanDays = periodComplete ? daysInPeriod : dayOfMonth
+  const prevSpanPoints = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'points') : 0
+  const pointsChg = prevSpanPoints > 0 ? pctChange(totalPoints, prevSpanPoints) : null
+  const paceRatio = prevSpanPoints > 0 ? (totalPoints / prevSpanPoints) * 100 : null
+  const projectedPoints = periodComplete || dayOfMonth === 0 ? totalPoints : Math.round((totalPoints / dayOfMonth) * daysInPeriod)
 
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
-
   const leaders = topDealers(monthTx)
+
+  const prevMonthTx = prevMonthKey ? (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey) : []
+  const prevMonthPoints = prevMonthTx.reduce((sum, t) => sum + Number(t.points), 0)
+  const ghostLeaders = topDealers(prevMonthTx)
+  const ghostRegions = buildRegionGrowth(prevMonthTx, prevMonthPoints)
+
   const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
+  const tradingSeries = dealersTradingSeries(trendTx ?? [], trendMonths)
+  const pendingSeries = trendMonths.map(({ key }) => windowTx.filter((t) => t.tx_date.slice(0, 7) === key && t.status === 'pending').length)
+  const balances = balanceSeries(creditBalance.available, purchaseRows ?? [], windowTx.filter((t) => t.status !== 'flagged'), trendMonths)
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
-  const statusCounts = { verified: 0, pending: 0, flagged: 0 }
-  for (const r of statusRows ?? []) {
-    const k = r.status as keyof typeof statusCounts
-    if (k in statusCounts) statusCounts[k] += 1
+
+  const countStatuses = (key: string | null) => {
+    const out = { verified: 0, pending: 0, flagged: 0 }
+    if (!key) return out
+    for (const r of windowTx.filter((t) => t.tx_date.slice(0, 7) === key)) {
+      const k = r.status as keyof typeof out
+      if (k in out) out[k] += 1
+    }
+    return out
   }
+  const statusCounts = countStatuses(periodKey)
+  const ghostStatusCounts = countStatuses(prevMonthKey)
+  const statusTotal = statusCounts.verified + statusCounts.pending + statusCounts.flagged
+  const ghostStatusTotal = ghostStatusCounts.verified + ghostStatusCounts.pending + ghostStatusCounts.flagged
+
+  const statement = (statements ?? []).find((s) => (s.month as string).slice(0, 7) === periodKey)
 
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
     const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
@@ -434,10 +557,20 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
+      <PageHeader
+        title="Dashboard"
+        subtitle={
+          period.auto
+            ? `Showing ${periodLabel} — nothing verified in ${formatMonthLabel(currentMonthStr)} yet.`
+            : periodIsCurrent
+              ? `${periodLabel} · day ${dayOfMonth} of ${daysInPeriod}`
+              : periodLabel
+        }
+        action={<PeriodSwitcher months={trendMonths} selected={periodKey} compareLabel={prevMonthLabel ?? undefined} />}
+      />
 
-      {/* Same seven bands as master, re-pointed at what an accountant acts
-          on: volume they have to record and verify, not the commission the
+      {/* Same shape as master, re-pointed at what an accountant acts on:
+          volume they have to record and verify, not the commission the
           business keeps. */}
       <NeedsAttention items={alerts} />
 
@@ -445,36 +578,61 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
         <StatTiles
           stats={[
             {
-              label: `Top-up — ${formatMonthLabel(currentMonthStr)}`,
+              label: `Top-up — ${periodLabel}`,
               value: `${totalPoints.toLocaleString()} pts`,
-              href: `/records?status=verified&month=${currentMonthStr}`,
+              href: `/records?status=verified&month=${periodKey}`,
               chg: pointsChg,
               spark: pointsSeries,
+              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod}`,
             },
             {
               label: 'Pending review',
               value: String(pendingCount),
               href: '/records?status=pending',
+              spark: pendingSeries,
               sub: pendingCount && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS ? `oldest waiting ${oldestPendingDays}d` : 'nothing waiting',
             },
             {
               label: 'Dealers trading',
               value: String(dealersTrading),
               href: '/dealers',
-              sub: 'recorded a verified top-up this month',
+              spark: tradingSeries,
+              sub: `recorded a verified top-up in ${periodLabel}`,
             },
             {
               label: 'Credit balance',
               value: `${creditBalance.available.toLocaleString()} pts`,
               href: '/purchases',
-              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : undefined,
+              spark: balances,
+              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
             },
           ]}
+          pace={
+            <PaceRing
+              label={prevMonthLabel ? `Pace vs ${prevMonthLabel}` : 'Pace'}
+              ratio={paceRatio}
+              value={`${totalPoints.toLocaleString()} pts`}
+              target={
+                prevMonthLabel
+                  ? periodComplete
+                    ? `vs ${prevSpanPoints.toLocaleString()} in ${prevMonthLabel}`
+                    : `vs ${prevSpanPoints.toLocaleString()} by day ${spanDays} of ${prevMonthLabel}`
+                  : 'no earlier month to compare'
+              }
+              line={
+                !prevMonthLabel
+                  ? 'A comparison appears once there is a month behind this one.'
+                  : periodComplete
+                    ? `${periodLabel} finished at ${totalPoints.toLocaleString()} pts.`
+                    : `Same ${spanDays} day${spanDays === 1 ? '' : 's'} either month. At this pace ${periodLabel} lands near ${projectedPoints.toLocaleString()} pts.`
+              }
+            />
+          }
         />
       </div>
 
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Reconciliation {currentMonthStr}</h3>
+        <h3 className="mb-1 text-sm font-semibold text-paper">Reconciliation {periodKey}</h3>
         <p className="mb-3 text-[12px] text-paper-dim">Until this is closed, the month is not final.</p>
         <Link href="/reconcile" className="inline-flex items-center gap-2 text-[15px] font-semibold hover:underline">
           <span className={`h-2 w-2 rounded-full ${statement?.reconciled ? 'bg-jade' : 'bg-clay'}`} />
@@ -482,29 +640,67 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
-        <div className="page-band">
-          <h3 className="mb-1 text-sm font-semibold text-paper">Top dealers this month</h3>
-          <p className="mb-3 text-[12px] text-paper-dim">By verified top-up. The bar is relative to the leader.</p>
-          <Leaderboard rows={leaders} />
-        </div>
-        <div className="page-band">
-          <h3 className="mb-1 text-sm font-semibold text-paper">This month by status</h3>
-          <p className="mb-4 text-[12px] text-paper-dim">Every transaction dated this month, whatever its state.</p>
-          <StatusSplit
-            parts={[
-              { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${currentMonthStr}` },
-              { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${currentMonthStr}` },
-              { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${currentMonthStr}` },
-            ]}
-          />
-        </div>
-      </div>
-
+      {/* Three sections became one — see the note in the master branch. */}
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
-        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
-        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+        <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
+        <p className="mb-5 text-[12px] text-paper-dim">Who bought, what state it is in, and where it came from — three cuts of the same month.</p>
+        <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-3">
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
+            {leaders.length ? (
+              <Leaderboard rows={leaders} compact />
+            ) : ghostLeaders.length ? (
+              <GhostEmpty
+                note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
+                action={
+                  prevMonthKey ? (
+                    <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
+                      Open {prevMonthLabel} →
+                    </Link>
+                  ) : null
+                }
+              >
+                <Leaderboard rows={ghostLeaders} compact />
+              </GhostEmpty>
+            ) : (
+              <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
+            )}
+          </div>
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By status</h4>
+            {statusTotal > 0 || ghostStatusTotal === 0 ? (
+              <StatusSplit
+                parts={[
+                  { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${periodKey}` },
+                  { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${periodKey}` },
+                  { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${periodKey}` },
+                ]}
+              />
+            ) : (
+              <GhostEmpty note={`Nothing recorded in ${periodLabel} yet. ${prevMonthLabel} split like this:`}>
+                <StatusSplit
+                  parts={[
+                    { label: 'Verified', count: ghostStatusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: '#' },
+                    { label: 'Pending', count: ghostStatusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: '#' },
+                    { label: 'Flagged', count: ghostStatusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: '#' },
+                  ]}
+                />
+              </GhostEmpty>
+            )}
+          </div>
+          <div>
+            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By region</h4>
+            {regionGrowth.length ? (
+              <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+            ) : ghostRegions.length ? (
+              <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
+                <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
+              </GhostEmpty>
+            ) : (
+              <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="page-band">
@@ -521,9 +717,16 @@ const DELIVERY_TABLE_LIMIT = 8
 // the pending-delivery queue (with the real Mark as Sent action, not a
 // read-only count) and the regional dealer-network map, instead of the
 // finance-facing trend chart.
-async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; userId: string }) {
+async function CsDashboard({ supabase, userId, monthParam }: { supabase: SupabaseClient; userId: string; monthParam?: string }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
+  // monthParam is accepted and ignored on purpose. There is no period
+  // switcher here because nothing on this dashboard is a monthly report — it
+  // is a delivery queue and a dealer roster, both of which are "right now".
+  // Only the region block is month-scoped, and it ghosts last month rather
+  // than asking the reader to pick a period for one section.
+  void monthParam
+  const prevMonthStart = `${new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7)}-01`
 
   const [
     { data: deliveryListRows, count: pendingDeliveryCount },
@@ -547,7 +750,9 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
     // on the dealers base table (0015), so that embed would silently come
     // back null for every row. Region is joined in JS below instead, off
     // dealers_directory, which cs can read.
-    supabase.from('transactions').select('dealer_id, points').eq('status', 'verified').gte('tx_date', monthStart).lte('tx_date', today),
+    // Two months, not one: the region block shows last month faint when this
+    // month has nothing in it yet, rather than one line of grey text.
+    supabase.from('transactions').select('dealer_id, tx_date, points').eq('status', 'verified').gte('tx_date', prevMonthStart).lte('tx_date', today),
     supabase.from('dealers_directory').select('id, region, company_name'),
     getNotifications(userId, 'cs'),
   ])
@@ -574,12 +779,18 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
   // cs can't join transactions->dealers (no SELECT on the base table), so the
   // region AND dealer name both come from dealers_directory, keyed by id.
   const dealerByIdForCs = new Map((dealerRegionRows ?? []).map((d) => [d.id, d]))
-  const monthTxWithRegion = (monthTx ?? []).map((t) => {
-    const d = dealerByIdForCs.get(t.dealer_id)
-    return { points: t.points, dealers: { region: d?.region ?? null, company_name: d?.company_name ?? null } }
-  })
+  const withRegion = (rows: typeof monthTx) =>
+    (rows ?? []).map((t) => {
+      const d = dealerByIdForCs.get(t.dealer_id)
+      return { points: t.points, dealers: { region: d?.region ?? null, company_name: d?.company_name ?? null } }
+    })
+  const monthTxWithRegion = withRegion((monthTx ?? []).filter((t) => t.tx_date >= monthStart))
+  const prevTxWithRegion = withRegion((monthTx ?? []).filter((t) => t.tx_date < monthStart))
   const totalPoints = monthTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
+  const prevPoints = prevTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
   const regionGrowth = buildRegionGrowth(monthTxWithRegion, totalPoints)
+  const ghostRegions = buildRegionGrowth(prevTxWithRegion, prevPoints)
+  const prevMonthLabel = formatMonthLabel(prevMonthStart.slice(0, 7))
 
   return (
     <div className="flex flex-col gap-8">
@@ -624,7 +835,15 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
       <div className="page-band">
         <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
         <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
-        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+        {regionGrowth.length ? (
+          <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+        ) : ghostRegions.length ? (
+          <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
+            <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
+          </GhostEmpty>
+        ) : (
+          <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
+        )}
       </div>
 
       <div className="page-band">

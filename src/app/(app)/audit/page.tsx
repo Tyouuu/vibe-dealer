@@ -145,22 +145,32 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
       {filtered.length ? (
         <ScrollFade label="Audit event history">
-          {/* table-fixed + an explicit colgroup. With auto layout every
-              column resized itself to whatever the longest cell in it
-              happened to be, so the columns shifted as you paged and never
-              lined up with the header above them. Widths are set to what the
-              content actually needs: a time is 8 characters, a package code
-              is one. */}
+          {/* Percentage widths that sum to 100, not fixed widths with one
+              open column.
+
+              The previous colgroup gave seven columns a fixed px width and
+              left Dealer as a bare <col>, so Dealer absorbed every pixel of
+              slack in the table. On a 1500px content area that made it ~700px
+              wide for a 20-character name, which put roughly 680px of empty
+              space between the end of the dealer name and the start of the
+              amount on every single row — while Event, which holds the
+              longest content in the table ("Assigned package  Not set -> B"),
+              was locked at 256px and visibly cramped. Cramped and empty were
+              the same bug seen from two ends.
+
+              Percentages keep the ratio at any width, so the slack is shared
+              out instead of pooling in one column, and the two text columns
+              get shares proportional to what they actually hold. */}
           <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
             <colgroup>
-              <col className="w-24" />
-              <col className="w-40" />
-              <col className="w-64" />
-              <col />
-              <col className="w-32" />
-              <col className="w-24" />
-              <col className="w-28" />
-              <col className="w-10" />
+              <col className="w-[8%]" />
+              <col className="w-[13%]" />
+              <col className="w-[25%]" />
+              <col className="w-[22%]" />
+              <col className="w-[12%]" />
+              <col className="w-[9%]" />
+              <col className="w-[8%]" />
+              <col className="w-[3%]" />
             </colgroup>
             <thead>
               <tr>

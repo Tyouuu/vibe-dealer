@@ -288,6 +288,89 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const lifetimePoints = verifiedTx.reduce((sum, t) => sum + Number(t.points), 0)
   const lifetimeCommission = verifiedTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
 
+  // Extracted so the same markup can be the hero's record header for
+  // finance roles and a standalone card for cs, which never sees the
+  // hero at all (it carries commission figures). Previously this was a
+  // second card *below* the hero, so the page opened with a number and
+  // only then said whose number it was. Attio, Salesforce and HubSpot
+  // all lead a record page with the record itself.
+  const identityHeader = (
+    <>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Avatar name={typedDealer.company_name} size={44} />
+              <div>
+                <h2 className="text-lg font-semibold text-paper">{typedDealer.company_name}</h2>
+                {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              {isFinance && (
+                <span className={`pill ${ranking ? (ranking.rank <= 3 ? 'pill-brass' : 'pill-neutral') : 'pill-neutral'}`}>
+                  {ranking ? `#${ranking.rank} by top-up` : 'No top-up yet'}
+                </span>
+              )}
+              {canManage && (
+                <EditDealerButton
+                  dealer={{
+                    id,
+                    company_name: typedDealer.company_name,
+                    company_no: typedDealer.company_no,
+                    contact_person: typedDealer.contact_person,
+                    phone: typedDealer.phone,
+                    whatsapp: typedDealer.whatsapp,
+                    email: typedDealer.email,
+                    address: typedDealer.address,
+                    region: typedDealer.region,
+                    notes: typedDealer.notes,
+                  }}
+                />
+              )}
+              {isFinance && (
+                <a href={`/entry?dealer=${id}`} className="btn-primary py-1.5 text-xs">
+                  + Record Transaction
+                </a>
+              )}
+              {user.role === 'master' &&
+                isFinance &&
+                (txRows.length === 0 ? (
+                  <form action={deleteDealer}>
+                    <input type="hidden" name="id" value={id} />
+                    <ConfirmSubmitButton
+                      className="btn-clay py-1.5 text-xs"
+                      confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
+                    >
+                      Delete Dealer
+                    </ConfirmSubmitButton>
+                  </form>
+                ) : (
+                  // Same button, always present, so it never reads as "some
+                  // dealers just don't have this option" — disabled with the
+                  // reason on hover instead of silently disappearing once a
+                  // dealer has real transaction history to lose.
+                  <button
+                    type="button"
+                    disabled
+                    className="btn-clay cursor-not-allowed py-1.5 text-xs opacity-40"
+                    title="Only a dealer with zero transactions can be deleted — this one has real history, so deleting it isn't offered."
+                  >
+                    Delete Dealer
+                  </button>
+                ))}
+            </div>
+          </div>
+          <div className="mt-3.5 flex flex-wrap gap-2">
+            <AttrChip icon={<IconMapPin className="h-3 w-3" />} label="Region" value={typedDealer.region ?? '—'} />
+            <AttrChip
+              icon={<IconTag className="h-3 w-3" />}
+              label="Package"
+              value={typedDealer.package ? (isFinance ? `${typedDealer.package} · ${typedDealer.rate}%` : typedDealer.package) : '—'}
+            />
+            <AttrChip icon={<IconUsers className="h-3 w-3" />} label="Contact" value={typedDealer.contact_person ?? '—'} />
+          </div>
+    </>
+  )
+
   return (
     <div className="flex flex-col gap-5">
       <Link href="/dealers" className="text-xs font-semibold text-paper-dim hover:text-paper">
@@ -303,6 +386,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
       {isFinance && (
         <HeroCard
+          header={identityHeader}
           label="Lifetime top-up"
           value={`${lifetimePoints.toLocaleString()} pts`}
           chgSuffix={
@@ -334,80 +418,9 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         />
       )}
 
-      <div className="app-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Avatar name={typedDealer.company_name} size={44} />
-            <div>
-              <h2 className="text-lg font-semibold text-paper">{typedDealer.company_name}</h2>
-              {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            {isFinance && (
-              <span className={`pill ${ranking ? (ranking.rank <= 3 ? 'pill-brass' : 'pill-neutral') : 'pill-neutral'}`}>
-                {ranking ? `#${ranking.rank} by top-up` : 'No top-up yet'}
-              </span>
-            )}
-            {canManage && (
-              <EditDealerButton
-                dealer={{
-                  id,
-                  company_name: typedDealer.company_name,
-                  company_no: typedDealer.company_no,
-                  contact_person: typedDealer.contact_person,
-                  phone: typedDealer.phone,
-                  whatsapp: typedDealer.whatsapp,
-                  email: typedDealer.email,
-                  address: typedDealer.address,
-                  region: typedDealer.region,
-                  notes: typedDealer.notes,
-                }}
-              />
-            )}
-            {isFinance && (
-              <a href={`/entry?dealer=${id}`} className="btn-primary py-1.5 text-xs">
-                + Record Transaction
-              </a>
-            )}
-            {user.role === 'master' &&
-              isFinance &&
-              (txRows.length === 0 ? (
-                <form action={deleteDealer}>
-                  <input type="hidden" name="id" value={id} />
-                  <ConfirmSubmitButton
-                    className="btn-clay py-1.5 text-xs"
-                    confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
-                  >
-                    Delete Dealer
-                  </ConfirmSubmitButton>
-                </form>
-              ) : (
-                // Same button, always present, so it never reads as "some
-                // dealers just don't have this option" — disabled with the
-                // reason on hover instead of silently disappearing once a
-                // dealer has real transaction history to lose.
-                <button
-                  type="button"
-                  disabled
-                  className="btn-clay cursor-not-allowed py-1.5 text-xs opacity-40"
-                  title="Only a dealer with zero transactions can be deleted — this one has real history, so deleting it isn't offered."
-                >
-                  Delete Dealer
-                </button>
-              ))}
-          </div>
-        </div>
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          <AttrChip icon={<IconMapPin className="h-3 w-3" />} label="Region" value={typedDealer.region ?? '—'} />
-          <AttrChip
-            icon={<IconTag className="h-3 w-3" />}
-            label="Package"
-            value={typedDealer.package ? (isFinance ? `${typedDealer.package} · ${typedDealer.rate}%` : typedDealer.package) : '—'}
-          />
-          <AttrChip icon={<IconUsers className="h-3 w-3" />} label="Contact" value={typedDealer.contact_person ?? '—'} />
-        </div>
-      </div>
+      {/* cs never sees the hero, so for that role the record header
+          still renders on its own. */}
+      {!isFinance && <div className="app-card">{identityHeader}</div>}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5">

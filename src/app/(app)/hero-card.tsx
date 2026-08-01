@@ -31,6 +31,7 @@ export function HeroCard({
   spark,
   sparkLabel,
   footnote,
+  header,
   href,
 }: {
   /** What the headline number is. Kept short — the number is the message. */
@@ -62,10 +63,16 @@ export function HeroCard({
   /** Anything that needs to sit below the stats — an explanation the figures
       can't carry on their own. */
   footnote?: React.ReactNode
+  /** Identity that belongs above the figure — who or what these numbers are
+      about. On the dealer page the name, code, attribute chips and actions
+      were a separate card *below* the hero, so the page opened with a number
+      before it said whose number it was. They are one record header. */
+  header?: React.ReactNode
   href: string
 }) {
   return (
     <div className="app-card flex flex-col justify-between gap-5">
+      {header && <div className="border-b border-ink-800 pb-5">{header}</div>}
       <div>
         <Link href={href} className="group inline-flex items-center gap-1.5">
           <span className="text-[13px] font-semibold text-paper-dim group-hover:text-paper">{label}</span>

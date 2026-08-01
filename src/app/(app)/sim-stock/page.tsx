@@ -3,13 +3,22 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { SIM_BOX_SIZE, SIM_MARGIN_RM, SIM_SELL_PRICE_RM, SIM_UNIT_COST_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, type SimStockType } from '@/lib/sim-stock'
+import {
+  SIM_BOX_SIZE,
+  SIM_MARGIN_RM,
+  SIM_MIN_ORDER_QTY,
+  SIM_SELL_PRICE_RM,
+  SIM_STOCK_TYPES,
+  SIM_UNIT_COST_RM,
+  type SimStockType,
+} from '@/lib/sim-stock'
 import { OrderForm } from './order-form'
 import { IntakeForm } from './intake-form'
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { PageHeader } from '../page-header'
-import { HeroCard } from '../hero-card'
+import { StatusDot } from '../status-dot'
+import { BandHeading, Pool, StockBar } from './elements'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -104,6 +113,19 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const totalIntakeCost = intakes.reduce((s, r) => s + r.quantity * Number(r.cost_per_unit_rm), 0)
   const totalOrderRevenue = orders.reduce((s, o) => s + o.quantity * Number(o.unit_price_rm), 0)
   const totalOrderMargin = isFinance ? orders.reduce((s, o) => s + o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)), 0) : 0
+  const soldAtCost = isFinance ? orders.reduce((s, o) => s + o.quantity * Number(o.unit_cost_rm ?? 0), 0) : 0
+
+  // What the shelf is doing, in the three states a card can be in. `sold`
+  // here means "has an order against it" — sent and pending alike, which is
+  // exactly what sim_stock_balance.total_sold counts, so `available` is
+  // already net of every order and none of these three overlap.
+  const totalBought = balances.reduce((sum, b) => sum + b.total_intake, 0)
+  const totalSold = balances.reduce((sum, b) => sum + b.total_sold, 0)
+  const qtyBy = (type: SimStockType | null, status: 'pending' | 'sent') =>
+    orders.filter((o) => (type === null || o.sim_type === type) && o.delivery_status === status).reduce((s, o) => s + o.quantity, 0)
+  const pendingQty = qtyBy(null, 'pending')
+  const sentQty = qtyBy(null, 'sent')
+  const emptyPool = balances.some((b) => b.available <= 0)
 
   // Sliced in memory rather than a second .range() query per list — unlike
   // Records/Dealers this data doesn't grow across a whole customer base, just
@@ -125,16 +147,18 @@ export default async function SimStockPage({ searchParams }: PageProps) {
     return `/sim-stock${p > 1 ? `?intake_page=${p}` : ''}#stock-intake-history`
   }
 
+  // Two jobs were wearing one page. Buying stock from Vibe (money out, stock
+  // up) and selling it to dealers (money in, stock down) are opposite
+  // directions, and the page ran the identical "list on the left, form on the
+  // right" layout twice in a row with nothing naming either one. That
+  // repetition is what read as too much — not the amount of information.
+  //
+  // So the page is now four sections in the order you meet them: what is on
+  // the shelf, which pools it sits in, what came in, what went out. And the
+  // card rule applies throughout — a card is something you act on (the two
+  // forms), a log is something you only read, so the logs lose theirs.
   return (
-    <div className="flex flex-col gap-5">
-      {/* PageHeader was nested inside a card here — every other page puts it
-          at the top level, and a page title inside a box reads as a section
-          heading rather than as the page's own name.
-
-          Two permanent explanation blocks used to sit above the figures: a
-          five-line info strip and a note strip. Both are now gone. What they
-          said that mattered is the unit economics, which belongs beside the
-          margin it explains, not above everything as a preamble. */}
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="SIM Card Stock"
         subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} at ${formatMYR(SIM_UNIT_COST_RM)}/card and resold at ${formatMYR(SIM_SELL_PRICE_RM)} — a flat ${formatMYR(SIM_MARGIN_RM)} per card, separate from the points ledger.`}
@@ -144,172 +168,221 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
       {order_saved && <div className="alert alert-ok">Order recorded.</div>}
 
-      {/* Was three tiles of three equal figures each — nine numbers at one
-          weight — plus a fourth tile for margin. Only one of the nine stops
-          work: how many cards are left to sell. Bought In and Total Sold are
-          reference figures, and both tables further down already carry them
-          row by row. */}
-      <HeroCard
-        label="Cards available to sell"
-        value={totalAvailable.toLocaleString()}
-        chgSuffix={
-          balances.some((b) => b.available <= 0)
-            ? 'one pool is empty — log a stock intake before taking that order'
-            : 'across three separate pools — an order can only draw from its own type'
-        }
-        href="/sim-stock"
-        stats={balances.map((b) => ({
-          label: SIM_TYPE_LABEL[b.sim_type],
-          value: b.available.toLocaleString(),
-          href: '/sim-stock',
-          tone: b.available <= 0 ? ('warn' as const) : b.available < SIM_BOX_SIZE ? ('caution' as const) : ('normal' as const),
-          sub: `${b.total_intake.toLocaleString()} in · ${b.total_sold.toLocaleString()} sold`,
-        }))}
-        footnote={
-          isFinance
-            ? `Margin so far ${formatMYR(totalOrderMargin)} — spent RM ${totalIntakeCost.toLocaleString()} on stock, collected ${formatMYR(totalOrderRevenue)} from dealer orders.`
-            : undefined
-        }
-      />
+      {/* The shelf. One figure, one bar, one line of facts — and no rule
+          above it, because it opens the page.
 
-      {/* minmax(0, …) instead of a bare 1.4fr/1fr — a plain fr track's
-          implicit minimum is its content's min-content width, so this grid
-          and the near-identical one below (Stock Intake History) each ended
-          up with a DIFFERENT actual pixel split for the "same" 1.4fr/1fr,
-          purely because Place Order vs Log Stock Intake have different
-          min-content widths. Two card widths that were only close by
-          coincidence, not by design — minmax(0, …) makes both grids divide
-          the same container width by the same ratio every time, so the two
-          tables' cards always come out exactly the same width. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <div className="app-card min-w-0" id="dealer-orders">
-          <div className="mb-3.5 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-paper">Dealer Orders</h3>
-            <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
+          The bar is drawn at true proportions, which at 55 sold out of 3,000
+          means two very thin segments. That is the honest shape of this
+          business today and the counts beside it carry the exact numbers;
+          padding those segments up to something more visible would draw a
+          figure that isn't true.
+
+          On what "sold" means here: sim_stock_balance.total_sold counts
+          pending and sent orders alike, so `available` is already net of
+          every order ever placed. There is no stock on this page that is
+          spoken for but not yet deducted — the pending cards are a
+          fulfilment fact (sold, still sitting here), not an availability
+          one, and the legend says so rather than subtracting them twice. */}
+      <section>
+        <div className="flex flex-wrap items-end gap-x-12 gap-y-6">
+          <div>
+            <p className="text-[12px] text-paper-dim">Available to sell</p>
+            {/* Sans, not .figure's mono, and this is the one place on the
+                page that differs. Mono exists so columns of digits line up;
+                a single headline figure has no column to line up with, and
+                the mono comma takes a full character advance — at 38px
+                "2,945" rendered with a visible hole on each side of it.
+                Tabular figures are kept so the number doesn't jump width
+                when the count changes. */}
+            <p className="tnum mt-1.5 text-[38px] font-semibold leading-none tracking-[-.03em] text-paper">
+              {totalAvailable.toLocaleString()}
+            </p>
+            <p className="mt-2 text-[13px] text-paper-dim">of {totalBought.toLocaleString()} bought from Vibe Mobile</p>
           </div>
-          {/* Progressive disclosure instead of packing every field into the
-              row: each row shows one clear value per column (Date/Dealer/
-              SIM Type/Qty/Paid/Status), and margin/shipping/invoice/the
-              Mark as Sent action live in a click-to-expand panel — same
-              pattern the Audit Log already uses for its own detail row.
-              Cramming Paid+Margin, Shipping+Invoice, Status+Action into one
-              cell each (the previous version) kept the grid narrow enough
-              to never need horizontal scroll, but reads as dense/cramped
-              regardless of how well the columns themselves align. */}
-          {orders.length ? (
-            <DealerOrdersTable
-              orders={pagedOrders.map((o) => {
-                const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
-                const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
-                const paid = o.quantity * Number(o.unit_price_rm)
-                const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
-                return {
-                  id: o.id,
-                  order_date: o.order_date,
-                  dealerName,
-                  sim_type: o.sim_type,
-                  quantity: o.quantity,
-                  paid,
-                  margin,
-                  shipping_fee_rm: o.shipping_fee_rm,
-                  shipping_invoice_path: o.shipping_invoice_path,
-                  esim_codes: o.esim_codes,
-                  delivery_status: o.delivery_status,
-                }
-              })}
-              isFinance={isFinance}
+          {/* Capped, not stretched to the full 1,137px. Left as flex-1 the
+              legend and the shelf count sat at opposite ends of the page
+              with 700px of nothing between them — the exact "empty here,
+              crowded there" the client keeps pointing at. */}
+          <div className="min-w-[320px] max-w-[620px] flex-1">
+            <StockBar sent={sentQty} pending={pendingQty} total={totalBought} />
+            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+              <StatusDot color="jade-bright" label={`${sentQty.toLocaleString()} sent`} />
+              <StatusDot color="brass-bright" label={`${pendingQty.toLocaleString()} sold, still to send`} />
+              <span className="text-[13px] text-paper-dim">{totalAvailable.toLocaleString()} still on the shelf</span>
+            </div>
+            {isFinance && (
+              <p className="mt-3.5 text-[12px] text-paper-dim">
+                Spent {formatMYR(totalIntakeCost)} on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
+                {formatMYR(totalOrderMargin)} so far
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* The three pools. Same bar as the shelf above, once per pool — three
+          bare numbers cannot show that one pool is draining while the other
+          two are not. */}
+      <section className="page-band">
+        <BandHeading title="Three pools" sub="an order can only draw from its own type" />
+        {emptyPool && (
+          <p className="mb-4 text-[13px]" style={{ color: 'var(--color-clay-bright)' }}>
+            One pool is empty — log a stock intake before taking that order.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-3">
+          {balances.map((b) => (
+            <Pool
+              key={b.sim_type}
+              simType={b.sim_type}
+              available={b.available}
+              intake={b.total_intake}
+              sold={b.total_sold}
+              sent={qtyBy(b.sim_type, 'sent')}
+              pending={qtyBy(b.sim_type, 'pending')}
+              low={b.available > 0 && b.available < SIM_BOX_SIZE}
             />
-          ) : (
-            <p className="text-sm text-paper-dim">No orders recorded yet.</p>
-          )}
-          {ordersTotalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[12px] text-paper-dim">
-                Page {ordersPage} of {ordersTotalPages}
-              </span>
-              <div className="flex items-center gap-2">
-                {ordersPage > 1 ? (
-                  <Link href={ordersPageHref(ordersPage - 1)} className="btn-ghost py-1.5 text-xs">
-                    Previous
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Previous
-                  </button>
-                )}
-                {ordersPage < ordersTotalPages ? (
-                  <Link href={ordersPageHref(ordersPage + 1)} className="btn-ghost py-1.5 text-xs">
-                    Next
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Next
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
+      </section>
 
-        <div className="app-card min-w-0">
-          <h3 className="mb-3.5 text-sm font-semibold text-paper">Place Order</h3>
-          <OrderForm
-            dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
-            availableByType={availableByType}
-          />
-        </div>
-      </div>
-
-      {/* Same minmax(0, …) fix as the grid above, and for the same reason —
-          this grid's own content (Log Stock Intake) differs from the other
-          grid's (Place Order), so without it the two would independently
-          drift to different pixel splits despite the identical 1.4fr/1fr. */}
+      {/* Stock in — money out, stock up. */}
       {isFinance && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-          <div className="app-card min-w-0" id="stock-intake-history">
-            <div className="mb-3.5 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-paper">Stock Intake History</h3>
-              <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
+        <section className="page-band" id="stock-intake-history">
+          <BandHeading
+            arrow="in"
+            title="Stock in"
+            sub="bought from Vibe Mobile"
+            facts={[
+              `${intakes.length} intake${intakes.length === 1 ? '' : 's'}`,
+              `${formatMYR(totalIntakeCost)} spent`,
+              `${totalBought.toLocaleString()} cards at ${formatMYR(SIM_UNIT_COST_RM)} each`,
+            ]}
+          />
+          <div className="flex flex-col gap-6">
+            <div className="band-log min-w-0">
+              {intakes.length ? (
+                <StockIntakeTable
+                  intakes={pagedIntakes.map((r) => ({
+                    id: r.id,
+                    intake_date: r.intake_date,
+                    sim_type: r.sim_type,
+                    quantity: r.quantity,
+                    cost_per_unit_rm: Number(r.cost_per_unit_rm),
+                    totalCost: r.quantity * Number(r.cost_per_unit_rm),
+                    note: r.note,
+                    recordedByName: nameById.get(r.recorded_by) ?? '—',
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>
+              )}
+              {intakesTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
+                  <span className="text-[12px] text-paper-dim">
+                    Page {intakesPage} of {intakesTotalPages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {intakesPage > 1 ? (
+                      <Link href={intakePageHref(intakesPage - 1)} className="btn-ghost py-1.5 text-xs">
+                        Previous
+                      </Link>
+                    ) : (
+                      <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                        Previous
+                      </button>
+                    )}
+                    {intakesPage < intakesTotalPages ? (
+                      <Link href={intakePageHref(intakesPage + 1)} className="btn-ghost py-1.5 text-xs">
+                        Next
+                      </Link>
+                    ) : (
+                      <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
+                        Next
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            {intakes.length ? (
-              <StockIntakeTable
-                intakes={pagedIntakes.map((r) => ({
-                  id: r.id,
-                  intake_date: r.intake_date,
-                  sim_type: r.sim_type,
-                  quantity: r.quantity,
-                  cost_per_unit_rm: Number(r.cost_per_unit_rm),
-                  totalCost: r.quantity * Number(r.cost_per_unit_rm),
-                  note: r.note,
-                  recordedByName: nameById.get(r.recorded_by) ?? '—',
-                }))}
+
+            <div className="app-card min-w-0">
+              <h3 className="mb-1 text-sm font-semibold text-paper">Log Stock Intake</h3>
+              <p className="mb-4 text-[12px] text-paper-dim">A box from Vibe Mobile. Adds to the pool you pick.</p>
+              <IntakeForm />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Stock out — money in, stock down. */}
+      <section className="page-band" id="dealer-orders">
+        <BandHeading
+          arrow="out"
+          title="Stock out"
+          sub="sold to dealers"
+          facts={
+            isFinance
+              ? [
+                  `${orders.length} order${orders.length === 1 ? '' : 's'}`,
+                  `${formatMYR(totalOrderRevenue)} collected`,
+                  `${totalSold.toLocaleString()} cards at ${formatMYR(SIM_SELL_PRICE_RM)} each`,
+                  `margin ${formatMYR(totalOrderMargin)}`,
+                ]
+              : [`${orders.length} order${orders.length === 1 ? '' : 's'}`, `${totalSold.toLocaleString()} cards`]
+          }
+        />
+        <div className="flex flex-col gap-6">
+          <div className="band-log min-w-0">
+            {orders.length ? (
+              <DealerOrdersTable
+                orders={pagedOrders.map((o) => {
+                  const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
+                  const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
+                  const paid = o.quantity * Number(o.unit_price_rm)
+                  const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
+                  return {
+                    id: o.id,
+                    order_date: o.order_date,
+                    dealerName,
+                    sim_type: o.sim_type,
+                    quantity: o.quantity,
+                    paid,
+                    margin,
+                    shipping_fee_rm: o.shipping_fee_rm,
+                    shipping_invoice_path: o.shipping_invoice_path,
+                    esim_codes: o.esim_codes,
+                    delivery_status: o.delivery_status,
+                  }
+                })}
+                isFinance={isFinance}
               />
             ) : (
-              <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>
+              <p className="text-sm text-paper-dim">No orders recorded yet.</p>
             )}
-            {intakesTotalPages > 1 && (
+            {ordersTotalPages > 1 && (
               <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
                 <span className="text-[12px] text-paper-dim">
-                  Page {intakesPage} of {intakesTotalPages}
+                  Page {ordersPage} of {ordersTotalPages}
                 </span>
                 <div className="flex items-center gap-2">
-                  {intakesPage > 1 ? (
-                    <Link href={intakePageHref(intakesPage - 1)} className="btn-ghost py-1.5 text-xs">
+                  {ordersPage > 1 ? (
+                    <Link href={ordersPageHref(ordersPage - 1)} className="btn-ghost py-1.5 text-xs">
                       Previous
                     </Link>
                   ) : (
                     <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Previous
-                  </button>
+                      Previous
+                    </button>
                   )}
-                  {intakesPage < intakesTotalPages ? (
-                    <Link href={intakePageHref(intakesPage + 1)} className="btn-ghost py-1.5 text-xs">
+                  {ordersPage < ordersTotalPages ? (
+                    <Link href={ordersPageHref(ordersPage + 1)} className="btn-ghost py-1.5 text-xs">
                       Next
                     </Link>
                   ) : (
                     <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Next
-                  </button>
+                      Next
+                    </button>
                   )}
                 </div>
               </div>
@@ -317,11 +390,17 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           </div>
 
           <div className="app-card min-w-0">
-            <h3 className="mb-3.5 text-sm font-semibold text-paper">Log Stock Intake</h3>
-            <IntakeForm />
+            <h3 className="mb-1 text-sm font-semibold text-paper">Place Order</h3>
+            <p className="mb-4 text-[12px] text-paper-dim">
+              Draws from the pool you pick. {formatMYR(SIM_SELL_PRICE_RM)} per card, minimum {SIM_MIN_ORDER_QTY}.
+            </p>
+            <OrderForm
+              dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
+              availableByType={availableByType}
+            />
           </div>
         </div>
-      )}
+      </section>
     </div>
   )
 }

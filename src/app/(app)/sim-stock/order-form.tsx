@@ -77,93 +77,99 @@ export function OrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+    // The same 12-column grid as the intake form, and for the same reason —
+    // six stacked full-width fields made a very tall, very narrow card. See
+    // intake-form.tsx for why the spans are written natively rather than
+    // behind an @apply alias.
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="alert alert-bad">{error}</div>}
-      <div>
-        <label className="field-label">SIM Type</label>
-        <input type="hidden" name="sim_type" value={simType} />
-        <div className="segmented w-full">
-          {SIM_STOCK_TYPES.map((t) => (
-            <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
-              {SIM_TYPE_LABEL[t]}
-            </button>
-          ))}
+      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+        <div className="sm:col-span-6 lg:col-span-5">
+          <label className="field-label">SIM Type</label>
+          <input type="hidden" name="sim_type" value={simType} />
+          <div className="segmented w-full">
+            {SIM_STOCK_TYPES.map((t) => (
+              <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
+                {SIM_TYPE_LABEL[t]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      <div>
-        <label className="field-label">Dealer</label>
-        <Combobox
-          name="dealer_id"
-          value={dealerId}
-          onChange={setDealerId}
-          placeholder="Select a dealer…"
-          searchPlaceholder="Search dealer…"
-          options={dealers.map((d) => ({ value: d.id, label: d.company_name, sublabel: d.address ?? undefined }))}
-        />
-        {isPhysicalSimType(simType) && (
+        <div className="sm:col-span-6 lg:col-span-4">
+          <label className="field-label">Dealer</label>
+          <Combobox
+            name="dealer_id"
+            value={dealerId}
+            onChange={setDealerId}
+            placeholder="Select a dealer…"
+            searchPlaceholder="Search dealer…"
+            options={dealers.map((d) => ({ value: d.id, label: d.company_name, sublabel: d.address ?? undefined }))}
+          />
+          {isPhysicalSimType(simType) && (
+            <p className="mt-1 text-[12px] text-paper-dim">
+              Ship to: {selectedDealer ? (selectedDealer.address ?? 'No address on file') : '—'}
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-3 lg:col-span-3">
+          <label className="field-label">Order Date</label>
+          <DatePicker name="order_date" required />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-3">
+          <label htmlFor="so-qty" className="field-label">
+            Quantity (min {SIM_MIN_ORDER_QTY})
+          </label>
+          <input id="so-qty" name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
           <p className="mt-1 text-[12px] text-paper-dim">
-            Ship to: {selectedDealer ? (selectedDealer.address ?? 'No address on file') : '—'}
+            {formatMYR(SIM_SELL_PRICE_RM)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
           </p>
+        </div>
+        {isPhysicalSimType(simType) ? (
+          <>
+            <div className="sm:col-span-3 lg:col-span-3">
+              <label className="field-label">Shipping Fee (RM, optional)</label>
+              <input name="shipping_fee_rm" type="number" step="0.01" min="0" placeholder="Leave blank if no shipping cost" className="field-input" />
+            </div>
+            <div className="sm:col-span-6 lg:col-span-6">
+              <label className="field-label">Shipping Invoice (optional)</label>
+              <label className="upload-box">
+                <IconUpload />
+                <span className="truncate">{invoiceFile ? invoiceFile.name : 'Click to upload invoice/receipt'}</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    if (file && !INVOICE_ALLOWED_TYPES.has(file.type)) {
+                      setError('Please upload a JPEG, PNG, WEBP, GIF, or PDF file.')
+                      e.target.value = ''
+                      return
+                    }
+                    if (file && file.size > INVOICE_MAX_BYTES) {
+                      setError('File is too large (max 10MB).')
+                      e.target.value = ''
+                      return
+                    }
+                    setInvoiceFile(file)
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </>
+        ) : (
+          <div className="sm:col-span-6 lg:col-span-9">
+            <label className="field-label">eSIM Codes (optional)</label>
+            <textarea
+              name="esim_codes"
+              rows={3}
+              placeholder="Paste the activation code(s) given to the dealer, one per line"
+              className="field-input resize-none"
+            />
+          </div>
         )}
       </div>
-      <div>
-        <label className="field-label">Order Date</label>
-        <DatePicker name="order_date" required />
-      </div>
-      <div>
-        <label htmlFor="so-qty" className="field-label">
-          Quantity (min {SIM_MIN_ORDER_QTY})
-        </label>
-        <input id="so-qty" name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
-        <p className="mt-1 text-[12px] text-paper-dim">
-          {formatMYR(SIM_SELL_PRICE_RM)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
-        </p>
-      </div>
-      {isPhysicalSimType(simType) ? (
-        <>
-          <div>
-            <label className="field-label">Shipping Fee (RM, optional)</label>
-            <input name="shipping_fee_rm" type="number" step="0.01" min="0" placeholder="Leave blank if no shipping cost" className="field-input" />
-          </div>
-          <div>
-            <label className="field-label">Shipping Invoice (optional)</label>
-            <label className="upload-box">
-              <IconUpload />
-              <span className="truncate">{invoiceFile ? invoiceFile.name : 'Click to upload invoice/receipt'}</span>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null
-                  if (file && !INVOICE_ALLOWED_TYPES.has(file.type)) {
-                    setError('Please upload a JPEG, PNG, WEBP, GIF, or PDF file.')
-                    e.target.value = ''
-                    return
-                  }
-                  if (file && file.size > INVOICE_MAX_BYTES) {
-                    setError('File is too large (max 10MB).')
-                    e.target.value = ''
-                    return
-                  }
-                  setInvoiceFile(file)
-                }}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </>
-      ) : (
-        <div>
-          <label className="field-label">eSIM Codes (optional)</label>
-          <textarea
-            name="esim_codes"
-            rows={3}
-            placeholder="Paste the activation code(s) given to the dealer, one per line"
-            className="field-input resize-none"
-          />
-        </div>
-      )}
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
+      <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto sm:self-end sm:px-10">
         {uploading ? 'Uploading invoice…' : submitting ? 'Saving…' : 'Save Order'}
       </button>
 

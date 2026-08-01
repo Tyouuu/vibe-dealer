@@ -1,6 +1,3 @@
-'use client'
-
-import { Fragment, useState } from 'react'
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, type SimStockType } from '@/lib/sim-stock'
 import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
@@ -16,81 +13,56 @@ export type IntakeItem = {
   recordedByName: string
 }
 
-// Same progressive-disclosure pattern as Dealer Orders' table (and the
-// Audit Log before it) — one clear value per column in the default row,
-// with cost-per-unit/recorded-by/note (secondary to "what was bought and
-// what it cost in total") behind a click-to-expand panel.
+// Every column, no click-to-expand.
+//
+// This table used to hide Cost/Unit, Recorded By and Note behind a chevron.
+// That was the right call when it lived inside a 607px card beside a form —
+// six columns in that space read as cramped, which is exactly what the
+// client complained about. The form now sits below rather than alongside, so
+// the log has the full width of the band, and in that space the disclosure
+// inverted the problem: four short columns across 1,137px left a 640px hole
+// in every row.
+//
+// The reason for hiding them is gone, so they come back. Note takes the
+// slack because it is the one genuinely variable-length value here; a
+// right-aligned money column taking it is what opened the hole in the first
+// place.
 export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
-  const [openId, setOpenId] = useState<string | null>(null)
-
   return (
     <ScrollFade label="SIM stock intake history">
-      <div className="grid grid-cols-[72px_120px_50px_minmax(90px,1fr)_24px] gap-x-3 text-sm">
+      <div className="grid grid-cols-[84px_max-content_60px_104px_132px_150px_minmax(120px,1fr)] gap-x-3 text-sm">
         <div className="th">Date</div>
         <div className="th">SIM Type</div>
         <div className="th text-right">Qty</div>
+        <div className="th text-right">Cost/Unit</div>
         <div className="th text-right">Total Cost</div>
-        <div className="th"></div>
-        {intakes.map((r, i) => {
-          const open = openId === r.id
-          // One spanning divider, not a border on each cell — see
-          // dealer-orders-table.tsx for why (grid gutters cut a per-cell
-          // border into visible dashes).
-          const showDivider = !(i === intakes.length - 1 && !open)
-          const toggle = () => setOpenId(open ? null : r.id)
-          return (
-            <Fragment key={r.id}>
-              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim`}>
-                {r.intake_date}
-              </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
-                <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
-              </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim`}>
-                {r.quantity.toLocaleString()}
-              </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper`}>
-                {formatMYR(r.totalCost)}
-              </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim`}>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
-                >
-                  <path d="m9 6 6 6-6 6" />
-                </svg>
-              </div>
-              {showDivider && !open && <div style={{ gridColumn: '1 / -1' }} className="border-b border-ink-800" />}
-              {open && (
-                <div style={{ gridColumn: '1 / -1' }} className="pb-4">
-                  <div className="rounded-xl border border-ink-800 bg-ink-900/60 p-4">
-                    <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
-                        <dd className="mt-1 text-[13px] font-semibold text-paper">{formatMYR(r.cost_per_unit_rm)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Recorded By</dt>
-                        <dd className="mt-1 text-[13px] font-semibold text-paper">{r.recordedByName}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Note</dt>
-                        <dd className="mt-1 text-[13px] font-semibold text-paper">
-                          {r.note ?? <span className="font-normal text-paper-dim/50">—</span>}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              )}
-            </Fragment>
-          )
-        })}
+        <div className="th">Recorded By</div>
+        <div className="th">Note</div>
+        {intakes.map((r, i) => (
+          <div key={r.id} className="contents">
+            <div className="whitespace-nowrap py-3.5 text-paper-dim">{r.intake_date}</div>
+            <div className="py-3.5">
+              {/* max-w-none: .tag caps at 150px for the short labels it was
+                  built for, and a SIM type name is 176px — inside that cap it
+                  wrapped to two lines and took the row height with it. */}
+              <span className={`tag max-w-none whitespace-nowrap ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
+            </div>
+            <div className="py-3.5 text-right text-paper-dim">{r.quantity.toLocaleString()}</div>
+            <div className="py-3.5 text-right figure-money font-normal text-paper-dim">{formatMYR(r.cost_per_unit_rm)}</div>
+            <div className="py-3.5 text-right figure-money font-semibold text-paper">{formatMYR(r.totalCost)}</div>
+            <div className="truncate py-3.5 text-paper-dim" title={r.recordedByName}>
+              {r.recordedByName}
+            </div>
+            <div className="truncate py-3.5 text-paper-dim" title={r.note ?? undefined}>
+              {r.note ?? <span className="text-paper-dim/50">—</span>}
+            </div>
+            {/* One divider spanning every column, not a border-b per cell —
+                this is a CSS grid with gap-x-3, and a per-cell border stops
+                at each cell's edge, so the gutters cut the line into seven
+                visible dashes across the row. */}
+            {i < intakes.length - 1 && <div style={{ gridColumn: '1 / -1' }} className="border-b border-ink-800" />}
+          </div>
+        ))}
       </div>
     </ScrollFade>
   )

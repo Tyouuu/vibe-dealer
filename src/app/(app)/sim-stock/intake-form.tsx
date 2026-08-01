@@ -31,39 +31,51 @@ export function IntakeForm() {
   const costPerUnit = pendingFormData ? Number(pendingFormData.get('cost_per_unit_rm')) : 0
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-      <div>
-        <label className="field-label">SIM Type</label>
-        <input type="hidden" name="sim_type" value={simType} />
-        <div className="segmented w-full">
-          {SIM_STOCK_TYPES.map((t) => (
-            <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
-              {SIM_TYPE_LABEL[t]}
-            </button>
-          ))}
+    // Five fields in one column made a card roughly 700px tall. It used to
+    // stand beside a three-row log, so the page's largest empty space sat
+    // directly under that log; the card now runs the full width of the band
+    // below the log instead, and the fields sit on the same 12-column grid
+    // the Onboard form uses. Four short fields read as short fields rather
+    // than as five identical full-width bars.
+    //
+    // The spans are written out at the call site, not behind an @apply
+    // alias: Tailwind does not resolve responsive grid utilities through
+    // @apply and silently compiles grid-template-columns to `none`.
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+        <div className="sm:col-span-6 lg:col-span-5">
+          <label className="field-label">SIM Type</label>
+          <input type="hidden" name="sim_type" value={simType} />
+          <div className="segmented w-full">
+            {SIM_STOCK_TYPES.map((t) => (
+              <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
+                {SIM_TYPE_LABEL[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="sm:col-span-3 lg:col-span-3">
+          <label className="field-label">Intake Date</label>
+          <DatePicker name="intake_date" required />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-2">
+          <label htmlFor="si-qty" className="field-label">
+            Quantity (cards)
+          </label>
+          <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-2">
+          <label htmlFor="si-cost" className="field-label">
+            Cost per unit (RM)
+          </label>
+          <input id="si-cost" name="cost_per_unit_rm" type="number" step="0.01" min="0" defaultValue={SIM_UNIT_COST_RM} required className="field-input" />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-5">
+          <label className="field-label">Note (optional)</label>
+          <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
         </div>
       </div>
-      <div>
-        <label className="field-label">Intake Date</label>
-        <DatePicker name="intake_date" required />
-      </div>
-      <div>
-        <label htmlFor="si-qty" className="field-label">
-          Quantity (cards)
-        </label>
-        <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
-      </div>
-      <div>
-        <label htmlFor="si-cost" className="field-label">
-          Cost per unit (RM)
-        </label>
-        <input id="si-cost" name="cost_per_unit_rm" type="number" step="0.01" min="0" defaultValue={SIM_UNIT_COST_RM} required className="field-input" />
-      </div>
-      <div>
-        <label className="field-label">Note (optional)</label>
-        <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
-      </div>
-      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60">
+      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60 sm:w-auto sm:self-end sm:px-10">
         {pending ? 'Saving…' : 'Save Intake'}
       </button>
 

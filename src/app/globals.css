@@ -270,6 +270,19 @@ body {
     background-color: var(--color-canvas);
   }
 
+  /* A log sitting straight on the canvas inside a page band — the same idea
+     as .index-surface, but scoped to one section of a page rather than the
+     whole of it. It carries only the two things that depend on what is
+     behind the table: the sticky header's fill, and the colour ScrollFade's
+     right-edge gradient has to fade into. Everything else about the section
+     is the band's job. */
+  .band-log {
+    --fade-from: var(--color-canvas);
+  }
+  .band-log .th {
+    background-color: var(--color-canvas);
+  }
+
   /* ---- Page band -----------------------------------------------------
      The third page shape, and the one the Dashboard is built from.
 

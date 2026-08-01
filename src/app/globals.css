@@ -223,6 +223,53 @@ body {
     background-color: var(--color-canvas);
   }
 
+  /* ---- Index surface -------------------------------------------------
+     The second page shape. This app had exactly one — PageHeader, then
+     everything inside .app-card — used by all thirteen pages, so a record
+     you only read (Audit Log) was built out of the same parts as a task you
+     must complete (Reconciliation), and a table ended up as a white box
+     inside a white box on a tinted page: three surfaces to display one grid.
+
+     On an index page the list *is* the page, so it gets no card. Linear's
+     issue list, Vercel's deployments, Supabase's table editor and Attio's
+     records all put the toolbar and the rows straight onto the page surface
+     with hairlines between them and nothing around them. None of them wraps
+     a table in a panel.
+
+     .index-surface itself deliberately paints nothing — it exists so the
+     sticky header below can be scoped, and so the shape is named in one
+     place rather than reassembled by hand on six pages. */
+  /* mt-6 because there was no gap at all. Measured on /dealers before this
+     change: the hero card's bottom edge and the content card's top edge were
+     both at y=396.375 — literally touching. Two rounded cards flush against
+     each other read as one tall panel, which is why it survived this long;
+     the moment the lower one stopped being a card it was obvious. */
+  .index-surface {
+    @apply mt-6 flex flex-col;
+    /* ScrollFade's right-edge gradient has to land in the surface the table
+       is actually sitting on, which here is the canvas, not a card. */
+    --fade-from: var(--color-canvas);
+  }
+
+  /* Row one: the view switcher and the page-level actions. */
+  .index-toolbar {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  /* Row two: the filters, closed by the hairline that also opens the table.
+     One line separates controls from data — the card's four edges were
+     doing a job a single rule does better. */
+  .index-filterbar {
+    @apply flex flex-wrap items-center gap-3 border-b border-ink-800 pb-4 pt-3;
+  }
+
+  /* Inside a card the sticky column header hides rows behind the card's own
+     white; on the open canvas it needs the canvas colour instead, or rows
+     show through it as they pass underneath. */
+  .index-surface .th {
+    background-color: var(--color-canvas);
+  }
+
   .app-card {
     @apply rounded-xl bg-ink-900 p-6;
     /* Border delivered as the first layer of the shadow stack (Vercel's
@@ -556,7 +603,12 @@ body {
      stays plain ink (not accent-colored) — stacking a colored figure on top
      of colored dots read as too busy in review, so only the dots carry color. */
   .txn-summary {
-    @apply mb-4 flex flex-wrap items-center gap-5 rounded-xl border border-ink-800 bg-ink-900 px-4 py-3 text-sm;
+    /* No longer a bordered strip. Inside a card it was a legible sub-panel;
+       on the open canvas it became a full-width white bar holding one
+       right-aligned figure and about 90% empty space — the single worst
+       thing on the page. It is one line of text, so it is set as one line
+       of text, sitting just above the column headers it describes. */
+    @apply flex flex-wrap items-center justify-end gap-5 px-3 pb-2 pt-3 text-sm;
   }
   .txn-summary-item {
     @apply flex items-center gap-2 text-paper-dim;

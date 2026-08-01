@@ -116,11 +116,14 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
         ]}
       />
 
-      <div className="app-card">
+      {/* The queue is the page — no card. See .index-surface. */}
+      <div className="index-surface">
       {/* Polaris puts filtering at the top of the index itself rather than in
           the page header — these are controls over the list below, not
-          actions on the page. */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+          actions on the page. The switcher moves to the left, where the
+          other two index pages put theirs; right-aligned it was the only
+          control on the page and read as an afterthought. */}
+      <div className="index-filterbar">
         <div className="segmented">
           <Link href="/delivery" className={`segmented-btn ${!showAll ? 'active' : ''}`}>
             Show pending only

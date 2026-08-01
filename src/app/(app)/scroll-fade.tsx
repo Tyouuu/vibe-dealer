@@ -87,7 +87,15 @@ export function ScrollFade({ children, label, className }: { children: React.Rea
         </div>
       </div>
       {scrollable && !atEnd && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-ink-900 to-transparent" aria-hidden="true" />
+        // The fade has to end in whatever surface the table is actually on.
+        // It was hardcoded to the card white, which was right while every
+        // table lived in a card; index pages put theirs on the canvas, so
+        // the colour comes from --fade-from and .index-surface overrides it.
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-8"
+          style={{ background: 'linear-gradient(to left, var(--fade-from, var(--color-ink-900)), transparent)' }}
+          aria-hidden="true"
+        />
       )}
     </div>
   )

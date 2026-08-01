@@ -103,8 +103,24 @@ export default async function AuditPage({ searchParams }: PageProps) {
         action={<a href={exportHref} className="btn-ghost shrink-0">⤓ Export</a>}
       />
 
-      <div className="app-card">
-      <form className="mb-4 flex flex-wrap gap-3" action="/audit" method="GET">
+      {/* The record is the page — no card. Same two-row toolbar as /dealers
+          and /records: view switcher first, filters second, one hairline
+          closing them. The view switcher moves out of the filter form's
+          trailing ml-auto slot, where it was reading as a fifth filter
+          control rather than as the thing that changes what the page is
+          showing. Nothing is added or removed. */}
+      <div className="index-surface">
+      <div className="index-toolbar">
+        <div className="segmented">
+          {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
+            <Link key={v} href={viewHref(v)} className={`segmented-btn ${view === v ? 'active' : ''}`}>
+              {VIEW_LABEL[v]}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <form className="index-filterbar" action="/audit" method="GET">
         {view !== 'all' && <input type="hidden" name="view" value={view} />}
         <label className="mini-search w-64 max-w-full transition-colors focus-within:border-primary">
           <IconSearch className="h-4 w-4 shrink-0" />
@@ -125,13 +141,6 @@ export default async function AuditPage({ searchParams }: PageProps) {
         <button type="submit" className="btn-primary">
           Filter
         </button>
-        <div className="ml-auto segmented">
-          {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
-            <Link key={v} href={viewHref(v)} className={`segmented-btn ${view === v ? 'active' : ''}`}>
-              {VIEW_LABEL[v]}
-            </Link>
-          ))}
-        </div>
       </form>
 
       {filtered.length ? (

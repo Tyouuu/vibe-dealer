@@ -252,66 +252,69 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       )}
       {error && <div className="alert alert-bad">{error}</div>}
 
-      <div className="app-card">
+      {/* The ledger is the page — no card. Same two-row toolbar as /dealers,
+          so the two biggest lists in the app are operated identically: view
+          controls and page actions on the first row, filters on the second,
+          one hairline closing them and opening the table. Every control that
+          was here is still here. */}
+      <div className="index-surface">
 
       <FilterChips chips={filterChips} clearAllHref={clearAllHref} />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <form className="flex flex-wrap items-center gap-3" action="/records" method="GET">
-          <label className="mini-search w-64 max-w-full">
-            <IconSearch className="h-4 w-4 shrink-0 text-paper-dim" />
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="Search dealer, note, or flag reason"
-              className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
-            />
-          </label>
-          <div className="w-44">
-            <Listbox
-              name="status"
-              defaultValue={status}
-              options={[
-                { value: 'all', label: 'All Statuses' },
-                { value: 'pending', label: 'Pending', dotColor: 'var(--color-brass-bright)' },
-                { value: 'verified', label: 'Verified', dotColor: 'var(--color-jade-bright)' },
-                { value: 'flagged', label: 'Flagged', dotColor: 'var(--color-clay-bright)' },
-              ]}
-            />
-          </div>
-          <div className="w-44">
-            <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
-          </div>
-          {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
-          <input type="hidden" name="sort" value={sort} />
-          <button type="submit" className="btn-primary">
-            Filter
-          </button>
-        </form>
-
-        <div className="flex items-center gap-2.5">
-          <div className="segmented" role="group" aria-label="Sort transactions by date">
-            <Link
-              href={buildHref({ sort: 'desc' })}
-              className={`segmented-btn ${!sortAscending ? 'active' : ''}`}
-              aria-label="Sort by date, newest first"
-            >
-              Newest first
-            </Link>
-            <Link
-              href={buildHref({ sort: 'asc' })}
-              className={`segmented-btn ${sortAscending ? 'active' : ''}`}
-              aria-label="Sort by date, oldest first"
-            >
-              Oldest first
-            </Link>
-          </div>
-          <a href={exportHref} className="btn-ghost">
-            ⤓ Export
-          </a>
+      <div className="index-toolbar">
+        <div className="segmented" role="group" aria-label="Sort transactions by date">
+          <Link
+            href={buildHref({ sort: 'desc' })}
+            className={`segmented-btn ${!sortAscending ? 'active' : ''}`}
+            aria-label="Sort by date, newest first"
+          >
+            Newest first
+          </Link>
+          <Link
+            href={buildHref({ sort: 'asc' })}
+            className={`segmented-btn ${sortAscending ? 'active' : ''}`}
+            aria-label="Sort by date, oldest first"
+          >
+            Oldest first
+          </Link>
         </div>
+        <a href={exportHref} className="btn-ghost ml-auto">
+          ⤓ Export
+        </a>
       </div>
+
+      <form className="index-filterbar" action="/records" method="GET">
+        <label className="mini-search w-64 max-w-full">
+          <IconSearch className="h-4 w-4 shrink-0 text-paper-dim" />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search dealer, note, or flag reason"
+            className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
+          />
+        </label>
+        <div className="w-44">
+          <Listbox
+            name="status"
+            defaultValue={status}
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'pending', label: 'Pending', dotColor: 'var(--color-brass-bright)' },
+              { value: 'verified', label: 'Verified', dotColor: 'var(--color-jade-bright)' },
+              { value: 'flagged', label: 'Flagged', dotColor: 'var(--color-clay-bright)' },
+            ]}
+          />
+        </div>
+        <div className="w-44">
+          <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
+        </div>
+        {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
+        <input type="hidden" name="sort" value={sort} />
+        <button type="submit" className="btn-primary">
+          Filter
+        </button>
+      </form>
 
       {/* Pending / verified / flagged used to repeat here, a few hundred pixels
           below the header that already states all three. Only the page-scoped

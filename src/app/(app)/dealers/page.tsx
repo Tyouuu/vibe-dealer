@@ -253,49 +253,58 @@ export default async function DealersPage({ searchParams }: PageProps) {
       )}
       {importError && <div className="alert alert-bad">{importError}</div>}
 
-      <div className="app-card">
-      <FilterChips chips={filterChips} clearAllHref={viewHref(view)} />
-      <div className="mb-4 segmented" role="group" aria-label="Saved views">
-        <Link href={viewHref('all')} className={`segmented-btn ${view === 'all' ? 'active' : ''}`}>
-          All
-        </Link>
-        <Link href={viewHref('region')} className={`segmented-btn ${view === 'region' ? 'active' : ''}`}>
-          By Region
-        </Link>
-        <Link
-          href={viewHref('inactive')}
-          className={`segmented-btn ${view === 'inactive' ? 'active' : ''}`}
-          title="Dealers with no verified top-up in 30+ days — independent of the top-up ranking above"
-        >
-          Needs Follow-up
-        </Link>
-      </div>
+      {/* The list is the page — no card. See .index-surface in globals.css
+          for why, and for the four products that build this screen the same
+          way. Nothing here is removed or hidden: the same view switcher, the
+          same search, the same region filter, the same Export and Import.
+          Only the box around them is gone, and the two rows are now a
+          toolbar closed by one hairline instead of floating inside six. */}
+      <div className="index-surface">
+        <FilterChips chips={filterChips} clearAllHref={viewHref(view)} />
 
-      <form className="mb-4 flex flex-wrap gap-3" action="/dealers" method="GET">
-        {view !== 'all' && <input type="hidden" name="view" value={view} />}
-        <label className="mini-search w-72 max-w-full transition-colors focus-within:border-primary">
-          <IconSearch className="h-4 w-4 shrink-0" />
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder="Search company, region, contact…"
-            className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
-          />
-        </label>
-        <div className="w-44">
-          <Listbox name="region" defaultValue={region} options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]} />
+        <div className="index-toolbar">
+          <div className="segmented" role="group" aria-label="Saved views">
+            <Link href={viewHref('all')} className={`segmented-btn ${view === 'all' ? 'active' : ''}`}>
+              All
+            </Link>
+            <Link href={viewHref('region')} className={`segmented-btn ${view === 'region' ? 'active' : ''}`}>
+              By Region
+            </Link>
+            <Link
+              href={viewHref('inactive')}
+              className={`segmented-btn ${view === 'inactive' ? 'active' : ''}`}
+              title="Dealers with no verified top-up in 30+ days — independent of the top-up ranking above"
+            >
+              Needs Follow-up
+            </Link>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <a href={exportHref} className="btn-ghost">
+              ⤓ Export
+            </a>
+            {canManage && <ImportDealersButton />}
+          </div>
         </div>
-        <button type="submit" className="btn-primary">
-          Filter
-        </button>
-        <div className="ml-auto flex items-center gap-2">
-          <a href={exportHref} className="btn-ghost">
-            ⤓ Export
-          </a>
-          {canManage && <ImportDealersButton />}
-        </div>
-      </form>
+
+        <form className="index-filterbar" action="/dealers" method="GET">
+          {view !== 'all' && <input type="hidden" name="view" value={view} />}
+          <label className="mini-search w-72 max-w-full transition-colors focus-within:border-primary">
+            <IconSearch className="h-4 w-4 shrink-0" />
+            <input
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder="Search company, region, contact…"
+              className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
+            />
+          </label>
+          <div className="w-44">
+            <Listbox name="region" defaultValue={region} options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]} />
+          </div>
+          <button type="submit" className="btn-primary">
+            Filter
+          </button>
+        </form>
 
       {rows.length ? (
         <>

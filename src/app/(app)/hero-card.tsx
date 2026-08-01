@@ -113,7 +113,13 @@ export function HeroCard({
         </div>
       </div>
 
-      {chart ?? (spark && spark.length > 1 ? <Sparkline values={spark} label={sparkLabel} /> : null)}
+      {/* The sparkline stays here, tucked under the number it trails. A full
+          chart does not: it went between the headline figure and the three
+          stats that support it, which measured 359px apart on /dashboard —
+          one thought split in half by a picture. Stripe's dashboard home,
+          which this card is modelled on, is figure, then supporting counts,
+          then the trailing chart. That order now. */}
+      {!chart && spark && spark.length > 1 && <Sparkline values={spark} label={sparkLabel} />}
 
       <div>
         <div className="grid grid-cols-1 gap-3 border-t border-ink-800 pt-4 sm:grid-cols-3">
@@ -136,6 +142,8 @@ export function HeroCard({
         </div>
         {footnote && <div className="mt-3 text-[12px] leading-relaxed text-paper-dim">{footnote}</div>}
       </div>
+
+      {chart}
     </div>
   )
 }

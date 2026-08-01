@@ -5,10 +5,19 @@ import { Listbox } from '../listbox'
 
 export type TrendRow = { month: string; label: string; region: string; points: number }
 
-const CHART_W = 640
+// 1400x180, not 640x180. An SVG with `w-full` scales its viewBox to the
+// available width, so a 640-wide box in a ~1500px card was being blown up
+// 2.3x — 6 data points over 420px of mostly empty fill. Capping the height
+// with max-h and `preserveAspectRatio="none"` fixed the height but stretched
+// everything inside horizontally, including the month labels: "Mar" and
+// "Aug" rendered visibly wide. A viewBox whose aspect already matches where
+// it renders needs neither, so the type stays undistorted.
+const CHART_W = 1400
 const CHART_H = 180
-const PAD_L = 8
-const PAD_R = 8
+// Half a month label's width, or the first and last ones clip against
+// the viewBox edge — 'Aug' was cut off on the right.
+const PAD_L = 30
+const PAD_R = 30
 // Tall enough to leave room for the peak-value label above the highest
 // point — that label sits 10px above its point (see the last.points <text>
 // below) and is itself ~11px tall, so a point at exactly the chart's own
@@ -62,30 +71,9 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
 
   return (
     <div>
-      {regions.length > 0 && (
-        // Right-aligned above the plot rather than stacked under the headline
-        // figure, where it was sitting between the number and its own chart.
-        <div className="mb-3 flex justify-end">
-          <div className="w-40">
-            <Listbox
-              value={region}
-              onChange={setRegion}
-              options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* max-h caps the drawn height. The viewBox is 640x180, and `w-full`
-          alone makes an SVG scale that ratio to whatever width it is given —
-          fine in a 900px column, but this card is now full width, so six data
-          points were being stretched over ~450px of mostly empty green. The
-          aspect ratio stops mattering past the cap; preserveAspectRatio keeps
-          the line anchored to the bottom-left rather than floating. */}
       <svg
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-        preserveAspectRatio="none"
-        className="max-h-[200px] w-full"
+        className="w-full"
         onMouseMove={hasData ? handleMove : undefined}
         onMouseLeave={() => setHoverIdx(null)}
         role="img"
@@ -170,7 +158,7 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
         )}
       </svg>
 
-      <div className="mt-1 flex h-6 items-center text-xs text-paper-dim">
+      <div className="mt-2 flex min-h-[34px] flex-wrap items-center gap-3 text-xs text-paper-dim">
         {!hasData ? (
           <span>No verified top-up yet — this chart fills in once transactions start coming through.</span>
         ) : hoverIdx != null && series[hoverIdx] ? (
@@ -179,6 +167,18 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
           </span>
         ) : (
           <span>Hover the line for a monthly figure. Verified top-up points, {region === 'all' ? 'all regions' : region}.</span>
+        )}
+        {/* On the caption line, not in a band of its own above the plot.
+            Floating there it left an empty strip between the supporting
+            stats and the chart they trail. */}
+        {regions.length > 0 && (
+          <div className="ml-auto w-40 shrink-0">
+            <Listbox
+              value={region}
+              onChange={setRegion}
+              options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -14,6 +14,7 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import { RegionGrowthCard } from './growth-map'
+import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars } from './elements'
 import { NeedsAttention } from './summary'
 import { HeroCard, pctChange } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
@@ -138,6 +139,32 @@ function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRe
     }))
 }
 
+// Top dealers by this month's verified points. Derived from monthTx, which is
+// already in memory — 249 dealers and this page had never named one of them.
+function topDealers(monthTx: { dealer_id: string; points: number | string; dealers: DealerRegionRel }[], limit = 5) {
+  const by = new Map<string, { id: string; name: string; points: number }>()
+  for (const t of monthTx) {
+    const prev = by.get(t.dealer_id) ?? { id: t.dealer_id, name: dealerNameOf(t.dealers), points: 0 }
+    prev.points += Number(t.points)
+    by.set(t.dealer_id, prev)
+  }
+  return [...by.values()]
+    .sort((a, b) => b.points - a.points)
+    .slice(0, limit)
+    .map((d) => ({ ...d, href: `/dealers/${d.id}` }))
+}
+
+// Six trailing monthly totals for a sparkline, oldest first.
+function monthlySeries(
+  tx: { tx_date: string; points: number | string; commission_rm?: number | string }[],
+  months: { key: string }[],
+  field: 'points' | 'commission_rm',
+) {
+  return months.map(({ key }) =>
+    tx.filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t[field] ?? 0), 0),
+  )
+}
+
 export default async function DashboardPage() {
   const user = await requireUser()
   const supabase = await createClient()
@@ -153,14 +180,16 @@ export default async function DashboardPage() {
 
   const [
     { count: dealerCount },
-    { data: dealerRows },
     { data: trendTx },
     { data: recentTxRows },
     creditBalance,
     alerts,
+    { data: statusRows },
   ] = await Promise.all([
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
-    supabase.from('dealers_directory').select('id, company_name, package, region'),
+    // The full dealer list went with the trend chart's region filter — the
+    // only thing that consumed it. This page no longer reads 249 rows on
+    // every load to populate a dropdown it does not have.
     supabase
       .from('transactions')
       .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
@@ -176,6 +205,9 @@ export default async function DashboardPage() {
     // Same list the bell and /notifications show — getNotifications is
     // request-cached, so this doesn't re-run the layout's queries.
     getNotifications(user.id, 'master'),
+    // trendTx is verified-only, so the status split needs its own read. Just
+    // the status column for this month — no joins, no ordering.
+    supabase.from('transactions').select('status').gte('tx_date', monthStart).lte('tx_date', today),
   ])
 
   // trendTx already covers the whole 6-month window (which fully contains the
@@ -207,9 +239,25 @@ export default async function DashboardPage() {
   const monthComplete = dayOfMonth >= daysInMonth
   const commissionChg = monthComplete ? pctChange(totalCommission, prevMonthCommission) : null
 
-  const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
-  const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
+  // No trendRows/regions here any more: master's single big trend chart is
+  // gone, replaced by a sparkline per figure, so the region-filtered series
+  // it needed is no longer built.
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
+
+  const leaders = topDealers(monthTx)
+  const commissionSeries = monthlySeries(trendTx ?? [], trendMonths, 'commission_rm')
+  const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
+  const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
+  const statusCounts = { verified: 0, pending: 0, flagged: 0 }
+  for (const r of statusRows ?? []) {
+    const k = r.status as keyof typeof statusCounts
+    if (k in statusCounts) statusCounts[k] += 1
+  }
+  // Pace: how much of the month has passed against how much of last month's
+  // commission is booked. Withheld when there is no baseline to pace against.
+  const elapsedPct = (dayOfMonth / daysInMonth) * 100
+  const bookedPct = prevMonthCommission > 0 ? (totalCommission / prevMonthCommission) * 100 : 0
+  const projected = dayOfMonth > 0 ? (totalCommission / dayOfMonth) * daysInMonth : 0
 
   // Recent Transactions — last 10 by created_at, any status. The dealer-name
   // filter below is client-side (see recent-transactions-table.tsx) since
@@ -234,53 +282,87 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
 
-      {/* Ranked by what the reader has to DO, in one column.
-          The page used to open with a 550px chart whose headline figure was
-          RM 0.00 — the biggest thing on it was an empty month, and history
-          is the one thing on a dashboard nobody can act on. Then it put the
-          three items that genuinely need action in a third-width card below
-          the fold. This is that order reversed: the work, then the money,
-          then where the money came from, then the ledger. A single column
-          also makes the masonry void structurally impossible — there is no
-          short card left beside a tall one. */}
+      {/* Seven bands, ranked by what the reader has to do. The page used to
+          open with a 550px chart whose headline figure was RM 0.00 — the
+          biggest thing on it was an empty month, and history is the one
+          thing on a dashboard nobody can act on. */}
       <NeedsAttention items={alerts} flat />
-      {/* Commission is master's headline: it's the money the business actually
-          keeps, and every other figure here is an input to it. */}
-      {/* Full width, with the real six-month chart inside it. This card and
-          the "Monthly Top-up Trend" card below were drawing the SAME series
-          twice — a sparkline here, the full chart there. One series, one
-          chart, and it now gets 1500px instead of 900px. */}
-      <HeroCard
-          flat
-          label={`Your commission — ${formatMonthLabel(currentMonthStr)}`}
-          value={formatMYR(totalCommission)}
-          chg={commissionChg}
-          chgSuffix={
-            monthComplete
-              ? `vs ${formatMYR(prevMonthCommission)} last month`
-              : totalCommission === 0
-                ? `nothing recorded yet — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
-                : `day ${dayOfMonth} of ${daysInMonth} — ${formatMonthLabel(prevMonthKey)} closed at ${formatMYR(prevMonthCommission)}`
-          }
-        chart={<MonthlyTrendChart rows={trendRows} regions={regions} />}
-          href={`/records?status=verified&month=${currentMonthStr}`}
+
+      {/* Four figures, four trends. This was one headline number with a
+          single big chart, so three of the four figures had no shape at all
+          and the fourth got 400px of it. */}
+      <div className="page-band">
+        <StatTiles
           stats={[
+            {
+              label: `Your commission — ${formatMonthLabel(currentMonthStr)}`,
+              value: formatMYR(totalCommission),
+              href: `/records?status=verified&month=${currentMonthStr}`,
+              chg: commissionChg,
+              spark: commissionSeries,
+              sub: monthComplete ? undefined : `day ${dayOfMonth} of ${daysInMonth}`,
+            },
             {
               label: 'Top-up this month',
               value: `${totalPoints.toLocaleString()} pts`,
               href: `/records?status=verified&month=${currentMonthStr}`,
+              spark: pointsSeries,
             },
-            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers' },
+            {
+              label: 'Dealers trading',
+              value: `${dealersTrading} / ${dealerCount ?? 0}`,
+              href: '/dealers',
+              sub: 'recorded a verified top-up this month',
+            },
             {
               label: 'Credit balance',
               value: `${creditBalance.available.toLocaleString()} pts`,
               href: '/purchases',
-              tone: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'warn' : 'normal',
+              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : undefined,
             },
           ]}
-      />
+        />
+      </div>
 
-      <RegionGrowthCard regions={regionGrowth} flat />
+      {/* Only once there is a prior month to pace against. A partial month
+          compared with a complete one always reads as a collapse. */}
+      {prevMonthCommission > 0 && (
+        <div className="page-band">
+          <h3 className="mb-4 text-sm font-semibold text-paper">Pace</h3>
+          <PaceRing
+            elapsedPct={elapsedPct}
+            bookedPct={bookedPct}
+            value={formatMYR(totalCommission)}
+            target={formatMYR(prevMonthCommission)}
+            line={`${Math.round(elapsedPct)}% of ${formatMonthLabel(currentMonthStr)} has passed and ${Math.round(bookedPct)}% of ${formatMonthLabel(prevMonthKey)}'s commission is booked. At this month's pace so far it lands near ${formatMYR(projected)}.`}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
+        <div className="page-band">
+          <h3 className="mb-1 text-sm font-semibold text-paper">Top dealers this month</h3>
+          <p className="mb-3 text-[12px] text-paper-dim">By verified top-up. The bar is relative to the leader.</p>
+          <Leaderboard rows={leaders} />
+        </div>
+        <div className="page-band">
+          <h3 className="mb-1 text-sm font-semibold text-paper">This month by status</h3>
+          <p className="mb-4 text-[12px] text-paper-dim">Every transaction dated this month, whatever its state.</p>
+          <StatusSplit
+            parts={[
+              { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${currentMonthStr}` },
+              { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${currentMonthStr}` },
+              { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${currentMonthStr}` },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="page-band">
+        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
+        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
+        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+      </div>
 
       <div className="page-band">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>

@@ -24,26 +24,50 @@
    points, but that predated this palette and was dropped once compared
    directly against the reference. */
 @theme {
-  /* The page canvas. Cards are pure white and sit on this; without the
-     separation a white card on a white page is only a hairline, which is
-     what made every screen read as a wireframe. Kept neutral-cool and very
-     close to white — Linear and Vercel both sit around this value in light
-     mode — so the lift is felt rather than noticed. */
-  --color-canvas: #f4f4f6;
-  --color-ink-950: #eef0f4;
+  /* The neutral family, tinted. Every value below carries the same slight
+     navy bias rather than being a pure grey, which is the single biggest
+     difference between this app and the products it is measured against.
+
+     Stripe — the closest reference, being a light-mode money product —
+     ships canvas #f6f9fc, hairline #e3e8ee, ink #0d253d, ink-mute #64748d
+     and even tints its shadows (#003770). Not one of those is neutral. A
+     pure mid-grey reads as unconsidered precisely because it is the value
+     you get by not choosing; a grey biased toward the ink hue reads as
+     picked. This app previously mixed #f4f4f6 (neutral), #1f2126 (neutral)
+     and rgba(19,20,26) shadows (neutral) — three unrelated greys with no
+     family resemblance, which is why the surfaces never cohered no matter
+     how the blocks were arranged.
+
+     The canvas is also lighter than it was. #f4f4f6 was strong enough to
+     read as a distinct grey panel; Stripe's is a tint you feel rather than
+     see, which is what lets a table sit directly on it without looking
+     like it is on the wrong surface. */
+  --color-canvas: #f6f8fb;
+  --color-ink-950: #eaeff5;
   --color-ink-900: #ffffff;
-  --color-ink-850: #f5f5f8;
-  --color-ink-800: #ececf0;
-  --color-ink-700: #dcdce2;
+  --color-ink-850: #f2f6fb;
+  --color-ink-800: #e4e9f0;
+  --color-ink-700: #d3dbe5;
 
-  --color-paper: #1f2126;
-  --color-paper-dim: #686a71;
+  /* Deep navy, not black. Stripe's ink is #0d253d; Linear, Vercel and
+     Mercury all likewise stop short of #000 in light mode. */
+  --color-paper: #14273d;
+  --color-paper-dim: #5b6d82;
 
-  /* brand / primary accent (purple) — focus rings, chart highlights, logo,
-     "Live" indicator, rail active-badge. Not used for solid primary buttons. */
-  --color-primary: #6c5ce7;
-  --color-primary-deep: #5b48d9;
-  --color-primary-soft: #efeafd;
+  /* brand / accent. Was purple (#6c5ce7), which the client released. This is
+     Stripe's shipped link blue — the same hue family as the navy ink above,
+     so the accent belongs to the neutrals rather than sitting on top of them.
+     4.79:1 on white, so it is legible as text, not only as a fill.
+
+     Linear's rule governs where it may appear: "on the brand mark, focus
+     rings, and a few intentional CTAs — never decoratively." Every purely
+     decorative use in this app (icon tiles beside headings that already name
+     themselves, left accent rails on note strips, the Live badge fill) is
+     being removed rather than recoloured. Recolouring decoration keeps the
+     decoration. */
+  --color-primary: #0570de;
+  --color-primary-deep: #0356ab;
+  --color-primary-soft: #e7f0fb;
 
   /* status: pending / warning */
   --color-brass: #a8710a;
@@ -103,8 +127,13 @@
   /* Alpha, not an opaque hex: composites correctly over white *and* over the
      #f5f5f8 / #ececf0 surfaces this app also uses. Vercel ships the same idea
      as a ring: --ds-shadow-border-base: 0 0 0 1px #00000014. */
-  --border-subtle: rgba(0, 0, 0, 0.07);
-  --border-strong: rgba(0, 0, 0, 0.11);
+  --border-subtle: rgba(13, 37, 61, 0.09);
+  --border-strong: rgba(13, 37, 61, 0.14);
+
+  /* Shadows are tinted too. Stripe ships --shadow-blue #003770 rather than
+     a black; a black shadow over a tinted canvas desaturates the surface
+     under it and is why cards on a coloured page can look dirty. */
+  --shadow-hue: 13, 37, 61;
 
   /* Linear ships true half-pixel borders on 2x displays. */
   --hairline: 1px;
@@ -209,8 +238,8 @@ body {
        a white page where nothing could read as raised anyway. */
     box-shadow:
       0 0 0 var(--hairline) var(--border-subtle),
-      0 1px 2px rgba(19, 20, 26, 0.04),
-      0 4px 12px -4px rgba(19, 20, 26, 0.06);
+      0 1px 2px rgba(var(--shadow-hue), 0.04),
+      0 4px 12px -4px rgba(var(--shadow-hue), 0.06);
   }
 
   .app-tile {
@@ -218,16 +247,16 @@ body {
     transition: box-shadow var(--dur) var(--ease-out-quad), transform var(--dur) var(--ease-out-quad);
     box-shadow:
       0 0 0 var(--hairline) var(--border-subtle),
-      0 1px 2px rgba(20, 20, 43, 0.05),
-      0 8px 8px -8px rgba(20, 20, 43, 0.04);
+      0 1px 2px rgba(var(--shadow-hue), 0.05),
+      0 8px 8px -8px rgba(var(--shadow-hue), 0.04);
   }
   a.app-tile:hover,
   .app-tile:has(a:hover) {
     @apply -translate-y-0.5;
     box-shadow:
       0 0 0 var(--hairline) var(--border-strong),
-      0 2px 4px rgba(20, 20, 43, 0.06),
-      0 16px 30px -10px rgba(20, 20, 43, 0.14);
+      0 2px 4px rgba(var(--shadow-hue), 0.06),
+      0 16px 30px -10px rgba(var(--shadow-hue), 0.14);
   }
 
   /* The small colored icon square that leads a stat tile (Dashboard's KPI
@@ -236,7 +265,7 @@ body {
      36px on another) purely because nothing forced them to match. One
      shared class is the only way that doesn't happen again. */
   .stat-tile-icon {
-    @apply grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary;
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-ink-850 text-paper-dim;
   }
 
   .icon-badge {
@@ -508,19 +537,19 @@ body {
      to a left accent; the words stay at full reading contrast. Geist's Note
      works the same way. */
   .alert-ok {
-    @apply border-l-2 border-jade bg-jade/8 text-paper;
+    @apply border border-jade/25 bg-jade/8 text-paper;
   }
   .alert-warn {
-    @apply border-l-2 border-brass bg-brass/8 text-paper;
+    @apply border border-brass/25 bg-brass/8 text-paper;
   }
   .alert-bad {
-    @apply border-l-2 border-clay bg-clay/8 text-paper;
+    @apply border border-clay/25 bg-clay/8 text-paper;
   }
 
   /* purple "info strip" — a step above alert-ok/warn/bad in tone, used for
      neutral explanatory notices (matches the reference's `.info-strip`). */
   .info-strip {
-    @apply mb-4 flex items-start gap-2.5 rounded-xl bg-primary-soft px-4 py-3 text-[12.5px] leading-relaxed text-primary-deep;
+    @apply mb-4 flex items-start gap-2.5 rounded-xl border border-ink-800 bg-ink-850 px-4 py-3 text-[12.5px] leading-relaxed text-paper-dim;
   }
 
   /* At-a-glance status counts above a transaction table. The trailing total
@@ -546,8 +575,8 @@ body {
   .docket-hero {
     @apply grid overflow-hidden rounded-2xl border border-ink-800 bg-ink-900 sm:grid-cols-[1fr_auto_1fr];
     box-shadow:
-      0 1px 2px rgba(20, 20, 43, 0.05),
-      0 1px 1px rgba(20, 20, 43, 0.03);
+      0 1px 2px rgba(var(--shadow-hue), 0.05),
+      0 1px 1px rgba(var(--shadow-hue), 0.03);
   }
   .docket-half {
     @apply flex flex-1 flex-col justify-center px-5 py-6 transition-all duration-200 ease-out sm:px-8;
@@ -560,7 +589,7 @@ body {
   }
 
   .note-strip {
-    @apply mt-4 rounded-lg border-l-2 border-primary bg-ink-850/60 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim;
+    @apply mt-4 rounded-lg border border-ink-800 bg-ink-850 px-3.5 py-2.5 text-xs leading-relaxed text-paper-dim;
   }
 
   .pill-tab {
@@ -596,7 +625,7 @@ body {
   .stamp-mark {
     transform: rotate(-9deg);
     opacity: 0.88;
-    filter: drop-shadow(0 1px 0 rgba(108, 92, 231, 0.15));
+    filter: drop-shadow(0 1px 0 rgba(var(--shadow-hue), 0.15));
   }
 
   /* ---------- new primitives for the rail + topbar shell ---------- */
@@ -631,7 +660,7 @@ body {
     @apply overflow-hidden whitespace-nowrap;
   }
   .rail-item .badge {
-    @apply ml-auto shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary-deep;
+    @apply ml-auto shrink-0 rounded-full bg-ink-800 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-paper;
   }
   .rail-item.active .badge {
     @apply bg-white/15 text-white;
@@ -702,7 +731,7 @@ body {
     @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 py-[3px] pl-1.5 pr-2 text-[10.5px] font-semibold text-paper-dim;
   }
   .live-dot {
-    @apply h-1.5 w-1.5 shrink-0 rounded-full bg-primary;
+    @apply h-1.5 w-1.5 shrink-0 rounded-full bg-jade;
     animation: pulse-dot 1.6s ease-in-out infinite;
   }
   @keyframes pulse-dot {

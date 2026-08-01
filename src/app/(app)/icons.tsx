@@ -2,12 +2,15 @@ type IconProps = { className?: string }
 
 const base = 'h-5 w-5'
 
-// The reference's brand mark exactly: rounded-square purple gradient tile
-// with a white lightning-bolt glyph — not a custom redesign.
+// The brand mark is one of the three places Linear's rule allows the accent
+// to appear at full strength. It was a gradient tile with a coloured glow;
+// the gradient and the glow are both decoration on a 32px square nobody
+// looks at twice, and the glow was a hardcoded purple that survived the
+// palette change. Flat accent fill, no glow.
 export function LogoMark({ className = 'h-8 w-8' }: IconProps) {
   return (
     <span
-      className={`${className} inline-flex shrink-0 items-center justify-center rounded-[28%] bg-gradient-to-br from-primary to-primary-deep shadow-[0_4px_10px_-2px_rgba(108,92,231,0.5)]`}
+      className={`${className} inline-flex shrink-0 items-center justify-center rounded-[28%] bg-primary`}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[55%] w-[55%]">
         <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />

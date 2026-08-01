@@ -624,7 +624,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white/50">Commission Earned</div>
-                      <div className="mt-0.5 text-xl font-semibold text-primary">{formatMYR(lifetimeCommission)}</div>
+                      {/* Was text-primary — an accent on a figure is decoration;
+                          the accent's contrast on this dark surface was also
+                          borderline. Money reads as ink, like its sibling. */}
+                      <div className="mt-0.5 text-xl font-semibold text-white">{formatMYR(lifetimeCommission)}</div>
                     </div>
                   </div>
                 </div>

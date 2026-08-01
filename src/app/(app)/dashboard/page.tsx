@@ -13,10 +13,9 @@ import {
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import Link from 'next/link'
-import { RegionGrowthCard } from './growth-map'
 import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars } from './elements'
 import { NeedsAttention } from './summary'
-import { HeroCard, pctChange } from '../hero-card'
+import { pctChange } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { PageHeader } from '../page-header'
@@ -580,39 +579,45 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
 
       {/* Same ranking as the other two roles: the work first. */}
       <NeedsAttention items={alerts} flat />
-      {/* cs has no financial visibility, so the headline is the queue that
-          is actually their job to clear. */}
-      {/* Full width. cs has no trend chart — no financial series to plot —
-          so this card is the figure and its three supporting counts. */}
-      <HeroCard
-          flat
-          label="SIM deliveries pending"
-          value={String(pendingDeliveryCount ?? 0)}
-          chgSuffix={
-            pendingDeliveryCount
-              ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
-                ? `oldest is ${oldestDeliveryDays}d old`
-                : 'all recently queued'
-              : 'nothing waiting on you'
-          }
-          href="/delivery"
+
+      {/* cs has no financial visibility, so these four are the roster and the
+          queue rather than money. No sparklines: the series behind them are
+          transaction values cs is not allowed to see. */}
+      <div className="page-band">
+        <StatTiles
           stats={[
+            {
+              label: 'SIM deliveries pending',
+              value: String(pendingDeliveryCount ?? 0),
+              href: '/delivery',
+              sub: pendingDeliveryCount
+                ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
+                  ? `oldest is ${oldestDeliveryDays}d old`
+                  : 'all recently queued'
+                : 'nothing waiting on you',
+            },
             {
               label: 'Needs follow-up',
               value: String(inactiveCount),
               href: '/dealers?view=inactive',
-              tone: inactiveCount ? 'warn' : 'normal',
+              sub: 'no verified top-up in 30+ days',
             },
-            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers' },
+            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers', sub: 'on the roster' },
             {
               label: 'New this month',
               value: String((dealerCount ?? 0) - (dealerCountLastMonth ?? 0)),
               href: '/dealers',
+              sub: 'onboarded since the 1st',
             },
           ]}
-      />
+        />
+      </div>
 
-      <RegionGrowthCard regions={regionGrowth} flat />
+      <div className="page-band">
+        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
+        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
+        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+      </div>
 
       <div className="page-band">
           <div className="mb-3.5 flex items-center justify-between">

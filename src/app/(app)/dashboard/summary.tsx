@@ -33,7 +33,7 @@ const DOT_CLASS: Record<BuiltNotification['variant'], string> = {
 // So this goes first, full width, and states the count in words. Each row is
 // a full-width target with the action named on the right, rather than a
 // truncated line with a chevron that only appears on hover.
-export function NeedsAttention({ items }: { items: BuiltNotification[] }) {
+export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; flat?: boolean }) {
   const shown = items.slice(0, 4)
   const rest = items.length - shown.length
 
@@ -42,7 +42,7 @@ export function NeedsAttention({ items }: { items: BuiltNotification[] }) {
     // Finished work should take up less room than unfinished work, and this
     // is the state the page is in most mornings.
     return (
-      <div className="app-card flex items-center gap-2.5 py-4">
+      <div className={`${flat ? 'page-band' : 'app-card'} flex items-center gap-2.5 py-4`}>
         <span className="text-jade-bright">
           <IconCheckCircle className="h-4 w-4" />
         </span>
@@ -53,7 +53,7 @@ export function NeedsAttention({ items }: { items: BuiltNotification[] }) {
   }
 
   return (
-    <div className="app-card">
+    <div className={flat ? 'page-band' : 'app-card'}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[15px] font-semibold text-paper">
           {items.length} {items.length === 1 ? 'thing needs' : 'things need'} you

@@ -33,6 +33,7 @@ export function HeroCard({
   chart,
   footnote,
   header,
+  flat,
   href,
 }: {
   /** What the headline number is. Kept short — the number is the message. */
@@ -74,10 +75,13 @@ export function HeroCard({
       were a separate card *below* the hero, so the page opened with a number
       before it said whose number it was. They are one record header. */
   header?: React.ReactNode
+  /** Drop the card and sit directly on the canvas as a page band. Used by
+      the Dashboard, where four stacked panels were the whole problem. */
+  flat?: boolean
   href: string
 }) {
   return (
-    <div className="app-card flex flex-col justify-between gap-5">
+    <div className={`${flat ? 'page-band' : 'app-card'} flex flex-col justify-between gap-5`}>
       {header && <div className="border-b border-ink-800 pb-5">{header}</div>}
       <div>
         <Link href={href} className="group inline-flex items-center gap-1.5">

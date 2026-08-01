@@ -231,7 +231,7 @@ export default async function DashboardPage() {
   })
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
 
       {/* Ranked by what the reader has to DO, in one column.
@@ -243,7 +243,7 @@ export default async function DashboardPage() {
           then where the money came from, then the ledger. A single column
           also makes the masonry void structurally impossible — there is no
           short card left beside a tall one. */}
-      <NeedsAttention items={alerts} />
+      <NeedsAttention items={alerts} flat />
       {/* Commission is master's headline: it's the money the business actually
           keeps, and every other figure here is an input to it. */}
       {/* Full width, with the real six-month chart inside it. This card and
@@ -251,6 +251,7 @@ export default async function DashboardPage() {
           twice — a sparkline here, the full chart there. One series, one
           chart, and it now gets 1500px instead of 900px. */}
       <HeroCard
+          flat
           label={`Your commission — ${formatMonthLabel(currentMonthStr)}`}
           value={formatMYR(totalCommission)}
           chg={commissionChg}
@@ -279,9 +280,9 @@ export default async function DashboardPage() {
           ]}
       />
 
-      <RegionGrowthCard regions={regionGrowth} />
+      <RegionGrowthCard regions={regionGrowth} flat />
 
-      <div className="app-card">
+      <div className="page-band">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
@@ -352,7 +353,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
   })
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
 
       {/* Ranked by what the reader has to DO, in one column.
@@ -364,7 +365,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
           then where the money came from, then the ledger. A single column
           also makes the masonry void structurally impossible — there is no
           short card left beside a tall one. */}
-      <NeedsAttention items={alerts} />
+      <NeedsAttention items={alerts} flat />
       {/* An accountant's headline is the volume they're responsible for
           recording and verifying, not master's commission. */}
       {/* Full width, with the real six-month chart inside it. This card and
@@ -372,6 +373,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
           twice — a sparkline here, the full chart there. One series, one
           chart, and it now gets 1500px instead of 900px. */}
       <HeroCard
+          flat
           label={`Top-up — ${formatMonthLabel(currentMonthStr)}`}
           value={`${totalPoints.toLocaleString()} pts`}
           chg={pointsChg}
@@ -400,9 +402,9 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
           ]}
       />
 
-      <RegionGrowthCard regions={regionGrowth} />
+      <RegionGrowthCard regions={regionGrowth} flat />
 
-      <div className="app-card">
+      <div className="page-band">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
@@ -477,16 +479,17 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
   const regionGrowth = buildRegionGrowth(monthTxWithRegion, totalPoints)
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
 
       {/* Same ranking as the other two roles: the work first. */}
-      <NeedsAttention items={alerts} />
+      <NeedsAttention items={alerts} flat />
       {/* cs has no financial visibility, so the headline is the queue that
           is actually their job to clear. */}
       {/* Full width. cs has no trend chart — no financial series to plot —
           so this card is the figure and its three supporting counts. */}
       <HeroCard
+          flat
           label="SIM deliveries pending"
           value={String(pendingDeliveryCount ?? 0)}
           chgSuffix={
@@ -513,9 +516,9 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
           ]}
       />
 
-      <RegionGrowthCard regions={regionGrowth} />
+      <RegionGrowthCard regions={regionGrowth} flat />
 
-      <div className="app-card">
+      <div className="page-band">
           <div className="mb-3.5 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-paper">Pending Deliveries</h3>
             {(pendingDeliveryCount ?? 0) > DELIVERY_TABLE_LIMIT && (

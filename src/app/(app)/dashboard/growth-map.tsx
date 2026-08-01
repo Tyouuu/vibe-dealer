@@ -17,7 +17,7 @@ export type Region = {
 // differ wildly in area (Perak dwarfs Penang), which would overstate the
 // bigger one. So the list carries the numbers and the map carries the
 // geography, and the two cross-highlight.
-export function RegionGrowthCard({ regions }: { regions: Region[] }) {
+export function RegionGrowthCard({ regions, flat }: { regions: Region[]; flat?: boolean }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
 
@@ -34,7 +34,7 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
   const highlight = hovered ?? selected
 
   return (
-    <div className="app-card">
+    <div className={flat ? 'page-band' : 'app-card'}>
       <div className="mb-1 flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-paper">
           Growth by Region

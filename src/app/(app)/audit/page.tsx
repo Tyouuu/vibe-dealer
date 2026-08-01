@@ -145,14 +145,34 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
       {filtered.length ? (
         <ScrollFade label="Audit event history">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          {/* table-fixed + an explicit colgroup. With auto layout every
+              column resized itself to whatever the longest cell in it
+              happened to be, so the columns shifted as you paged and never
+              lined up with the header above them. Widths are set to what the
+              content actually needs: a time is 8 characters, a package code
+              is one. */}
+          <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-24" />
+              <col className="w-40" />
+              <col className="w-64" />
+              <col />
+              <col className="w-32" />
+              <col className="w-24" />
+              <col className="w-28" />
+              <col className="w-10" />
+            </colgroup>
             <thead>
               <tr>
                 <th className="th">Time</th>
                 <th className="th">Actor</th>
                 <th className="th">Event</th>
                 <th className="th">Dealer</th>
-                <th className="th text-right">Amount / Points</th>
+                {/* Two columns, not one. Money and points are different
+                    units; stacking them in a single cell was what made half
+                    the rows taller than the other half. */}
+                <th className="th text-right">Amount (RM)</th>
+                <th className="th text-right">Points</th>
                 <th className="th">Status</th>
                 <th className="th"></th>
               </tr>
@@ -160,8 +180,16 @@ export default async function AuditPage({ searchParams }: PageProps) {
             <tbody>
               {groups.map((group, i) => (
                 <Fragment key={`${group.label}-${i}`}>
+                  {/* A day label, not a row. It was a filled full-width band
+                      the same height as the data rows, so it read as another
+                      record rather than a divider between them. No fill, a
+                      hairline under it, and space above to separate it from
+                      the day before. */}
                   <tr>
-                    <td colSpan={7} className="border-b border-ink-800 bg-ink-850 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
+                    <td
+                      colSpan={8}
+                      className="border-b border-ink-800 px-3 pb-1.5 pt-6 text-[11px] font-semibold uppercase tracking-wide text-paper-dim"
+                    >
                       {group.label}
                     </td>
                   </tr>

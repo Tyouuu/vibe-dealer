@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { PACKAGE_PILL_CLASS, type PackageCode } from '@/lib/packages'
+import { type PackageCode } from '@/lib/packages'
+import { StatusDot } from '../status-dot'
 
 export type AuditRowData = {
   id: string
@@ -23,53 +24,67 @@ export type AuditRowData = {
   detail: { label: string; value: string }[]
 }
 
+// A compact variant of the standard chip, used only inside an audit row.
+//
+// The standard .pill is 24px tall (py-[3px] + a 12px line box + border). A
+// plain text cell in this table is 21px, so a row containing a chip came out
+// 46px against 41px for every other row. Measured before and after: two
+// distinct row heights, then one. h-[18px] with leading-none keeps the chip
+// inside the text line box, so the chip costs the row nothing.
 function PackagePill({ code }: { code: PackageCode | null }) {
-  if (!code) return <span className="pill pill-neutral">Not set</span>
-  return <span className={`pill ${PACKAGE_PILL_CLASS[code]}`}>{code}</span>
+  const base = 'inline-flex h-[18px] items-center gap-1 rounded border px-1.5 text-[11px] font-medium leading-none'
+  if (!code) return <span className={`${base} border-ink-800 bg-ink-900 text-paper-dim`}>Not set</span>
+  return <span className={`${base} border-ink-800 bg-ink-900 text-paper`}>{code}</span>
 }
 
 export function AuditRow({ row }: { row: AuditRowData }) {
   const [open, setOpen] = useState(false)
 
+  // Every cell on this row is single-line, and that is the whole point.
+  //
+  // Rows used to come in two heights: 67px for a transaction, 79px for a
+  // package change, measured on the live page. Two cells were responsible.
+  // The Event cell put the package change on a second line under the event
+  // name, and the Amount cell stacked money over points. So half the rows
+  // were one line tall and half were two, and a table whose row pitch keeps
+  // changing reads as untidy however well the individual cells are styled.
+  //
+  // Money and points are now separate columns — they are different units and
+  // a table already has a mechanism for that — and the package change sits
+  // inline after the event name.
   return (
     <>
       <tr className="tr-row cursor-pointer" onClick={() => setOpen((o) => !o)}>
-        <td className="td whitespace-nowrap text-paper-dim">{row.time}</td>
-        <td className="td whitespace-nowrap font-semibold text-paper">{row.actor}</td>
-        <td className="td text-paper">
-          <div>{row.event}</div>
-          {row.packageChange && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <PackagePill code={row.packageChange.before} />
-              <span className="text-paper-dim">→</span>
-              <PackagePill code={row.packageChange.after} />
-            </div>
-          )}
+        <td className="td whitespace-nowrap figure text-paper-dim">{row.time}</td>
+        <td className="td truncate whitespace-nowrap font-semibold text-paper">{row.actor}</td>
+        <td className="td">
+          <div className="flex items-center gap-2 whitespace-nowrap text-paper">
+            {row.event}
+            {row.packageChange && (
+              <span className="flex items-center gap-1.5">
+                <PackagePill code={row.packageChange.before} />
+                <span className="text-paper-dim">&rarr;</span>
+                <PackagePill code={row.packageChange.after} />
+              </span>
+            )}
+          </div>
         </td>
-        <td className="td text-paper-dim">{row.dealer ?? '—'}</td>
-        <td className="td text-right">
-          {row.packageChange ? (
-            <span className="text-paper-dim/50">—</span>
-          ) : (
-            <>
-              {/* Money and points are figures, so they take the mono/tabular
-                  treatment every other numeric column in the app uses. These
-                  two were plain sans, so the column did not line up. */}
-              <div className="figure-money">{row.amount}</div>
-              {row.points && <div className="figure mt-0.5 text-[12px] text-paper-dim">{row.points}</div>}
-            </>
-          )}
+        <td className="td truncate text-paper-dim">{row.dealer ?? '—'}</td>
+        <td className="td figure-money whitespace-nowrap text-right">
+          {row.packageChange ? <span className="text-paper-dim/50">&mdash;</span> : row.amount}
+        </td>
+        <td className="td figure whitespace-nowrap text-right text-paper-dim">
+          {row.packageChange || !row.points ? <span className="text-paper-dim/50">&mdash;</span> : row.points}
         </td>
         <td className="td">
           {row.status && (
-            <span
-              className={`pill ${row.status === 'verified' ? 'pill-jade' : row.status === 'flagged' ? 'pill-clay' : 'pill-brass'}`}
-            >
-              {row.status === 'verified' ? 'Verified' : row.status === 'flagged' ? 'Flagged' : 'Pending'}
-            </span>
+            <StatusDot
+              color={row.status === 'verified' ? 'jade-bright' : row.status === 'flagged' ? 'clay-bright' : 'brass-bright'}
+              label={row.status === 'verified' ? 'Verified' : row.status === 'flagged' ? 'Flagged' : 'Pending'}
+            />
           )}
         </td>
-        <td className="td w-4 text-paper-dim">
+        <td className="td text-right text-paper-dim">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -77,7 +92,7 @@ export function AuditRow({ row }: { row: AuditRowData }) {
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
+            className={`inline-block h-3.5 w-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
           >
             <path d="m9 6 6 6-6 6" />
           </svg>
@@ -85,7 +100,7 @@ export function AuditRow({ row }: { row: AuditRowData }) {
       </tr>
       {open && (
         <tr className="border-b border-ink-800 bg-ink-850/60">
-          <td colSpan={7} className="px-4 py-3.5">
+          <td colSpan={8} className="px-4 py-3.5">
             {/* A fixed grid (not flex-wrap) so every label starts at the same
                 x position instead of a ragged layout driven by each value's
                 own text length — that raggedness plus the tight gap-2.5 is

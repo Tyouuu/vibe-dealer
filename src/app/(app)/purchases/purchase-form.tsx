@@ -37,53 +37,68 @@ export function PurchaseForm({ today }: { today: string }) {
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-        <div>
-          <label className="field-label">Date</label>
-          <DatePicker name="purchase_date" max={today} todayIso={today} required />
+      {/* One row of fields, not a stacked column.
+          This form was the right-hand panel of a two-up row, so it ran ~580px
+          tall next to a history card that is ~190px when there is one
+          purchase on record. Two panels whose heights can never match should
+          not be a row — taste-redesign lists exactly this as "inconsistent
+          vertical rhythm in side-by-side elements". Full width and horizontal
+          instead, which is ~200px tall and leaves nothing beside it to fail
+          to match. */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+          <div className="sm:col-span-3 lg:col-span-3">
+            <label className="field-label">Date</label>
+            <DatePicker name="purchase_date" max={today} todayIso={today} required />
+          </div>
+          <div className="sm:col-span-3 lg:col-span-3">
+            <label htmlFor="cp-money" className="field-label">
+              Amount paid (RM)
+            </label>
+            <input
+              id="cp-money"
+              name="money_rm"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={moneyRm}
+              onChange={(e) => setMoneyRm(e.target.value)}
+              className="field-input"
+            />
+          </div>
+          <div className="sm:col-span-3 lg:col-span-3">
+            <label htmlFor="cp-points" className="field-label">
+              Points / credit received
+            </label>
+            <input
+              id="cp-points"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={pointsOverride}
+              onChange={(e) => setPointsOverride(e.target.value)}
+              placeholder={moneyRm ? String(suggestedPoints) : 'Auto-calculated'}
+              className="field-input"
+            />
+          </div>
+          <div className="sm:col-span-3 lg:col-span-3">
+            <label htmlFor="cp-note" className="field-label">
+              Note (optional)
+            </label>
+            <input id="cp-note" name="note" type="text" className="field-input" />
+          </div>
         </div>
-        <div>
-          <label htmlFor="cp-money" className="field-label">
-            Amount paid (RM)
-          </label>
-          <input
-            id="cp-money"
-            name="money_rm"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            value={moneyRm}
-            onChange={(e) => setMoneyRm(e.target.value)}
-            className="field-input"
-          />
+
+        <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-4">
+          <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-60">
+            {submitting ? 'Saving…' : 'Save purchase'}
+          </button>
+          <span className="text-[12px] text-paper-dim">
+            Points are auto-calculated at the usual rate — edit them if Vibe charged something else this time.
+          </span>
         </div>
-        <div>
-          <label htmlFor="cp-points" className="field-label">
-            Points / credit received
-          </label>
-          <input
-            id="cp-points"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            value={pointsOverride}
-            onChange={(e) => setPointsOverride(e.target.value)}
-            placeholder={moneyRm ? String(suggestedPoints) : 'Auto-calculated from amount paid, editable'}
-            className="field-input"
-          />
-          <span className="hint">Auto-calculated at the usual rate — editable if Vibe charged something else this time.</span>
-        </div>
-        <div>
-          <label htmlFor="cp-note" className="field-label">
-            Note (optional)
-          </label>
-          <input id="cp-note" name="note" type="text" className="field-input" />
-        </div>
-        <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
-          {submitting ? 'Saving…' : 'Save'}
-        </button>
       </form>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>

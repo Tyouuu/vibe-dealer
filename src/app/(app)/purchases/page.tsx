@@ -161,8 +161,44 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             a third full is to give the space something to do, not to delete a
             column. Two columns where both are genuinely full is denser and
             calmer than three stacked rows where one is mostly air. */}
-        <div className="page-grid lg:items-start">
-        <div className="app-card lg:col-span-7">
+        {/* Form first and full width, history under it. These were a two-up
+            row, and their heights can never match: the form is ~200px now
+            (fields laid out horizontally) and the history is however many
+            purchases exist — one row today, dozens next year. taste-redesign
+            names this directly: "inconsistent vertical rhythm in side-by-side
+            elements". Stacked, there is nothing beside either one to fail to
+            match, so the page composes the same whether the log holds one row
+            or a hundred. The order is also the order of the work: record what
+            was bought, then check the record. */}
+        <div className="app-card">
+          <h2 className="text-sm font-semibold text-paper">Log a purchase</h2>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-paper-dim">
+            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
+            is what&apos;s left to sell.
+          </p>
+          <div className="mt-4">
+            {error && <div className="alert alert-bad">{error}</div>}
+            <PurchaseForm today={today} />
+          </div>
+        </div>
+
+
+        {/* The form is visible and permanent. It was briefly folded behind a
+            button on the reasoning that buying credit happens monthly — which
+            applied the "rare occasion" test to how often a purchase happens
+            rather than to what this page is for. The page is called Credit
+            Purchases; someone opening it is most likely here to log one. That
+            is the primary task, and hiding the primary task is the failure
+            NN/g's progressive-disclosure article warns about. Second time
+            that mistake was made here, after gating New Transaction behind
+            the dealer.
+
+            It sits above the history because that is the order of the work:
+            see what's left, record what was bought, then check the record.
+            Fields are capped rather than the page — a date and two amounts
+            stretched across 1136px is the field-width mismatch Baymard warns
+            about. */}
+        <div className="index-surface">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-paper">
               Purchase history <span className="ml-1 font-medium text-paper-dim">{totalCount}</span>
@@ -225,34 +261,6 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           ) : (
             <p className="text-sm text-paper-dim">No purchases recorded yet.</p>
           )}
-        </div>
-
-        {/* The form is visible and permanent. It was briefly folded behind a
-            button on the reasoning that buying credit happens monthly — which
-            applied the "rare occasion" test to how often a purchase happens
-            rather than to what this page is for. The page is called Credit
-            Purchases; someone opening it is most likely here to log one. That
-            is the primary task, and hiding the primary task is the failure
-            NN/g's progressive-disclosure article warns about. Second time
-            that mistake was made here, after gating New Transaction behind
-            the dealer.
-
-            It sits above the history because that is the order of the work:
-            see what's left, record what was bought, then check the record.
-            Fields are capped rather than the page — a date and two amounts
-            stretched across 1136px is the field-width mismatch Baymard warns
-            about. */}
-        <div className="app-card lg:col-span-5">
-          <h2 className="text-sm font-semibold text-paper">Log a purchase</h2>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-paper-dim">
-            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
-            is what&apos;s left to sell.
-          </p>
-          <div className="mt-4">
-            {error && <div className="alert alert-bad">{error}</div>}
-            <PurchaseForm today={today} />
-          </div>
-        </div>
         </div>
 
       </div>

@@ -186,12 +186,12 @@ export function RailNav({
               aria-haspopup="true"
               aria-expanded={open === 'profile'}
             >
-              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-semibold text-primary-deep">
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-ink-800 text-[12px] font-semibold text-paper">
                 {initials}
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
                 <span className="block truncate">{userName}</span>
-                <span className="flex items-center gap-1 text-[11px] font-medium normal-case text-paper-dim">
+                <span className="flex items-center gap-1 text-[12px] font-medium normal-case text-paper-dim">
                   {roleLabel}
                   {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-semibold text-primary-deep">Preview</span>}
                 </span>
@@ -220,12 +220,12 @@ export function RailNav({
           </div>
         ) : (
           <div className="rail-item cursor-default hover:bg-transparent hover:text-paper-dim">
-            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-semibold text-primary-deep">
+            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-ink-800 text-[12px] font-semibold text-paper">
               {initials}
             </span>
             <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
               <span className="block truncate">{userName}</span>
-              <span className="block text-[11px] font-medium normal-case text-paper-dim">{roleLabel}</span>
+              <span className="block text-[12px] font-medium normal-case text-paper-dim">{roleLabel}</span>
             </span>
           </div>
         )}

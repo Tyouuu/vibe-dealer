@@ -202,7 +202,7 @@ export function StatusSplit({
         {parts.map((p) => (
           <Link key={p.label} href={p.href} className="inline-flex items-center gap-2 text-paper-dim hover:text-paper">
             <span className={`h-2 w-2 shrink-0 rounded-full ${p.dot}`} />
-            {p.label} <b className="figure text-paper">{p.count}</b>
+            {p.label} <b className="figure font-semibold text-paper">{p.count}</b>
           </Link>
         ))}
       </div>

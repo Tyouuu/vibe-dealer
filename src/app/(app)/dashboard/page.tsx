@@ -11,8 +11,8 @@ import {
   PENDING_REVIEW_STALE_DAYS,
 } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { MonthlyTrendChart, type TrendRow } from './monthly-trend-chart'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
+import Link from 'next/link'
 import { RegionGrowthCard } from './growth-map'
 import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars } from './elements'
 import { NeedsAttention } from './summary'
@@ -57,25 +57,6 @@ function dealerNameOf(rel: DealerRegionRel): string {
 
 // Shared by master + accountant (both chart the same 6-month top-up trend,
 // split by dealer region) so the bucketing logic lives in one place.
-function buildTrendRows(
-  trendTx: { tx_date: string; points: number | string; dealers: DealerRegionRel }[],
-  trendMonths: { key: string; label: string }[],
-  regions: string[]
-): TrendRow[] {
-  const map = new Map<string, number>()
-  for (const t of trendTx) {
-    const monthKey = t.tx_date.slice(0, 7)
-    const k = `${monthKey}|${regionOf(t.dealers)}`
-    map.set(k, (map.get(k) ?? 0) + Number(t.points))
-  }
-  const rows: TrendRow[] = []
-  for (const { key: monthKey, label } of trendMonths) {
-    for (const region of regions) {
-      rows.push({ month: monthKey, label, region, points: map.get(`${monthKey}|${region}`) ?? 0 })
-    }
-  }
-  return rows
-}
 
 // Shared by master + cs — both show "Growth by Region" as this month's
 // verified top-up points, top 4 regions, each with its own categorical color.
@@ -385,15 +366,17 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: dealerRows }, { data: trendTx }, { data: recentTxRows }, alerts] =
+  const [{ data: pendingRows }, creditBalance, { data: statement }, { data: trendTx }, { data: recentTxRows }, alerts, { data: statusRows }] =
     await Promise.all([
       supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
       getAvailablePointsBalance(supabase),
       supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle(),
-      supabase.from('dealers_directory').select('id, region'),
+      // The dealers_directory read went with the trend chart's region filter,
+      // the only thing that consumed it. dealer_id is added below so the
+      // leaderboard can group without a second query.
       supabase
         .from('transactions')
-        .select('tx_date, points, dealers(region, company_name)')
+        .select('dealer_id, tx_date, points, dealers(region, company_name)')
         .eq('status', 'verified')
         .gte('tx_date', trendStart)
         .lte('tx_date', today),
@@ -403,6 +386,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
         .order('created_at', { ascending: false })
         .limit(10),
       getNotifications(userId, 'accountant'),
+      supabase.from('transactions').select('status').gte('tx_date', monthStart).lte('tx_date', today),
     ])
 
   const pendingCount = pendingRows?.length ?? 0
@@ -414,9 +398,16 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
   const prevMonthPoints = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey).reduce((sum, t) => sum + Number(t.points), 0)
   const pointsChg = pctChange(totalPoints, prevMonthPoints)
 
-  const regions = Array.from(new Set((dealerRows ?? []).map((d) => d.region).filter((r): r is string => r != null))).sort()
-  const trendRows = buildTrendRows(trendTx ?? [], trendMonths, regions)
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
+
+  const leaders = topDealers(monthTx)
+  const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
+  const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
+  const statusCounts = { verified: 0, pending: 0, flagged: 0 }
+  for (const r of statusRows ?? []) {
+    const k = r.status as keyof typeof statusCounts
+    if (k in statusCounts) statusCounts[k] += 1
+  }
 
   const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
     const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
@@ -438,53 +429,76 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
     <div className="flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
 
-      {/* Ranked by what the reader has to DO, in one column.
-          The page used to open with a 550px chart whose headline figure was
-          RM 0.00 — the biggest thing on it was an empty month, and history
-          is the one thing on a dashboard nobody can act on. Then it put the
-          three items that genuinely need action in a third-width card below
-          the fold. This is that order reversed: the work, then the money,
-          then where the money came from, then the ledger. A single column
-          also makes the masonry void structurally impossible — there is no
-          short card left beside a tall one. */}
+      {/* Same seven bands as master, re-pointed at what an accountant acts
+          on: volume they have to record and verify, not the commission the
+          business keeps. */}
       <NeedsAttention items={alerts} flat />
-      {/* An accountant's headline is the volume they're responsible for
-          recording and verifying, not master's commission. */}
-      {/* Full width, with the real six-month chart inside it. This card and
-          the "Monthly Top-up Trend" card below were drawing the SAME series
-          twice — a sparkline here, the full chart there. One series, one
-          chart, and it now gets 1500px instead of 900px. */}
-      <HeroCard
-          flat
-          label={`Top-up — ${formatMonthLabel(currentMonthStr)}`}
-          value={`${totalPoints.toLocaleString()} pts`}
-          chg={pointsChg}
-          chgSuffix={`vs ${prevMonthPoints.toLocaleString()} pts last month`}
-        chart={<MonthlyTrendChart rows={trendRows} regions={regions} />}
-          href={`/records?status=verified&month=${currentMonthStr}`}
+
+      <div className="page-band">
+        <StatTiles
           stats={[
+            {
+              label: `Top-up — ${formatMonthLabel(currentMonthStr)}`,
+              value: `${totalPoints.toLocaleString()} pts`,
+              href: `/records?status=verified&month=${currentMonthStr}`,
+              chg: pointsChg,
+              spark: pointsSeries,
+            },
             {
               label: 'Pending review',
               value: String(pendingCount),
               href: '/records?status=pending',
-              tone: pendingCount && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS ? 'warn' : 'normal',
+              sub: pendingCount && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS ? `oldest waiting ${oldestPendingDays}d` : 'nothing waiting',
+            },
+            {
+              label: 'Dealers trading',
+              value: String(dealersTrading),
+              href: '/dealers',
+              sub: 'recorded a verified top-up this month',
             },
             {
               label: 'Credit balance',
               value: `${creditBalance.available.toLocaleString()} pts`,
               href: '/purchases',
-              tone: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'warn' : 'normal',
-            },
-            {
-              label: `Reconciliation ${currentMonthStr}`,
-              value: statement?.reconciled ? 'Closed' : 'Open',
-              href: '/reconcile',
-              tone: statement?.reconciled ? 'normal' : 'warn',
+              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : undefined,
             },
           ]}
-      />
+        />
+      </div>
 
-      <RegionGrowthCard regions={regionGrowth} flat />
+      <div className="page-band">
+        <h3 className="mb-1 text-sm font-semibold text-paper">Reconciliation {currentMonthStr}</h3>
+        <p className="mb-3 text-[12px] text-paper-dim">Until this is closed, the month is not final.</p>
+        <Link href="/reconcile" className="inline-flex items-center gap-2 text-[15px] font-semibold hover:underline">
+          <span className={`h-2 w-2 rounded-full ${statement?.reconciled ? 'bg-jade' : 'bg-clay'}`} />
+          <span className={statement?.reconciled ? 'text-jade-bright' : 'text-clay-bright'}>{statement?.reconciled ? 'Closed' : 'Open'}</span>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
+        <div className="page-band">
+          <h3 className="mb-1 text-sm font-semibold text-paper">Top dealers this month</h3>
+          <p className="mb-3 text-[12px] text-paper-dim">By verified top-up. The bar is relative to the leader.</p>
+          <Leaderboard rows={leaders} />
+        </div>
+        <div className="page-band">
+          <h3 className="mb-1 text-sm font-semibold text-paper">This month by status</h3>
+          <p className="mb-4 text-[12px] text-paper-dim">Every transaction dated this month, whatever its state.</p>
+          <StatusSplit
+            parts={[
+              { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${currentMonthStr}` },
+              { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${currentMonthStr}` },
+              { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${currentMonthStr}` },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="page-band">
+        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
+        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
+        <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+      </div>
 
       <div className="page-band">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>

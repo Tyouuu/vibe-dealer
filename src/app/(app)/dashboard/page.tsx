@@ -265,8 +265,16 @@ export default async function DashboardPage() {
       {/* Seven bands, ranked by what the reader has to do. The page used to
           open with a 550px chart whose headline figure was RM 0.00 — the
           biggest thing on it was an empty month, and history is the one
-          thing on a dashboard nobody can act on. */}
-      <NeedsAttention items={alerts} flat />
+          thing on a dashboard nobody can act on.
+
+          The first band is a card and the rest are not. Measured across the
+          app: every page the client rates as finished paints its first
+          surface at y=104-124, right under the title, and the two he rates
+          as unfinished opened at y=384 and y=768. It is not the amount of
+          white — Dealers is 5% painted and reads fine — it is whether the
+          page opens with something to land on. So the thing that has to be
+          read first gets the surface, and everything after it stays flat. */}
+      <NeedsAttention items={alerts} />
 
       {/* Four figures, four trends. This was one headline number with a
           single big chart, so three of the four figures had no shape at all
@@ -431,7 +439,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
       {/* Same seven bands as master, re-pointed at what an accountant acts
           on: volume they have to record and verify, not the commission the
           business keeps. */}
-      <NeedsAttention items={alerts} flat />
+      <NeedsAttention items={alerts} />
 
       <div className="page-band">
         <StatTiles
@@ -578,7 +586,7 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
 
       {/* Same ranking as the other two roles: the work first. */}
-      <NeedsAttention items={alerts} flat />
+      <NeedsAttention items={alerts} />
 
       {/* cs has no financial visibility, so these four are the roster and the
           queue rather than money. No sparklines: the series behind them are

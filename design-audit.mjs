@@ -119,6 +119,32 @@ for (const p of paths) {
 
     const axe = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] } })
     out.axe = axe.violations.map((v) => v.id)
+    // 7. Where the page's first painted surface sits.
+    //
+    //    This is the check that came out of measuring six pages against the
+    //    client's own verdict on them. The four he called finished all paint
+    //    their first surface at y=104-124, directly under the title. The two
+    //    he called unfinished opened at y=384 and y=768 — several hundred
+    //    pixels of bare canvas with nothing on it but text, and no anchor for
+    //    the eye to land on.
+    //
+    //    Total painted area predicts nothing: Dealers is 5% painted and reads
+    //    as finished, SIM Card Stock was 35% and did not. What predicts it is
+    //    whether the page opens with something to land on.
+    const main = document.querySelector('main')
+    const mb = main.getBoundingClientRect()
+    const painted = [...main.querySelectorAll('*')]
+      .filter((el) => {
+        const bg = getComputedStyle(el).backgroundColor
+        if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return false
+        const b = el.getBoundingClientRect()
+        return b.width > 180 && b.height > 60
+      })
+      .filter((el, i, arr) => !arr.some((o) => o !== el && o.contains(el)))
+    out.firstSurfaceY = painted.length
+      ? Math.round(Math.min(...painted.map((el) => el.getBoundingClientRect().top - mb.top + main.scrollTop)))
+      : null
+
     out.overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth
     out.height = document.querySelector('main')?.scrollHeight ?? 0
     return out
@@ -136,6 +162,10 @@ for (const p of paths) {
   if (r.axe.length) flags.push(`axe: ${r.axe.join(', ')}`)
   if (r.overflow) flags.push(`horizontal overflow ${r.overflow}px`)
   if (r.fontSizes.length > 7) flags.push(`${r.fontSizes.length} font sizes: ${r.fontSizes.join(', ')}`)
+  // 200 rather than 124: a page may carry an alert strip or a taller header
+  // before its summary. Anything past 200 means the page opens on bare canvas.
+  if (r.firstSurfaceY == null) flags.push('no painted surface anywhere — the page has no anchor')
+  else if (r.firstSurfaceY > 200) flags.push(`first surface at y=${r.firstSurfaceY} — the page opens on ${r.firstSurfaceY}px of bare canvas`)
 
   problems += flags.length
   console.log(`\n${p}  (${width}px, ${role})  h=${r.height}`)

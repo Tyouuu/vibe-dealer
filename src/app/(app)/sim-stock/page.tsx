@@ -168,8 +168,17 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       {intake_saved && <div className="alert alert-ok">Stock intake recorded.</div>}
       {order_saved && <div className="alert alert-ok">Order recorded.</div>}
 
-      {/* The shelf. One figure, one bar, one line of facts — and no rule
-          above it, because it opens the page.
+      {/* The shelf, and under one rule the three pools it splits into — one
+          card, because this is the page's opening summary.
+
+          It was two flat bands on the bare canvas and that was a mistake.
+          Measured across the app: every page the client rates as finished
+          paints its first surface at y=104-124, directly under the title;
+          the two he rates as unfinished started at y=384 and y=768. Total
+          painted area predicts nothing (Dealers is 5% and reads fine,
+          SIM Card Stock was 35% and did not) — what predicts it is whether
+          the page opens with something to land on. Everything below this
+          card stays flat.
 
           The bar is drawn at true proportions, which at 55 sold out of 3,000
           means two very thin segments. That is the honest shape of this
@@ -183,7 +192,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           spoken for but not yet deducted — the pending cards are a
           fulfilment fact (sold, still sitting here), not an availability
           one, and the legend says so rather than subtracting them twice. */}
-      <section>
+      <section className="app-card">
         <div className="flex flex-wrap items-end gap-x-12 gap-y-6">
           <div>
             <p className="text-[12px] text-paper-dim">Available to sell</p>
@@ -218,31 +227,34 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             )}
           </div>
         </div>
-      </section>
 
-      {/* The three pools. Same bar as the shelf above, once per pool — three
-          bare numbers cannot show that one pool is draining while the other
-          two are not. */}
-      <section className="page-band">
-        <BandHeading title="Three pools" sub="an order can only draw from its own type" />
-        {emptyPool && (
-          <p className="mb-4 text-[13px]" style={{ color: 'var(--color-clay-bright)' }}>
-            One pool is empty — log a stock intake before taking that order.
-          </p>
-        )}
-        <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-3">
-          {balances.map((b) => (
-            <Pool
-              key={b.sim_type}
-              simType={b.sim_type}
-              available={b.available}
-              intake={b.total_intake}
-              sold={b.total_sold}
-              sent={qtyBy(b.sim_type, 'sent')}
-              pending={qtyBy(b.sim_type, 'pending')}
-              low={b.available > 0 && b.available < SIM_BOX_SIZE}
-            />
-          ))}
+        {/* The three pools sit under the shelf inside the same card, split
+            off by one rule — the same anatomy every other summary card in
+            this app uses: headline figure, rule, the figures that break it
+            down. Same bar as the shelf above, once per pool, because three
+            bare numbers cannot show that one pool is draining while the
+            other two are not. */}
+        <div className="mt-7 border-t border-ink-800 pt-6">
+          <BandHeading title="Three pools" sub="an order can only draw from its own type" />
+          {emptyPool && (
+            <p className="mb-4 text-[13px]" style={{ color: 'var(--color-clay-bright)' }}>
+              One pool is empty — log a stock intake before taking that order.
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-3">
+            {balances.map((b) => (
+              <Pool
+                key={b.sim_type}
+                simType={b.sim_type}
+                available={b.available}
+                intake={b.total_intake}
+                sold={b.total_sold}
+                sent={qtyBy(b.sim_type, 'sent')}
+                pending={qtyBy(b.sim_type, 'pending')}
+                low={b.available > 0 && b.available < SIM_BOX_SIZE}
+              />
+            ))}
+          </div>
         </div>
       </section>
 

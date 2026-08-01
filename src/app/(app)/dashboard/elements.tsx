@@ -68,13 +68,20 @@ export type Stat = {
   sub?: string
 }
 
+// Four figures in a row, on the canvas rather than in four little cards.
+//
+// The page now opens with one card — the alerts — and that card is the
+// anchor. Four more cards immediately under it made the top of the page
+// read as two rows of boxes, which is the "four boxes is not composition"
+// complaint arriving by a different route. One surface per page, at the
+// top; everything below it is flat and separated by rule and space.
 export function StatTiles({ stats }: { stats: Stat[] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((s, i) => {
         const r = s.chg == null ? null : Math.round(s.chg * 10) / 10
         return (
-          <Link key={s.label} href={s.href} className="app-tile group block">
+          <Link key={s.label} href={s.href} className="group block">
             <div className="text-[12px] text-paper-dim">{s.label}</div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
               <span className="figure-points text-[23px] leading-tight tracking-[-.026em] group-hover:underline">{s.value}</span>

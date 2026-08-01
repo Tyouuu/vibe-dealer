@@ -209,7 +209,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               ))}
               {!typeBreakdown.length && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-paper-dim">
+                  <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
                     No verified transactions this month yet.
                   </td>
                 </tr>
@@ -220,13 +220,26 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
         ) : (
         <ScrollFade label="This month by dealer">
-          <table className="w-full min-w-[660px] border-collapse text-sm">
+          {/* table-fixed with percentage widths. Auto layout gave Dealer every
+              pixel of slack — the name ended around x=600 and the first
+              figure did not start until x=1290 — while the numeric columns
+              stayed cramped. Share column carries the proportion bar. */}
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-[5%]" />
+              <col className="w-[28%]" />
+              <col className="w-[17%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
+              <col className="w-[14%]" />
+            </colgroup>
             <thead>
               <tr>
                 <th className="th">#</th>
                 <th className="th">Dealer</th>
                 <th className="th text-right">This Month&apos;s Top-up</th>
                 <th className="th text-right">Money Collected (RM)</th>
+                <th className="th">Share</th>
                 <th className="th text-right">Your 2%</th>
               </tr>
             </thead>
@@ -234,9 +247,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               {breakdown.map((d, i) => {
                 const pct = maxMoney > 0 ? Math.round((d.money / maxMoney) * 100) : 0
                 return (
-                  <tr key={d.id} className="tr-row relative">
-                    <td className="td text-paper-dim">{i + 1}</td>
-                    <td className="td font-semibold text-paper">
+                  <tr key={d.id} className="tr-row relative h-14">
+                    <td className="td figure text-paper-dim">{i + 1}</td>
+                    <td className="td truncate font-semibold text-paper">
                       <a
                         href={`/records?month=${month}&status=verified&dealer=${d.id}`}
                         className="after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
@@ -244,12 +257,19 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                         {d.name}
                       </a>
                     </td>
-                    <td className="td figure-points text-right">{d.points.toLocaleString()} pts</td>
-                    <td className="td figure-money relative text-right">
-                      <span className="absolute bottom-0 left-0 h-[3px] rounded-full bg-primary/40" style={{ width: `${pct}%` }} />
-                      <span className="relative">{formatMYR(d.money)}</span>
+                    <td className="td figure-points whitespace-nowrap text-right">{d.points.toLocaleString()} pts</td>
+                    <td className="td figure-money whitespace-nowrap text-right">{formatMYR(d.money)}</td>
+                    {/* A real column, not an absolutely-positioned strip
+                        hanging off the bottom of the money cell — that
+                        rendered as a stray underline drifting under the
+                        figure rather than as a bar. Same in-row bar the
+                        dashboard leaderboard uses. */}
+                    <td className="td">
+                      <span className="block h-1.5 rounded-full bg-ink-800" aria-hidden="true">
+                        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(2, pct)}%` }} />
+                      </span>
                     </td>
-                    <td className="td figure-money text-right">{formatMYR(d.commission)}</td>
+                    <td className="td figure-money whitespace-nowrap text-right">{formatMYR(d.commission)}</td>
                   </tr>
                 )
               })}

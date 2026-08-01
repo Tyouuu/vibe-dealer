@@ -10,7 +10,6 @@ import { IconSearch } from '../icons'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { AuditRow } from './audit-row'
-import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
@@ -144,87 +143,44 @@ export default async function AuditPage({ searchParams }: PageProps) {
       </form>
 
       {filtered.length ? (
-        <ScrollFade label="Audit event history">
-          {/* Percentage widths that sum to 100, not fixed widths with one
-              open column.
+        <div className="flex flex-col gap-7">
+          {/* A feed, not a table. Eight columns sized for the fullest kind of
+            event meant most events printed em-dashes: seven of thirteen rows
+            on a typical screen had an empty Amount, an empty Points and no
+            Status at all. A log is a sequence of things that happened and the
+            facts each carries differ — a list can omit what does not apply,
+            a column cannot.
 
-              The previous colgroup gave seven columns a fixed px width and
-              left Dealer as a bare <col>, so Dealer absorbed every pixel of
-              slack in the table. On a 1500px content area that made it ~700px
-              wide for a 20-character name, which put roughly 680px of empty
-              space between the end of the dealer name and the start of the
-              amount on every single row — while Event, which holds the
-              longest content in the table ("Assigned package  Not set -> B"),
-              was locked at 256px and visibly cramped. Cramped and empty were
-              the same bug seen from two ends.
-
-              Percentages keep the ratio at any width, so the slack is shared
-              out instead of pooling in one column, and the two text columns
-              get shares proportional to what they actually hold. */}
-          <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
-            <colgroup>
-              <col className="w-[8%]" />
-              <col className="w-[13%]" />
-              <col className="w-[25%]" />
-              <col className="w-[22%]" />
-              <col className="w-[12%]" />
-              <col className="w-[9%]" />
-              <col className="w-[8%]" />
-              <col className="w-[3%]" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="th">Time</th>
-                <th className="th">Actor</th>
-                <th className="th">Event</th>
-                <th className="th">Dealer</th>
-                {/* Two columns, not one. Money and points are different
-                    units; stacking them in a single cell was what made half
-                    the rows taller than the other half. */}
-                <th className="th text-right">Amount (RM)</th>
-                <th className="th text-right">Points</th>
-                <th className="th">Status</th>
-                <th className="th"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group, i) => (
-                <Fragment key={`${group.label}-${i}`}>
-                  {/* A day label, not a row. It was a filled full-width band
-                      the same height as the data rows, so it read as another
-                      record rather than a divider between them. No fill, a
-                      hairline under it, and space above to separate it from
-                      the day before. */}
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="border-b border-ink-800 px-3 pb-1.5 pt-6 text-[11px] font-semibold uppercase tracking-wide text-paper-dim"
-                    >
-                      {group.label}
-                    </td>
-                  </tr>
-                  {group.events.map((e) => (
-                    <AuditRow
-                      key={e.id}
-                      row={{
-                        id: e.id,
-                        time: formatEventTime(e.createdAt),
-                        actor: e.actor,
-                        event: e.event,
-                        dealer: e.dealer,
-                        amount: e.amount,
-                        points: e.points,
-                        packageChange: e.packageChange,
-                        status: e.status,
-                        detail: e.detail,
-                      }}
-                    />
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </ScrollFade>
+            No ScrollFade either: nothing here is wider than the page any
+            more, so there is nothing to scroll sideways. */}
+          {groups.map((group, i) => (
+            <section key={`${group.label}-${i}`}>
+              <h2 className="border-b border-ink-800 pb-2 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
+                {group.label}
+              </h2>
+              <ol className="relative mt-1 flex flex-col pl-8">
+                <span aria-hidden="true" className="absolute bottom-5 left-[6px] top-5 w-px bg-ink-800" />
+                {group.events.map((e) => (
+                  <AuditRow
+                    key={e.id}
+                    row={{
+                      id: e.id,
+                      time: formatEventTime(e.createdAt),
+                      actor: e.actor,
+                      event: e.event,
+                      dealer: e.dealer,
+                      amount: e.amount,
+                      points: e.points,
+                      packageChange: e.packageChange,
+                      status: e.status,
+                      detail: e.detail,
+                    }}
+                  />
+                ))}
+              </ol>
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-800 py-12 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-ink-850 text-paper-dim">

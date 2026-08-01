@@ -40,84 +40,97 @@ function PackagePill({ code }: { code: PackageCode | null }) {
 export function AuditRow({ row }: { row: AuditRowData }) {
   const [open, setOpen] = useState(false)
 
-  // Every cell on this row is single-line, and that is the whole point.
+  // An event, not a table row.
   //
-  // Rows used to come in two heights: 67px for a transaction, 79px for a
-  // package change, measured on the live page. Two cells were responsible.
-  // The Event cell put the package change on a second line under the event
-  // name, and the Amount cell stacked money over points. So half the rows
-  // were one line tall and half were two, and a table whose row pitch keeps
-  // changing reads as untidy however well the individual cells are styled.
+  // The table forced every event into eight columns sized for the fullest
+  // kind. Most events are not that kind: on a typical screen seven of
+  // thirteen rows had an em-dash in Amount, an em-dash in Points and nothing
+  // at all in Status — three empty cells each, printed only because the grid
+  // demanded a value. A log is a sequence of things that happened, and the
+  // facts each one carries differ; a list of facts can simply omit what does
+  // not apply, which a column cannot.
   //
-  // Money and points are now separate columns — they are different units and
-  // a table already has a mechanism for that — and the package change sits
-  // inline after the event name.
+  // So each event is a sentence with its values inline, on a rail. Absent
+  // values leave no trace instead of leaving a dash.
+  const facts: React.ReactNode[] = []
+  if (row.dealer) facts.push(row.dealer)
+  if (row.packageChange) {
+    facts.push(
+      <span key="pkg" className="inline-flex items-center gap-1.5">
+        <PackagePill code={row.packageChange.before} />
+        <span className="text-paper-dim">&rarr;</span>
+        <PackagePill code={row.packageChange.after} />
+      </span>,
+    )
+  }
+  if (!row.packageChange && row.amount) facts.push(<span key="amt" className="figure-money">{row.amount}</span>)
+  if (!row.packageChange && row.points) facts.push(<span key="pts" className="figure">{row.points}</span>)
+
   return (
-    <>
-      <tr className="tr-row cursor-pointer" onClick={() => setOpen((o) => !o)}>
-        <td className="td whitespace-nowrap figure text-paper-dim">{row.time}</td>
-        <td className="td truncate whitespace-nowrap font-semibold text-paper">{row.actor}</td>
-        <td className="td">
-          <div className="flex items-center gap-2 whitespace-nowrap text-paper">
-            {row.event}
-            {row.packageChange && (
-              <span className="flex items-center gap-1.5">
-                <PackagePill code={row.packageChange.before} />
-                <span className="text-paper-dim">&rarr;</span>
-                <PackagePill code={row.packageChange.after} />
+    <li className="relative">
+      <span
+        aria-hidden="true"
+        className="absolute -left-[25px] top-[19px] grid h-[13px] w-[13px] place-items-center rounded-full border-2 border-ink-800 bg-ink-900"
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            row.status === 'flagged' ? 'bg-clay' : row.status === 'pending' ? 'bg-brass' : row.status === 'verified' ? 'bg-jade' : 'bg-slate'
+          }`}
+        />
+      </span>
+
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-ink-850"
+      >
+        <span className="figure shrink-0 text-[12px] text-paper-dim">{row.time}</span>
+        <span className="text-[13px] font-semibold text-paper">{row.actor}</span>
+        <span className="text-[13px] text-paper-dim">{row.event.toLowerCase()}</span>
+        {facts.length > 0 && (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-paper">
+            <span className="text-paper-dim">&middot;</span>
+            {facts.map((f, i) => (
+              <span key={i} className="inline-flex items-center gap-2">
+                {i > 0 && <span className="text-paper-dim">&middot;</span>}
+                {f}
               </span>
-            )}
-          </div>
-        </td>
-        <td className="td truncate text-paper-dim">{row.dealer ?? '—'}</td>
-        <td className="td figure-money whitespace-nowrap text-right">
-          {row.packageChange ? <span className="text-paper-dim/50">&mdash;</span> : row.amount}
-        </td>
-        <td className="td figure whitespace-nowrap text-right text-paper-dim">
-          {row.packageChange || !row.points ? <span className="text-paper-dim/50">&mdash;</span> : row.points}
-        </td>
-        <td className="td">
-          {row.status && (
+            ))}
+          </span>
+        )}
+        {row.status && (
+          <span className="ml-auto shrink-0">
             <StatusDot
               color={row.status === 'verified' ? 'jade-bright' : row.status === 'flagged' ? 'clay-bright' : 'brass-bright'}
               label={row.status === 'verified' ? 'Verified' : row.status === 'flagged' ? 'Flagged' : 'Pending'}
             />
-          )}
-        </td>
-        <td className="td text-right text-paper-dim">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`inline-block h-3.5 w-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
-          >
-            <path d="m9 6 6 6-6 6" />
-          </svg>
-        </td>
-      </tr>
+          </span>
+        )}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-3.5 w-3.5 shrink-0 text-paper-dim transition-transform ${open ? 'rotate-90' : ''} ${row.status ? '' : 'ml-auto'}`}
+          aria-hidden="true"
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
+
       {open && (
-        <tr className="border-b border-ink-800 bg-ink-850/60">
-          <td colSpan={8} className="px-4 py-3.5">
-            {/* A fixed grid (not flex-wrap) so every label starts at the same
-                x position instead of a ragged layout driven by each value's
-                own text length — that raggedness plus the tight gap-2.5 is
-                what actually read as "cramped", not the amount of detail
-                itself. The bordered card gives the block its own visual
-                boundary instead of floating loose in the dark row strip. */}
-            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-ink-800 bg-ink-900/60 p-4 sm:grid-cols-3 lg:grid-cols-4">
-              {row.detail.map((d) => (
-                <div key={d.label}>
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">{d.label}</dt>
-                  <dd className="mt-1 text-[13px] font-semibold text-paper">{d.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </td>
-        </tr>
+        <dl className="mx-2 mb-3 grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-ink-800 bg-ink-850 p-4 sm:grid-cols-3 lg:grid-cols-4">
+          {row.detail.map((d) => (
+            <div key={d.label}>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">{d.label}</dt>
+              <dd className="mt-1 text-[13px] font-semibold text-paper">{d.value}</dd>
+            </div>
+          ))}
+        </dl>
       )}
-    </>
+    </li>
   )
 }

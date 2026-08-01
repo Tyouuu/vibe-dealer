@@ -10,6 +10,7 @@ import { IconSearch } from '../icons'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
 import { AuditRow } from './audit-row'
+import { Avatar } from '../avatar'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
@@ -27,6 +28,23 @@ const VIEW_LABEL: Record<View, string> = {
 
 type PageProps = {
   searchParams: Promise<{ q?: string; view?: string; actor?: string; month?: string; before?: string }>
+}
+
+// Consecutive events by the same person collapse into one block.
+//
+// The log comes in bursts: CS assigned seven packages inside the same minute,
+// and every previous shape printed "CS (test)" seven times down the page. The
+// actor is stated once per run instead, with the run's time and size beside
+// it. Runs are consecutive only — the sequence is never reordered, so "what
+// happened at 1:45pm" still reads top to bottom.
+function byActorRun<T extends { actor: string }>(events: T[]) {
+  const runs: { actor: string; items: T[] }[] = []
+  for (const e of events) {
+    const last = runs[runs.length - 1]
+    if (last && last.actor === e.actor) last.items.push(e)
+    else runs.push({ actor: e.actor, items: [e] })
+  }
+  return runs
 }
 
 export default async function AuditPage({ searchParams }: PageProps) {
@@ -158,26 +176,42 @@ export default async function AuditPage({ searchParams }: PageProps) {
               <h2 className="border-b border-ink-800 pb-2 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
                 {group.label}
               </h2>
-              <ol className="relative mt-1 flex flex-col pl-8">
-                <span aria-hidden="true" className="absolute bottom-5 left-[6px] top-5 w-px bg-ink-800" />
-                {group.events.map((e) => (
-                  <AuditRow
-                    key={e.id}
-                    row={{
-                      id: e.id,
-                      time: formatEventTime(e.createdAt),
-                      actor: e.actor,
-                      event: e.event,
-                      dealer: e.dealer,
-                      amount: e.amount,
-                      points: e.points,
-                      packageChange: e.packageChange,
-                      status: e.status,
-                      detail: e.detail,
-                    }}
-                  />
-                ))}
-              </ol>
+              {byActorRun(group.events).map((run, r) => (
+                <div
+                  key={`${run.actor}-${r}`}
+                  className="grid grid-cols-1 gap-x-5 gap-y-2 border-b border-ink-800 py-4 last:border-b-0 sm:grid-cols-[168px_minmax(0,1fr)]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Avatar name={run.actor} size={26} />
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-semibold text-paper">{run.actor}</div>
+                      <div className="text-[12px] text-paper-dim">
+                        {formatEventTime(run.items[0].createdAt)}
+                        {run.items.length > 1 && ` · ${run.items.length} events`}
+                      </div>
+                    </div>
+                  </div>
+                  <ol className="flex min-w-0 flex-col">
+                    {run.items.map((e) => (
+                      <AuditRow
+                        key={e.id}
+                        row={{
+                          id: e.id,
+                          time: formatEventTime(e.createdAt),
+                          actor: e.actor,
+                          event: e.event,
+                          dealer: e.dealer,
+                          amount: e.amount,
+                          points: e.points,
+                          packageChange: e.packageChange,
+                          status: e.status,
+                          detail: e.detail,
+                        }}
+                      />
+                    ))}
+                  </ol>
+                </div>
+              ))}
             </section>
           ))}
         </div>

@@ -86,14 +86,20 @@ export function DealersTable({
               you scroll past a group boundary. Fixed widths shared by every
               group is what actually keeps them aligned. */}
           <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
+            {/* Percentages, not fixed widths with one open column. Company
+                was the bare <col>, so it absorbed all the table's slack —
+                ~3.9x the median column, measured — which put a long empty
+                run between the company name and the figures on every row,
+                while the fixed columns stayed cramped. Same bug fixed on
+                /audit. */}
             <colgroup>
-              {showRanking && <col className="w-14" />}
-              <col />
-              <col className="w-28" />
-              <col className="w-32" />
-              <col className="w-36" />
-              <col className="w-20" />
-              {showRate && <col className="w-16" />}
+              {showRanking && <col className="w-[6%]" />}
+              <col className="w-[26%]" />
+              <col className="w-[13%]" />
+              <col className="w-[15%]" />
+              <col className="w-[16%]" />
+              <col className="w-[9%]" />
+              {showRate && <col className="w-[7%]" />}
               {showRanking && <col className="w-28" />}
             </colgroup>
             <thead>
@@ -136,20 +142,20 @@ export function DealersTable({
             </thead>
             <tbody>
               {rows.map((d) => (
-                <tr key={d.id} className="tr-row group relative">
+                <tr key={d.id} className="tr-row group relative h-16">
                   {showRanking && (
                     <td className="td">
                       <RankBadge rank={d.rank} />
                     </td>
                   )}
                   <td className="td">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
                       <Avatar name={d.company_name} />
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
                           <Link
                             href={`/dealers/${d.id}`}
-                            className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                            className="truncate font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
                           >
                             {d.company_name}
                           </Link>
@@ -166,9 +172,9 @@ export function DealersTable({
                       </div>
                     </div>
                   </td>
-                  <td className="td text-paper-dim">{d.region ?? '—'}</td>
+                  <td className="td truncate text-paper-dim">{d.region ?? '—'}</td>
                   <td className="td figure text-paper-dim">{d.phone ?? '—'}</td>
-                  <td className="td text-paper-dim">{d.contact_person ?? '—'}</td>
+                  <td className="td truncate text-paper-dim">{d.contact_person ?? '—'}</td>
                   <td className="td">
                     {d.package ? (
                       <span className={`pill ${PACKAGE_PILL_CLASS[d.package]}`}>{d.package}</span>

@@ -118,7 +118,7 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
         )}
 
         {series.map((s, i) => (
-          <text key={s.month} x={xFor(i)} y={CHART_H - 8} textAnchor="middle" fontSize={10} fill="var(--color-paper-dim)">
+          <text key={s.month} x={xFor(i)} y={CHART_H - 8} textAnchor="middle" fontSize={12} fill="var(--color-paper-dim)">
             {s.label}
           </text>
         ))}
@@ -161,8 +161,8 @@ export function MonthlyTrendChart({ rows, regions }: { rows: TrendRow[]; regions
             x={xFor(series.length - 1)}
             y={Math.max(yFor(last.points) - 10, 14)}
             textAnchor="end"
-            fontSize={11}
-            fontWeight={700}
+            fontSize={12}
+            fontWeight={600}
             fill="var(--color-jade-bright)"
           >
             {last.points.toLocaleString()}

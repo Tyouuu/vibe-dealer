@@ -147,7 +147,7 @@ export function HeroCard({
 function Delta({ pct, big = false }: { pct: number; big?: boolean }) {
   const r = Math.round(pct * 10) / 10
   return (
-    <span className={`chg ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'} ${big ? '' : 'text-[11px]'}`}>
+    <span className={`chg ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'} ${big ? '' : 'text-[12px]'}`}>
       {r === 0 ? '→' : r > 0 ? '↑' : '↓'} {Math.abs(r).toFixed(1)}%
     </span>
   )

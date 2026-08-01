@@ -328,7 +328,25 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
       {pageRows.length ? (
         <ScrollFade label="Transactions">
-          <table className="w-full min-w-[980px] border-collapse text-sm">
+          {/* table-fixed with percentage widths. This table had no colgroup
+              at all, so auto layout sized every column from whatever its
+              longest cell happened to be — the columns shifted as you paged
+              and the dealer name wrapped to two and three lines, which is
+              what gave the table three different row heights (61/59/74,
+              measured). Ten columns, percentages summing to 100. */}
+          <table className="w-full min-w-[1040px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-[9%]" />
+              <col className="w-[19%]" />
+              <col className="w-[13%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[5%]" />
+              <col className="w-[9%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+            </colgroup>
             <thead>
               <tr>
                 <th className="th">Date</th>
@@ -356,14 +374,14 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
-                  <tr key={tx.id} className="tr-row relative">
+                  <tr key={tx.id} className="tr-row relative h-16">
                     <td className="td whitespace-nowrap text-paper-dim">{tx.tx_date}</td>
                     <td className="td">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar name={dealerName ?? '?'} size={24} />
                         <a
                           href={`/dealers/${tx.dealer_id}`}
-                          className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                          className="truncate font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
                         >
                           {dealerName ?? '—'}
                         </a>
@@ -374,7 +392,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                       </span>
                       {tx.type === 'topup' && tx.coupon_rm > 0 && (
-                        <div className="mt-0.5 text-[11px] text-paper-dim">
+                        <div className="truncate text-[12px] text-paper-dim">
                           {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                         </div>
                       )}
@@ -395,7 +413,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     <td className="td">
                       <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
                       {tx.status === 'flagged' && tx.flag_reason && (
-                        <div className="mt-0.5 max-w-[140px] truncate text-[11px] text-paper-dim" title={tx.flag_reason}>
+                        <div className="mt-0.5 max-w-[140px] truncate text-[12px] text-paper-dim" title={tx.flag_reason}>
                           {tx.flag_reason}
                         </div>
                       )}

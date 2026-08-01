@@ -23,18 +23,22 @@ const DOT_CLASS: Record<BuiltNotification['variant'], string> = {
   slate: 'bg-slate',
 }
 
-// Now the page's opening statement rather than a card in the corner.
+// Severity first, age second.
 //
-// The dashboard used to lead with a 550px chart whose headline figure was
-// RM 0.00 — the largest thing on the page was an empty month, and it was
-// history, which is the one thing on a dashboard nobody can act on. The three
-// items that DO need acting on sat below the fold in a third-width card.
-//
-// So this goes first, full width, and states the count in words. Each row is
-// a full-width target with the action named on the right, rather than a
-// truncated line with a chevron that only appears on hover.
+// The list arrived in whatever order buildNotifications produced, which put a
+// dealer quiet for 58 days above a statement that is blocking the monthly
+// report. Age alone is the wrong sort: "open one day and blocking the month"
+// outranks "quiet since June". So the variant the notification already
+// classified itself with decides the band, and within a band the thing that
+// has waited longest comes first.
+const SEVERITY: Record<BuiltNotification['variant'], number> = { clay: 0, brass: 1, info: 2, slate: 3 }
+
+function byUrgency(a: BuiltNotification, b: BuiltNotification) {
+  return SEVERITY[a.variant] - SEVERITY[b.variant] || b.staleDays - a.staleDays
+}
+
 export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; flat?: boolean }) {
-  const shown = items.slice(0, 4)
+  const shown = [...items].sort(byUrgency).slice(0, 4)
   const rest = items.length - shown.length
 
   if (shown.length === 0) {
@@ -65,26 +69,33 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
         )}
       </div>
 
-      <ul className="mt-3 flex flex-col divide-y divide-ink-800 border-t border-ink-800">
+      {/* A timeline, not a flat list. The rail down the left is what makes
+          these read as one ordered sequence rather than two unrelated
+          notices — and the order is now deliberate (see byUrgency) instead
+          of whatever order the builder happened to emit. */}
+      <ol className="relative mt-4 flex flex-col pl-7">
+        <span aria-hidden="true" className="absolute bottom-4 left-[6px] top-4 w-px bg-ink-800" />
         {shown.map((n) => (
-          <li key={n.id}>
-            <Link href={n.href} className="group flex items-center gap-3 py-3 transition-colors hover:bg-ink-850">
-              {/* Colour carries the severity the notification already
-                  classified itself with, so it reads at a glance without
-                  the reader parsing the sentence. */}
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_CLASS[n.variant]}`} />
+          <li key={n.id} className="relative">
+            <span
+              aria-hidden="true"
+              className="absolute -left-7 top-[14px] grid h-[13px] w-[13px] place-items-center rounded-full border-2 border-ink-800 bg-ink-900"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[n.variant]}`} />
+            </span>
+            <Link
+              href={n.href}
+              className="group flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 transition-colors hover:bg-ink-850"
+            >
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-semibold leading-snug text-paper">{n.title}</span>
                 <span className="block truncate text-[12px] text-paper-dim">{n.subtitle}</span>
               </span>
-              {/* Named, and always visible. A chevron that appears on hover
-                  tells you nothing about where the row goes, and tells a
-                  touch user nothing at all. */}
               <span className="shrink-0 text-[12px] font-semibold text-primary group-hover:underline">{n.actionLabel} &rarr;</span>
             </Link>
           </li>
         ))}
-      </ul>
+      </ol>
     </div>
   )
 }

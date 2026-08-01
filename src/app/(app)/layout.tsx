@@ -91,6 +91,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             roleLabel={ROLE_LABEL[user.role]}
             role={user.role}
             actualRole={user.actualRole}
+            creditBalance={
+              isFinance
+                ? {
+                    available: creditBalance.available,
+                    low: creditBalance.available < LOW_BALANCE_THRESHOLD,
+                    // "Full" is 3x the low-balance threshold (itself the
+                    // biggest package's point cost) rather than a real
+                    // ceiling — points has no natural max, it just goes up on
+                    // the next purchase. This bar is "how far from the danger
+                    // zone", not "% of quota used".
+                    pct: (creditBalance.available / (LOW_BALANCE_THRESHOLD * 3)) * 100,
+                  }
+                : undefined
+            }
           />
         </div>
 
@@ -113,7 +127,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 lg:hidden">
             <Link href="/dashboard" className="flex items-center gap-3">
               <LogoMark className="h-8 w-8 shrink-0" />
-              <span className="text-sm font-bold text-paper">DealerHub</span>
+              <span className="text-sm font-semibold text-paper">DealerHub</span>
             </Link>
             <div className="flex-1" />
             <MobileNav
@@ -129,39 +143,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          {/* Credit balance card only — notifications/profile/role-preview
-              live in the rail on md+ and in MobileNav's panel below md, so
-              this header has nothing left to show on mobile. */}
-          <header className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-ink-800 bg-ink-900/95 px-4 py-3 backdrop-blur sm:px-6 lg:flex lg:px-8">
-            {isFinance && (
-              <a
-                href="/purchases"
-                className="flex w-40 shrink-0 flex-col gap-1.5 rounded-lg border border-ink-800 bg-ink-900 px-3.5 py-2.5 transition-colors hover:bg-ink-850"
-                title="Credit balance — points bought from Vibe Mobile, not yet resold"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-paper-dim">Credit Balance</span>
-                  <span className="text-sm font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
-                  <div
-                    className={`h-full rounded-full ${
-                      creditBalance.available <= 0 ? 'bg-clay-bright' : creditBalance.available < LOW_BALANCE_THRESHOLD ? 'bg-brass-bright' : 'bg-jade-bright'
-                    }`}
-                    // "Full" is pinned at 3x the low-balance threshold (itself the
-                    // biggest package's point cost) rather than some real ceiling —
-                    // points has no natural max, it just goes up on the next
-                    // purchase. This bar isn't "% of quota used" like a real usage
-                    // meter, it's "how far from the danger zone", so 3x reads as a
-                    // comfortable reserve without needing an actual cap to measure
-                    // against.
-                    style={{ width: `${Math.max(0, Math.min(100, (creditBalance.available / (LOW_BALANCE_THRESHOLD * 3)) * 100))}%` }}
-                  />
-                </div>
-              </a>
-            )}
-          </header>
+          {/* The desktop header bar is gone. It had exactly one occupant —
+              the credit balance card — so it was 57px of full-width chrome
+              for one widget, and it was the only white surface sitting
+              directly on the tinted canvas, which is what made it read as a
+              foreign strip once the canvas gained its tint. The balance
+              moved into the rail, which is already white and already had the
+              room. Every page gains 57px of vertical space, and there is one
+              fewer layout element in the shell.
 
+              Nothing else lived here: notifications, profile and the
+              role-preview switcher are in the rail on lg+ and in MobileNav's
+              panel below it. */}
           {/* The vertical padding lives on the inner wrapper, not here, and
               that placement is load-bearing. <main> is the scroll container
               on lg (lg:overflow-y-auto inside the lg:overflow-hidden shell),

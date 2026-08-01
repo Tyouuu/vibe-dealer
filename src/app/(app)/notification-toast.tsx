@@ -93,9 +93,9 @@ function Toast({ notification, onDismiss, onClick }: { notification: ToastNotifi
       className={`app-card pointer-events-auto relative flex items-start gap-3 overflow-hidden py-3 pl-4 pr-3 shadow-2xl before:absolute before:inset-y-0 before:left-0 before:w-[3.5px] ${VARIANT_BAR[notification.variant]}`}
     >
       <button onClick={onClick} className="flex-1 text-left">
-        <div className="text-[13px] font-bold text-paper">{notification.title}</div>
+        <div className="text-[13px] font-semibold text-paper">{notification.title}</div>
         <div className="mt-0.5 text-[12px] text-paper-dim">{notification.subtitle}</div>
-        <div className="mt-1.5 text-[12px] font-bold text-primary-deep">View in Notifications →</div>
+        <div className="mt-1.5 text-[12px] font-semibold text-primary-deep">View in Notifications →</div>
       </button>
       <button
         onClick={onDismiss}

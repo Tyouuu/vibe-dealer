@@ -124,7 +124,7 @@ export function MonthPicker({
                   type="button"
                   key={m}
                   onClick={() => pick(i)}
-                  className={`rounded-lg border-[1.5px] py-2 text-[12px] font-bold transition-colors ${
+                  className={`rounded-lg border-[1.5px] py-2 text-[12px] font-semibold transition-colors ${
                     isSelected
                       ? 'border-primary bg-primary text-white'
                       : isToday
@@ -137,7 +137,7 @@ export function MonthPicker({
               )
             })}
           </div>
-          <div className="flex items-center justify-between border-t border-ink-800 px-3 py-2 text-xs font-bold">
+          <div className="flex items-center justify-between border-t border-ink-800 px-3 py-2 text-xs font-semibold">
             {allowClear ? (
               <button type="button" className="text-paper-dim hover:underline" onClick={() => { setValue(''); closePanel() }}>
                 Clear

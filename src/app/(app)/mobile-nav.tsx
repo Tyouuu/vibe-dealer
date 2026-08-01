@@ -79,7 +79,7 @@ export function MobileNav({
           {creditBalance && (
             <a
               href="/purchases"
-              className={`mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold ${
+              className={`mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold ${
                 creditBalance.available <= 0
                   ? 'bg-clay/10 text-clay-bright'
                   : creditBalance.low
@@ -101,7 +101,7 @@ export function MobileNav({
                   aria-current={active ? 'page' : undefined}
                   className={
                     active
-                      ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
+                      ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-semibold text-white'
                       : 'rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
                   }
                 >
@@ -113,7 +113,7 @@ export function MobileNav({
               href="/notifications"
               className={
                 pathname === '/notifications'
-                  ? 'flex items-center gap-2 rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
+                  ? 'flex items-center gap-2 rounded-lg bg-paper px-3 py-2.5 text-sm font-semibold text-white'
                   : 'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
               }
             >
@@ -124,7 +124,7 @@ export function MobileNav({
               href="/account"
               className={
                 pathname === '/account'
-                  ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-bold text-white'
+                  ? 'rounded-lg bg-paper px-3 py-2.5 text-sm font-semibold text-white'
                   : 'rounded-lg px-3 py-2.5 text-sm font-medium text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper'
               }
             >
@@ -134,7 +134,7 @@ export function MobileNav({
 
           {actualRole === 'master' && (
             <div className="mt-3 border-t border-ink-800 pt-3">
-              <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+              <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Demo: view as</div>
               <div className="flex gap-1.5">
                 {PREVIEW_ROLES.map((r) => (
                   <button
@@ -142,7 +142,7 @@ export function MobileNav({
                     type="button"
                     disabled={pending}
                     onClick={() => pickPreviewRole(r)}
-                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-bold transition-colors disabled:opacity-60 ${
+                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-60 ${
                       role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
                     }`}
                   >
@@ -157,7 +157,7 @@ export function MobileNav({
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1.5">
                 <span className="pill pill-neutral w-fit">{roleLabel}</span>
-                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-bold text-primary-deep">Preview</span>}
+                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-semibold text-primary-deep">Preview</span>}
               </span>
               {email && <span className="text-[12px] text-paper-dim">{email}</span>}
             </div>

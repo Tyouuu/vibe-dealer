@@ -68,7 +68,7 @@ export function IntakeForm() {
       </button>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <p className="text-sm font-bold text-paper">Confirm this stock intake</p>
+        <p className="text-sm font-semibold text-paper">Confirm this stock intake</p>
         <div className="mt-3 flex flex-col text-sm">
           <div className="docket-row">
             <span className="text-paper-dim">SIM Type</span>

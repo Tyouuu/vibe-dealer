@@ -73,7 +73,7 @@ export function DealersTable({
         return (
         <Wrapper key={region || 'flat'} {...(groupByRegion ? { open: true } : {})} className="mb-3 last:mb-0">
           {groupByRegion && (
-            <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-xs font-bold uppercase tracking-wide text-paper-dim">
+            <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wide text-paper-dim">
               <IconChevronDown className="h-3.5 w-3.5 -rotate-90 transition-transform [details[open]_&]:rotate-0" />
               {region} <span className="pill pill-neutral">{rows.length}</span>
             </summary>

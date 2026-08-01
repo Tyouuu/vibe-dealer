@@ -118,7 +118,7 @@ function RailField({ label, value, last }: { label: string; value: string; last?
   return (
     <div className={`flex items-start justify-between gap-2.5 py-2 text-[12px] ${last ? '' : 'border-b border-ink-800'}`}>
       <span className="whitespace-nowrap font-semibold text-paper-dim">{label}</span>
-      <span className="text-right font-bold text-paper">{value}</span>
+      <span className="text-right font-semibold text-paper">{value}</span>
     </div>
   )
 }
@@ -172,7 +172,7 @@ function TimelineItem({
         )}
       </span>
       <div className="flex-1 pt-0.5">
-        <div className="text-[12px] font-bold text-paper">{title}</div>
+        <div className="text-[12px] font-semibold text-paper">{title}</div>
         <div className="mt-0.5 text-[12px] text-paper-dim">{subtitle}</div>
       </div>
     </div>
@@ -426,7 +426,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         <div className="flex min-w-0 flex-col gap-5">
           {isFinance && txRows.length > 0 && (
             <div className="app-card">
-              <h3 className="mb-1 text-sm font-bold text-paper">Recent Activity</h3>
+              <h3 className="mb-1 text-sm font-semibold text-paper">Recent Activity</h3>
               <Timeline>
                 {txRows.slice(0, 6).map((tx) => (
                   <TimelineItem
@@ -460,7 +460,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           )}
 
           <div className="app-card">
-            <h3 className="mb-3.5 text-sm font-bold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
+            <h3 className="mb-3.5 text-sm font-semibold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
 
             {isFinance ? (
               <ScrollFade label="All transactions for this dealer">
@@ -566,7 +566,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
           {isFinance && (
             <div className="app-card">
-              <h3 className="mb-3.5 text-sm font-bold text-paper">Rate History</h3>
+              <h3 className="mb-3.5 text-sm font-semibold text-paper">Rate History</h3>
               <ScrollFade label="Rate change history">
                 <table className="w-full min-w-[520px] border-collapse text-sm">
                   <thead>
@@ -606,7 +606,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-5">
           <div className="app-card">
-            <h3 className="mb-1 text-sm font-bold text-paper">Contact</h3>
+            <h3 className="mb-1 text-sm font-semibold text-paper">Contact</h3>
             <div className="mt-2.5">
               <RailField label="Contact Person" value={typedDealer.contact_person ?? '—'} />
               <RailField label="Phone" value={typedDealer.phone ?? '—'} />
@@ -620,7 +620,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
           {typedDealer.notes && (
             <div className="app-card">
-              <h3 className="mb-1.5 text-sm font-bold text-paper">Notes</h3>
+              <h3 className="mb-1.5 text-sm font-semibold text-paper">Notes</h3>
               <p className="whitespace-pre-wrap text-[12px] text-paper-dim">{typedDealer.notes}</p>
             </div>
           )}
@@ -629,7 +629,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             (() => {
               return (
                 <div className="rounded-2xl bg-paper p-5 shadow-sm">
-                  <h3 className="mb-3.5 text-sm font-bold text-white">Lifetime</h3>
+                  <h3 className="mb-3.5 text-sm font-semibold text-white">Lifetime</h3>
                   <div className="flex flex-col gap-3">
                     <div>
                       <div className="text-xs font-semibold text-white/50">Lifetime Top-up</div>

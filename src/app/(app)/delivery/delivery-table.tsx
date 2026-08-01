@@ -151,7 +151,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
 
       {selected.size > 0 && (
         <div className="sticky bottom-4 z-20 mt-3 flex items-center gap-3 rounded-xl border border-primary bg-primary-soft px-4 py-3 shadow-2xl">
-          <span className="text-sm font-bold text-primary-deep">{selected.size} selected</span>
+          <span className="text-sm font-semibold text-primary-deep">{selected.size} selected</span>
           <div className="ml-auto flex items-center gap-2">
             <button type="button" disabled={pending} onClick={() => setConfirmOpen(true)} className="btn-jade">
               Mark {selected.size} as Sent

@@ -164,7 +164,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         <div className="page-grid lg:items-start">
         <div className="app-card lg:col-span-7">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-bold text-paper">
+            <h2 className="text-sm font-semibold text-paper">
               Purchase history <span className="ml-1 font-medium text-paper-dim">{totalCount}</span>
             </h2>
           </div>
@@ -243,7 +243,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             stretched across 1136px is the field-width mismatch Baymard warns
             about. */}
         <div className="app-card lg:col-span-5">
-          <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
+          <h2 className="text-sm font-semibold text-paper">Log a purchase</h2>
           <p className="mt-0.5 text-[12px] leading-relaxed text-paper-dim">
             Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
             is what&apos;s left to sell.

@@ -52,8 +52,11 @@ export function AuditRow({ row }: { row: AuditRowData }) {
             <span className="text-paper-dim/50">—</span>
           ) : (
             <>
-              <div className="font-semibold text-paper">{row.amount}</div>
-              {row.points && <div className="mt-0.5 text-[12px] font-medium text-paper-dim">{row.points}</div>}
+              {/* Money and points are figures, so they take the mono/tabular
+                  treatment every other numeric column in the app uses. These
+                  two were plain sans, so the column did not line up. */}
+              <div className="figure-money">{row.amount}</div>
+              {row.points && <div className="figure mt-0.5 text-[12px] text-paper-dim">{row.points}</div>}
             </>
           )}
         </td>
@@ -92,7 +95,7 @@ export function AuditRow({ row }: { row: AuditRowData }) {
             <dl className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-ink-800 bg-ink-900/60 p-4 sm:grid-cols-3 lg:grid-cols-4">
               {row.detail.map((d) => (
                 <div key={d.label}>
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">{d.label}</dt>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">{d.label}</dt>
                   <dd className="mt-1 text-[13px] font-semibold text-paper">{d.value}</dd>
                 </div>
               ))}

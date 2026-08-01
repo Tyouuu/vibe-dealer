@@ -169,7 +169,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <div className="index-surface">
         <div className="index-filterbar">
           <div>
-            <h3 className="text-sm font-bold text-paper">Where it came from</h3>
+            <h3 className="text-sm font-semibold text-paper">Where it came from</h3>
             <p className="mt-0.5 text-[12px] text-paper-dim">
               {by === 'type'
                 ? 'The same month split by what was sold. Click nothing here — the totals are in the header.'
@@ -201,7 +201,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               {typeBreakdown.map((t) => (
                 <tr key={t.label} className="tr-row">
                   <td className="td font-semibold text-paper">{t.label}</td>
-                  <td className="td text-right text-paper-dim">{t.count}</td>
+                  <td className="td figure text-right text-paper-dim">{t.count}</td>
                   <td className="td figure-points text-right">{t.points.toLocaleString()} pts</td>
                   <td className="td figure-money text-right">{formatMYR(t.money)}</td>
                   <td className="td figure-money text-right">{formatMYR(t.commission)}</td>

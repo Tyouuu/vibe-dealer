@@ -184,7 +184,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="app-card min-w-0" id="dealer-orders">
           <div className="mb-3.5 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-paper">Dealer Orders</h3>
+            <h3 className="text-sm font-semibold text-paper">Dealer Orders</h3>
             <span className="pill pill-neutral">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
           </div>
           {/* Progressive disclosure instead of packing every field into the
@@ -252,7 +252,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         </div>
 
         <div className="app-card min-w-0">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Place Order</h3>
+          <h3 className="mb-3.5 text-sm font-semibold text-paper">Place Order</h3>
           <OrderForm
             dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
             availableByType={availableByType}
@@ -268,7 +268,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <div className="app-card min-w-0" id="stock-intake-history">
             <div className="mb-3.5 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-paper">Stock Intake History</h3>
+              <h3 className="text-sm font-semibold text-paper">Stock Intake History</h3>
               <span className="pill pill-neutral">{intakes.length} intake{intakes.length === 1 ? '' : 's'}</span>
             </div>
             {intakes.length ? (
@@ -317,7 +317,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           </div>
 
           <div className="app-card min-w-0">
-            <h3 className="mb-3.5 text-sm font-bold text-paper">Log Stock Intake</h3>
+            <h3 className="mb-3.5 text-sm font-semibold text-paper">Log Stock Intake</h3>
             <IntakeForm />
           </div>
         </div>

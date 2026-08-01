@@ -65,7 +65,7 @@ export function AdjustButton({
         Adjust
       </button>
       <Modal open={open} onClose={close} className="max-w-md">
-        <p className="text-sm font-bold text-paper">Correct this transaction</p>
+        <p className="text-sm font-semibold text-paper">Correct this transaction</p>
         <p className="mt-1 text-xs text-paper-dim">
           Currently on record: {currentPoints.toLocaleString()} pts · {formatMYR(currentMoneyRm)}. This posts a new, linked
           correction — the original row stays untouched.

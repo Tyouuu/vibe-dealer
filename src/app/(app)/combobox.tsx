@@ -109,7 +109,7 @@ export function Combobox({
                 >
                   {o.avatarName && <Avatar name={o.avatarName} size={26} />}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-bold text-paper">{o.label}</span>
+                    <span className="block truncate text-[13px] font-semibold text-paper">{o.label}</span>
                     {o.sublabel && <span className="block truncate text-[12px] text-paper-dim">{o.sublabel}</span>}
                   </span>
                   {value === o.value && (

@@ -92,7 +92,7 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
                       length, which is exactly the case where a max-width would
                       be needed instead. */}
                   <div className="min-w-0">
-                    <div className="truncate text-[13px] font-bold text-paper">{n.title}</div>
+                    <div className="truncate text-[13px] font-semibold text-paper">{n.title}</div>
                     <div className="mt-0.5 truncate text-[12px] text-paper-dim">{n.subtitle}</div>
                   </div>
                 </div>

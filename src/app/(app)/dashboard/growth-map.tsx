@@ -36,12 +36,12 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
   return (
     <div className="app-card">
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold text-paper">
+        <h3 className="text-sm font-semibold text-paper">
           Growth by Region
           {active && <span className="text-paper-dim"> · {active.region}</span>}
         </h3>
         {active && (
-          <button type="button" onClick={() => setSelected(null)} className="shrink-0 text-[12px] font-bold text-primary-deep hover:underline">
+          <button type="button" onClick={() => setSelected(null)} className="shrink-0 text-[12px] font-semibold text-primary-deep hover:underline">
             ← All regions
           </button>
         )}
@@ -125,7 +125,7 @@ function RegionList({
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: r.color }} />
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-[12px] font-bold text-paper">{r.region}</span>
+                <span className="truncate text-[12px] font-semibold text-paper">{r.region}</span>
                 <span className="figure-points shrink-0 text-[12px] font-semibold text-paper">{r.points.toLocaleString()}</span>
               </span>
               <span className="mt-1 flex items-center gap-2">

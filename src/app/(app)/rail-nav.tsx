@@ -50,6 +50,7 @@ export function RailNav({
   roleLabel,
   role,
   actualRole,
+  creditBalance,
 }: {
   items: RailItem[]
   notifications: Notification[]
@@ -57,6 +58,10 @@ export function RailNav({
   roleLabel: string
   role: Role
   actualRole: Role
+  /** Finance roles only; cs has no financial visibility. `pct` is how full
+      the bar reads, computed by the layout against the low-balance
+      threshold — the rail shouldn't own that business rule. */
+  creditBalance?: { available: number; low: boolean; pct: number }
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -138,6 +143,32 @@ export function RailNav({
         ))}
       </div>
 
+      {/* Credit balance used to be the sole occupant of a full-width white
+          bar across the top of every page — 57px of chrome for one widget,
+          and the only white surface sitting directly on the tinted canvas,
+          which is exactly what made it read as foreign. The rail is already
+          the app's white surface and already has the room, so it lives here
+          now and the bar is gone. Every page gains 57px of height. */}
+      {creditBalance && (
+        <a href="/purchases" className="rail-balance" title="Credit balance — points bought from Vibe Mobile, not yet resold">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[12px] font-medium text-paper-dim">Credit balance</span>
+            <span className="text-[13px] font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
+          </div>
+          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink-800">
+            <div
+              className={`h-full rounded-full ${
+                creditBalance.available <= 0 ? 'bg-clay-bright' : creditBalance.low ? 'bg-brass-bright' : 'bg-jade-bright'
+              }`}
+              // "Full" is pinned at 3x the low-balance threshold rather than a
+              // real ceiling — points has no natural max. This is "how far
+              // from the danger zone", not "% of quota used".
+              style={{ width: `${Math.max(0, Math.min(100, creditBalance.pct))}%` }}
+            />
+          </div>
+        </a>
+      )}
+
       <div className="shrink-0 border-t border-ink-800 pt-2">
         <Link href="/notifications" className={`rail-item${pathname === '/notifications' ? ' active' : ''}`}>
           <span className="relative">
@@ -162,20 +193,20 @@ export function RailNav({
               aria-haspopup="true"
               aria-expanded={open === 'profile'}
             >
-              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-bold text-primary-deep">
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-semibold text-primary-deep">
                 {initials}
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
                 <span className="block truncate">{userName}</span>
                 <span className="flex items-center gap-1 text-[11px] font-medium normal-case text-paper-dim">
                   {roleLabel}
-                  {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-bold text-primary-deep">Preview</span>}
+                  {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-semibold text-primary-deep">Preview</span>}
                 </span>
               </span>
             </button>
             {open === 'profile' && (
               <div className="dropdown-panel-rail w-56">
-                <div className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+                <div className="px-2.5 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Demo: view as</div>
                 <div className="flex gap-1 px-2.5 pb-2">
                   {PREVIEW_ROLES.map((r) => (
                     <button
@@ -183,7 +214,7 @@ export function RailNav({
                       type="button"
                       disabled={pending}
                       onClick={() => pickPreviewRole(r)}
-                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-bold transition-colors disabled:opacity-60 ${
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-60 ${
                         role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
                       }`}
                     >
@@ -196,7 +227,7 @@ export function RailNav({
           </div>
         ) : (
           <div className="rail-item cursor-default hover:bg-transparent hover:text-paper-dim">
-            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-bold text-primary-deep">
+            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-semibold text-primary-deep">
               {initials}
             </span>
             <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">

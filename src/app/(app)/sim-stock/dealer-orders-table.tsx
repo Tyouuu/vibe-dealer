@@ -45,29 +45,35 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
         <div className="th"></div>
         {orders.map((o, i) => {
           const open = openId === o.id
-          const border = i === orders.length - 1 && !open ? '' : 'border-b border-ink-800'
+          // The row divider is one element spanning every column, not a
+          // border-b on each cell. This is a CSS grid with gap-x-3, and a
+          // per-cell border stops at each cell's edge — the 12px gutters
+          // cut the line into seven visible dashes across the row. A real
+          // <table> doesn't have this problem because border-collapse
+          // joins the cells; a grid needs the divider drawn separately.
+          const showDivider = !(i === orders.length - 1 && !open)
           const toggle = () => setOpenId(open ? null : o.id)
           return (
             <Fragment key={o.id}>
-              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim`}>
                 {o.order_date}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 font-semibold text-paper ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 font-semibold text-paper`}>
                 {o.dealerName}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
                 <span className={`tag ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim`}>
                 {o.quantity.toLocaleString()}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper`}>
                 {formatMYR(o.paid)}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
                 {o.delivery_status === 'sent' ? <span className="pill pill-jade">Sent</span> : <span className="pill pill-brass">Pending</span>}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim`}>
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -80,24 +86,25 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                   <path d="m9 6 6 6-6 6" />
                 </svg>
               </div>
+              {showDivider && !open && <div style={{ gridColumn: '1 / -1' }} className="border-b border-ink-800" />}
               {open && (
                 <div style={{ gridColumn: '1 / -1' }} className="pb-4">
                   <div className="rounded-xl border border-ink-800 bg-ink-900/60 p-4">
                     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
                       {isFinance && (
                         <div>
-                          <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin</dt>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Margin</dt>
                           <dd className="mt-1 text-[13px] font-semibold text-paper">+{formatMYR(o.margin)}</dd>
                         </div>
                       )}
                       <div>
-                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Shipping</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Shipping</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">
                           {o.shipping_fee_rm != null ? `${formatMYR(Number(o.shipping_fee_rm))}` : '—'}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
                           {isPhysicalSimType(o.sim_type) ? 'Invoice' : 'eSIM Codes'}
                         </dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">

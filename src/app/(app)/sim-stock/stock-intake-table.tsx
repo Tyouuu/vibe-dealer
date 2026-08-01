@@ -33,23 +33,26 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
         <div className="th"></div>
         {intakes.map((r, i) => {
           const open = openId === r.id
-          const border = i === intakes.length - 1 && !open ? '' : 'border-b border-ink-800'
+          // One spanning divider, not a border on each cell — see
+          // dealer-orders-table.tsx for why (grid gutters cut a per-cell
+          // border into visible dashes).
+          const showDivider = !(i === intakes.length - 1 && !open)
           const toggle = () => setOpenId(open ? null : r.id)
           return (
             <Fragment key={r.id}>
-              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim`}>
                 {r.intake_date}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
                 <span className={`tag ${SIM_TYPE_PILL_CLASS[r.sim_type]}`}>{SIM_TYPE_LABEL[r.sim_type]}</span>
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim`}>
                 {r.quantity.toLocaleString()}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper`}>
                 {formatMYR(r.totalCost)}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim ${border}`}>
+              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim`}>
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -62,20 +65,21 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
                   <path d="m9 6 6 6-6 6" />
                 </svg>
               </div>
+              {showDivider && !open && <div style={{ gridColumn: '1 / -1' }} className="border-b border-ink-800" />}
               {open && (
                 <div style={{ gridColumn: '1 / -1' }} className="pb-4">
                   <div className="rounded-xl border border-ink-800 bg-ink-900/60 p-4">
                     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
                       <div>
-                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">{formatMYR(r.cost_per_unit_rm)}</dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Recorded By</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Recorded By</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">{r.recordedByName}</dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Note</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Note</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">
                           {r.note ?? <span className="font-normal text-paper-dim/50">—</span>}
                         </dd>

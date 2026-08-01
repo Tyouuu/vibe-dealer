@@ -275,7 +275,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
+          <h3 className="mb-3.5 text-sm font-semibold text-paper">Monthly Top-up Trend</h3>
           <MonthlyTrendChart rows={trendRows} regions={regions} />
         </div>
 
@@ -283,7 +283,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
+        <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
     </div>
@@ -395,7 +395,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
 
       <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
-          <h3 className="mb-3.5 text-sm font-bold text-paper">Monthly Top-up Trend</h3>
+          <h3 className="mb-3.5 text-sm font-semibold text-paper">Monthly Top-up Trend</h3>
           <MonthlyTrendChart rows={trendRows} regions={regions} />
         </div>
 
@@ -403,7 +403,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
       </div>
 
       <div className="app-card">
-        <h3 className="mb-3.5 text-sm font-bold text-paper">Recent Transactions</h3>
+        <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
         <RecentTransactionsTable rows={recentTransactions} />
       </div>
     </div>
@@ -514,7 +514,7 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
       <div className="grid grid-cols-1 gap-5 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="app-card">
           <div className="mb-3.5 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-paper">Pending Deliveries</h3>
+            <h3 className="text-sm font-semibold text-paper">Pending Deliveries</h3>
             {(pendingDeliveryCount ?? 0) > DELIVERY_TABLE_LIMIT && (
               <a href="/delivery" className="text-xs font-semibold text-primary hover:underline">
                 View all {pendingDeliveryCount}

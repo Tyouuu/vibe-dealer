@@ -40,7 +40,7 @@ export function AnnotatedSection({
   return (
     <section className="grid grid-cols-1 gap-x-10 gap-y-4 border-t border-ink-800 pt-7 first:border-t-0 first:pt-0 lg:grid-cols-[2fr_5fr]">
       <div className="lg:max-w-xs">
-        <h2 className="flex items-center gap-2.5 text-[13px] font-bold text-paper">
+        <h2 className="flex items-center gap-2.5 text-[13px] font-semibold text-paper">
           {icon && <span className="section-icon">{icon}</span>}
           {title}
         </h2>

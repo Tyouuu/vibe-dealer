@@ -514,7 +514,7 @@ export function EntryForm({
       </div>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <p className="text-sm font-bold text-paper">Confirm this transaction</p>
+        <p className="text-sm font-semibold text-paper">Confirm this transaction</p>
         {preview && (
           <div className="mt-3 flex flex-col text-sm">
             <Row label="Dealer" value={dealer?.company_name ?? '—'} />

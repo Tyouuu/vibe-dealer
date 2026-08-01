@@ -36,7 +36,7 @@ export function NotificationPrefsForm({
   return (
     <div className="flex flex-col gap-3.5">
       <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-ink-800 bg-ink-850 px-3.5 py-2.5">
-        <span className="text-sm font-bold text-paper">All notifications</span>
+        <span className="text-sm font-semibold text-paper">All notifications</span>
         <input type="checkbox" checked={masterEnabled} onChange={toggleMaster} className="h-4 w-4 accent-primary" />
       </label>
 

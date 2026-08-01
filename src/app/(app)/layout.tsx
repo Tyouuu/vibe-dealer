@@ -91,6 +91,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             roleLabel={ROLE_LABEL[user.role]}
             role={user.role}
             actualRole={user.actualRole}
+            creditBalance={
+              isFinance
+                ? {
+                    available: creditBalance.available,
+                    low: creditBalance.available < LOW_BALANCE_THRESHOLD,
+                    empty: creditBalance.available <= 0,
+                  }
+                : undefined
+            }
           />
         </div>
 
@@ -129,49 +138,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          {/* Credit balance is back at the top, but it is no longer a white
-              card in a white bar.
+          {/* No desktop header bar at all. It only ever held the credit
+              balance, and a full-width strip for one small chip in the far
+              corner reads as an empty plank however it is coloured. The
+              balance now lives with the brand mark at the top of the rail;
+              every page gains the full viewport height back. */}
 
-              What made the old one read as foreign was not its position — it
-              was that a pure-white plank sat directly on the tinted canvas,
-              so the eye read it as a separate document stapled above the
-              page. The bar is now the canvas colour with a single hairline
-              under it, which makes it page furniture rather than a surface.
-
-              The card became a chip. A progress bar and a two-line label were
-              doing a job one coloured dot does: the bar was never "% of quota
-              used" (points has no ceiling), only "how far from the danger
-              zone", and a dot says that in 8px. 57px of chrome becomes 41px.
-
-              This position is a judgement call, not a citation — I looked and
-              the reference set has no documented pattern for a persistent
-              balance in the chrome. The reasoning: this figure gates work
-              (entry blocks when credit runs out), it is a state rather than
-              an action, and it is equally true on every page — which is what
-              chrome is for. Stripe and Vercel keep balance/usage on their own
-              pages precisely because theirs don't block anything. */}
-          <header className="sticky top-0 z-10 hidden h-[41px] shrink-0 items-center justify-end border-b border-ink-800 bg-canvas px-4 sm:px-7 lg:flex">
-            {isFinance && (
-              <a
-                href="/purchases"
-                className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-[12px] transition-colors hover:bg-ink-850"
-                title="Credit balance — points bought from Vibe Mobile and not yet resold. New transactions are blocked when this reaches zero."
-              >
-                <span
-                  className={`status-dot ${
-                    creditBalance.available <= 0
-                      ? 'bg-clay-bright'
-                      : creditBalance.available < LOW_BALANCE_THRESHOLD
-                        ? 'bg-brass-bright'
-                        : 'bg-jade-bright'
-                  }`}
-                />
-                <span className="text-paper-dim">Credit</span>
-                <span className="font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
-                <span className="text-paper-dim">pts</span>
-              </a>
-            )}
-          </header>
           {/* The vertical padding lives on the inner wrapper, not here, and
               that placement is load-bearing. <main> is the scroll container
               on lg (lg:overflow-y-auto inside the lg:overflow-hidden shell),

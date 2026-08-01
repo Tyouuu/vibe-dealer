@@ -50,6 +50,7 @@ export function RailNav({
   roleLabel,
   role,
   actualRole,
+  creditBalance,
 }: {
   items: RailItem[]
   notifications: Notification[]
@@ -57,6 +58,8 @@ export function RailNav({
   roleLabel: string
   role: Role
   actualRole: Role
+  /** Finance roles only; cs has no financial visibility. */
+  creditBalance?: { available: number; low: boolean; empty: boolean }
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -106,10 +109,31 @@ export function RailNav({
 
   return (
     <aside className="rail" ref={wrapRef}>
-      <Link href="/dashboard" className="mb-1.5 flex items-center gap-2.5 px-1.5 pb-4 pt-1.5">
+      <Link href="/dashboard" className="flex items-center gap-2.5 px-1.5 pb-3 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
         <span className="overflow-hidden whitespace-nowrap text-base font-semibold tracking-tight text-paper">DealerHub</span>
       </Link>
+
+      {/* Credit balance sits with the brand mark, the way Vercel and Linear
+          put the workspace/team context at the top of their rail.
+          
+          Third placement, and the reasoning for moving it again: it was a
+          white card in a white top bar (read as a foreign plank), then a
+          chip in a canvas-coloured top bar (a 41px full-width strip holding
+          one small thing in the far corner — still mostly empty). The strip
+          was always the problem, not the chip. There is no strip now: the
+          whole desktop header is gone and every page starts at the top of
+          the viewport. */}
+      {creditBalance && (
+        <a href="/purchases" className="rail-balance" title="Credit balance — points bought from Vibe Mobile and not yet resold. New transactions are blocked when this reaches zero.">
+          <span
+            className={`status-dot ${creditBalance.empty ? 'bg-clay-bright' : creditBalance.low ? 'bg-brass-bright' : 'bg-jade-bright'}`}
+          />
+          <span className="text-paper-dim">Credit</span>
+          <span className="ml-auto font-semibold tabular-nums text-paper">{creditBalance.available.toLocaleString()}</span>
+          <span className="text-paper-dim">pts</span>
+        </a>
+      )}
 
       {/* flex-1 + overflow-y-auto — .rail is a fixed h-screen column with no
           scroll of its own, so once the nav groups plus the footer below

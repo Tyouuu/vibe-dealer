@@ -233,6 +233,17 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
+
+      {/* Ranked by what the reader has to DO, in one column.
+          The page used to open with a 550px chart whose headline figure was
+          RM 0.00 — the biggest thing on it was an empty month, and history
+          is the one thing on a dashboard nobody can act on. Then it put the
+          three items that genuinely need action in a third-width card below
+          the fold. This is that order reversed: the work, then the money,
+          then where the money came from, then the ledger. A single column
+          also makes the masonry void structurally impossible — there is no
+          short card left beside a tall one. */}
+      <NeedsAttention items={alerts} />
       {/* Commission is master's headline: it's the money the business actually
           keeps, and every other figure here is an input to it. */}
       {/* Full width, with the real six-month chart inside it. This card and
@@ -268,15 +279,7 @@ export default async function DashboardPage() {
           ]}
       />
 
-      {/* Two short lists side by side, both about the same width of content.
-          Previously the 500px trend chart sat beside the ~150px Growth by
-          Region card, which left a void down the whole right-hand side of
-          the page. Pairing the two lists instead means neither column has
-          to stretch to meet the other. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-        <NeedsAttention items={alerts} />
-        <RegionGrowthCard regions={regionGrowth} />
-      </div>
+      <RegionGrowthCard regions={regionGrowth} />
 
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
@@ -351,6 +354,17 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(currentMonthStr)} />
+
+      {/* Ranked by what the reader has to DO, in one column.
+          The page used to open with a 550px chart whose headline figure was
+          RM 0.00 — the biggest thing on it was an empty month, and history
+          is the one thing on a dashboard nobody can act on. Then it put the
+          three items that genuinely need action in a third-width card below
+          the fold. This is that order reversed: the work, then the money,
+          then where the money came from, then the ledger. A single column
+          also makes the masonry void structurally impossible — there is no
+          short card left beside a tall one. */}
+      <NeedsAttention items={alerts} />
       {/* An accountant's headline is the volume they're responsible for
           recording and verifying, not master's commission. */}
       {/* Full width, with the real six-month chart inside it. This card and
@@ -386,15 +400,7 @@ async function AccountantDashboard({ supabase, userId }: { supabase: SupabaseCli
           ]}
       />
 
-      {/* Two short lists side by side, both about the same width of content.
-          Previously the 500px trend chart sat beside the ~150px Growth by
-          Region card, which left a void down the whole right-hand side of
-          the page. Pairing the two lists instead means neither column has
-          to stretch to meet the other. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-        <NeedsAttention items={alerts} />
-        <RegionGrowthCard regions={regionGrowth} />
-      </div>
+      <RegionGrowthCard regions={regionGrowth} />
 
       <div className="app-card">
         <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
@@ -473,6 +479,9 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Dashboard" subtitle={formatMonthLabel(monthStart.slice(0, 7))} />
+
+      {/* Same ranking as the other two roles: the work first. */}
+      <NeedsAttention items={alerts} />
       {/* cs has no financial visibility, so the headline is the queue that
           is actually their job to clear. */}
       {/* Full width. cs has no trend chart — no financial series to plot —
@@ -504,12 +513,7 @@ async function CsDashboard({ supabase, userId }: { supabase: SupabaseClient; use
           ]}
       />
 
-      {/* Two short lists side by side rather than a table beside a short
-          card — same void this page had on the master and accountant views. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-        <NeedsAttention items={alerts} />
-        <RegionGrowthCard regions={regionGrowth} />
-      </div>
+      <RegionGrowthCard regions={regionGrowth} />
 
       <div className="app-card">
           <div className="mb-3.5 flex items-center justify-between">

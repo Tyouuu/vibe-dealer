@@ -733,6 +733,13 @@ body {
   .rail {
     @apply fixed inset-y-0 left-0 z-20 flex h-screen w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
+  /* One line, in the rail, under the wordmark. Not a card and not a
+     progress bar: the bar was never "% of quota used" — points has no
+     ceiling — only "how far from the danger zone", which is what the dot
+     says in 8px. */
+  .rail-balance {
+    @apply mb-1 flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-850 px-2.5 py-2 text-[12px] transition-colors hover:border-ink-700 hover:bg-ink-800;
+  }
   .rail-group-label {
     @apply px-2.5 pb-1.5 pt-3.5 text-[12px] font-semibold text-paper-dim first:pt-1;
   }

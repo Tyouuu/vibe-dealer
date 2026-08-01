@@ -134,7 +134,7 @@ export function MobileNav({
 
           {actualRole === 'master' && (
             <div className="mt-3 border-t border-ink-800 pt-3">
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+              <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
               <div className="flex gap-1.5">
                 {PREVIEW_ROLES.map((r) => (
                   <button
@@ -142,7 +142,7 @@ export function MobileNav({
                     type="button"
                     disabled={pending}
                     onClick={() => pickPreviewRole(r)}
-                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
+                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-bold transition-colors disabled:opacity-60 ${
                       role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
                     }`}
                   >
@@ -157,9 +157,9 @@ export function MobileNav({
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1.5">
                 <span className="pill pill-neutral w-fit">{roleLabel}</span>
-                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9.5px] font-bold text-primary-deep">Preview</span>}
+                {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-bold text-primary-deep">Preview</span>}
               </span>
-              {email && <span className="text-[11px] text-paper-dim">{email}</span>}
+              {email && <span className="text-[12px] text-paper-dim">{email}</span>}
             </div>
             <LogoutButton />
           </div>

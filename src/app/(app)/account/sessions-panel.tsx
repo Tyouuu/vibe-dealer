@@ -40,7 +40,7 @@ export function SessionsPanel({ currentDevice, since, history }: { currentDevice
           <span className="field-label">Sign-in history</span>
           <div className="flex flex-col divide-y divide-ink-800 rounded-lg border border-ink-800">
             {history.map((h) => (
-              <div key={h.id} className="flex items-center justify-between gap-3 px-3.5 py-2 text-[12.5px]">
+              <div key={h.id} className="flex items-center justify-between gap-3 px-3.5 py-2 text-[12px]">
                 <span className="font-semibold text-paper">{h.device}</span>
                 <span className="text-paper-dim">{h.when}</span>
               </div>

@@ -31,7 +31,7 @@ function formatSignInTime(iso: string): string {
 // shared banner for the whole section).
 function AdminManagedNote() {
   return (
-    <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-paper-dim">
+    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-paper-dim">
       <IconInfo className="h-3 w-3 shrink-0" />
       Managed by your admin
     </div>

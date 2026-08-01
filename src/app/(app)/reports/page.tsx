@@ -162,17 +162,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
           The axis is in the URL so the view is shareable and survives
           Back/Forward, per Geist. */}
-      <div className="app-card">
-        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+      {/* The breakdown is an index — a heading, an axis switcher, and rows —
+          so it takes the index shape rather than a card, the same as
+          /dealers and /records. The hero above keeps its card because it is
+          a summary, not a list. */}
+      <div className="index-surface">
+        <div className="index-filterbar">
           <div>
             <h3 className="text-sm font-bold text-paper">Where it came from</h3>
-            <p className="mt-0.5 text-[11.5px] text-paper-dim">
+            <p className="mt-0.5 text-[12px] text-paper-dim">
               {by === 'type'
                 ? 'The same month split by what was sold. Click nothing here — the totals are in the header.'
                 : 'Click a dealer to see its individual transactions for this month.'}
             </p>
           </div>
-          <div className="segmented shrink-0">
+          <div className="segmented ml-auto shrink-0">
             <Link href={`/reports?month=${month}`} className={`segmented-btn ${by === 'dealer' ? 'active' : ''}`}>
               By dealer
             </Link>

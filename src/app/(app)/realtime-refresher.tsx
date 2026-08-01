@@ -32,7 +32,7 @@ export function RealtimeRefresher() {
 
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${
         connected ? 'border-jade/40 bg-jade/10 text-jade-bright' : 'border-ink-700 bg-ink-900 text-paper-dim'
       }`}
     >

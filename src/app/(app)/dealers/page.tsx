@@ -311,7 +311,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           <DealersTable dealers={pageRows} groupByRegion={view === 'region'} showRate={showRate} showRanking={showRanking} />
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[11.5px] text-paper-dim">
+              <span className="text-[12px] text-paper-dim">
                 Page {pageNum} of {totalPages}
               </span>
               <div className="flex items-center gap-2">

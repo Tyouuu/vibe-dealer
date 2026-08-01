@@ -96,7 +96,7 @@ export function HeroCard({
             })()}
           </span>
           {chg != null && <Delta pct={chg} big />}
-          {chgSuffix && <span className="text-[12.5px] text-paper-dim">{chgSuffix}</span>}
+          {chgSuffix && <span className="text-[12px] text-paper-dim">{chgSuffix}</span>}
         </div>
       </div>
 
@@ -106,10 +106,10 @@ export function HeroCard({
         <div className="grid grid-cols-1 gap-3 border-t border-ink-800 pt-4 sm:grid-cols-3">
           {stats.map((s) => (
             <Link key={s.label} href={s.href} className="group min-w-0">
-              <div className="truncate text-[11.5px] font-medium text-paper-dim">{s.label}</div>
+              <div className="truncate text-[12px] font-medium text-paper-dim">{s.label}</div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span
-                  className={`figure-points truncate whitespace-nowrap text-[15px] font-semibold group-hover:underline ${
+                  className={`figure-points truncate whitespace-nowrap text-[14px] font-semibold group-hover:underline ${
                     s.tone === 'warn' ? 'text-clay-bright' : s.tone === 'caution' ? 'text-brass-bright' : 'text-paper'
                   }`}
                 >
@@ -117,11 +117,11 @@ export function HeroCard({
                 </span>
                 {s.chg != null && <Delta pct={s.chg} />}
               </div>
-              {s.sub && <div className="mt-0.5 text-[11px] leading-snug text-paper-dim">{s.sub}</div>}
+              {s.sub && <div className="mt-0.5 text-[12px] leading-snug text-paper-dim">{s.sub}</div>}
             </Link>
           ))}
         </div>
-        {footnote && <div className="mt-3 text-[11.5px] leading-relaxed text-paper-dim">{footnote}</div>}
+        {footnote && <div className="mt-3 text-[12px] leading-relaxed text-paper-dim">{footnote}</div>}
       </div>
     </div>
   )
@@ -134,7 +134,7 @@ export function HeroCard({
 function Delta({ pct, big = false }: { pct: number; big?: boolean }) {
   const r = Math.round(pct * 10) / 10
   return (
-    <span className={`chg ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'} ${big ? '' : 'text-[10.5px]'}`}>
+    <span className={`chg ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'} ${big ? '' : 'text-[11px]'}`}>
       {r === 0 ? '→' : r > 0 ? '↑' : '↓'} {Math.abs(r).toFixed(1)}%
     </span>
   )
@@ -171,7 +171,7 @@ function Sparkline({ values, label }: { values: number[]; label?: string }) {
         <polygon points={area} fill={stroke} opacity="0.10" />
         <polyline points={line} fill="none" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
-      {label && <p className="mt-1.5 text-[11.5px] text-paper-dim">{label}</p>}
+      {label && <p className="mt-1.5 text-[12px] text-paper-dim">{label}</p>}
     </div>
   )
 }

@@ -374,7 +374,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                       </span>
                       {tx.type === 'topup' && tx.coupon_rm > 0 && (
-                        <div className="mt-0.5 text-[10.5px] text-paper-dim">
+                        <div className="mt-0.5 text-[11px] text-paper-dim">
                           {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                         </div>
                       )}
@@ -395,7 +395,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     <td className="td">
                       <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
                       {tx.status === 'flagged' && tx.flag_reason && (
-                        <div className="mt-0.5 max-w-[140px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
+                        <div className="mt-0.5 max-w-[140px] truncate text-[11px] text-paper-dim" title={tx.flag_reason}>
                           {tx.flag_reason}
                         </div>
                       )}
@@ -446,7 +446,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-          <span className="text-[11.5px] text-paper-dim">
+          <span className="text-[12px] text-paper-dim">
             Page {pageNum} of {totalPages}
           </span>
           <div className="flex items-center gap-2">

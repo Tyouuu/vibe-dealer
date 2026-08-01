@@ -86,18 +86,18 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
                       {isFinance && (
                         <div>
-                          <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Margin</dt>
+                          <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Margin</dt>
                           <dd className="mt-1 text-[13px] font-semibold text-paper">+{formatMYR(o.margin)}</dd>
                         </div>
                       )}
                       <div>
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Shipping</dt>
+                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Shipping</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">
                           {o.shipping_fee_rm != null ? `${formatMYR(Number(o.shipping_fee_rm))}` : '—'}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">
+                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">
                           {isPhysicalSimType(o.sim_type) ? 'Invoice' : 'eSIM Codes'}
                         </dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">

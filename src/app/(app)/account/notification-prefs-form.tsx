@@ -46,7 +46,7 @@ export function NotificationPrefsForm({
             <label key={c.key} className="flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5">
               <span>
                 <span className="block text-[13px] font-semibold text-paper">{c.label}</span>
-                <span className="block text-[11.5px] text-paper-dim">{c.description}</span>
+                <span className="block text-[12px] text-paper-dim">{c.description}</span>
               </span>
               <input
                 type="checkbox"

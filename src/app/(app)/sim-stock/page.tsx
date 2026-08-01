@@ -224,7 +224,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           )}
           {ordersTotalPages > 1 && (
             <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[11.5px] text-paper-dim">
+              <span className="text-[12px] text-paper-dim">
                 Page {ordersPage} of {ordersTotalPages}
               </span>
               <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             )}
             {intakesTotalPages > 1 && (
               <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-                <span className="text-[11.5px] text-paper-dim">
+                <span className="text-[12px] text-paper-dim">
                   Page {intakesPage} of {intakesTotalPages}
                 </span>
                 <div className="flex items-center gap-2">

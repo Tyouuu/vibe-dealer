@@ -196,7 +196,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
               </ScrollFade>
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-                  <span className="text-[11.5px] text-paper-dim">
+                  <span className="text-[12px] text-paper-dim">
                     Page {pageNum} of {totalPages}
                   </span>
                   <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             about. */}
         <div className="app-card lg:col-span-5">
           <h2 className="text-sm font-bold text-paper">Log a purchase</h2>
-          <p className="mt-0.5 text-[11.5px] leading-relaxed text-paper-dim">
+          <p className="mt-0.5 text-[12px] leading-relaxed text-paper-dim">
             Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
             is what&apos;s left to sell.
           </p>

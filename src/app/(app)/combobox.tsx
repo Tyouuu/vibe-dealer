@@ -88,7 +88,7 @@ export function Combobox({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-[13.5px] text-paper outline-none placeholder:text-paper-dim/70"
+              className="w-full bg-transparent text-[13px] text-paper outline-none placeholder:text-paper-dim/70"
             />
           </div>
           <div role="listbox" className="max-h-64 overflow-y-auto p-1.5">
@@ -109,8 +109,8 @@ export function Combobox({
                 >
                   {o.avatarName && <Avatar name={o.avatarName} size={26} />}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13.5px] font-bold text-paper">{o.label}</span>
-                    {o.sublabel && <span className="block truncate text-[11.5px] text-paper-dim">{o.sublabel}</span>}
+                    <span className="block truncate text-[13px] font-bold text-paper">{o.label}</span>
+                    {o.sublabel && <span className="block truncate text-[12px] text-paper-dim">{o.sublabel}</span>}
                   </span>
                   {value === o.value && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-primary">

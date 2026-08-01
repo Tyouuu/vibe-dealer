@@ -79,7 +79,7 @@ export function TextAutocomplete({
                 setOpen(false)
                 inputRef.current?.focus()
               }}
-              className={`block w-full rounded-lg px-2.5 py-2 text-left text-[13.5px] font-semibold transition-colors hover:bg-primary-soft ${
+              className={`block w-full rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold transition-colors hover:bg-primary-soft ${
                 s === current ? 'bg-primary-soft text-primary-deep' : 'text-paper'
               }`}
             >

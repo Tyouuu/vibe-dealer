@@ -30,7 +30,7 @@ export function ForgotPasswordForm({ initialError }: { initialError?: string }) 
     return (
       <div className="flex flex-col gap-4">
         <div className="alert alert-ok">If that email has an account, we&apos;ve sent a link to reset your password.</div>
-        <Link href="/login" className="foot-link text-center text-[11.5px] text-primary-deep">
+        <Link href="/login" className="foot-link text-center text-[12px] text-primary-deep">
           Back to Sign In
         </Link>
       </div>
@@ -64,7 +64,7 @@ export function ForgotPasswordForm({ initialError }: { initialError?: string }) 
         {pending ? 'Sending…' : 'Send Reset Link'}
       </button>
 
-      <Link href="/login" className="text-center text-[11.5px] text-primary-deep">
+      <Link href="/login" className="text-center text-[12px] text-primary-deep">
         Back to Sign In
       </Link>
     </form>

@@ -95,7 +95,7 @@ function Toast({ notification, onDismiss, onClick }: { notification: ToastNotifi
       <button onClick={onClick} className="flex-1 text-left">
         <div className="text-[13px] font-bold text-paper">{notification.title}</div>
         <div className="mt-0.5 text-[12px] text-paper-dim">{notification.subtitle}</div>
-        <div className="mt-1.5 text-[11.5px] font-bold text-primary-deep">View in Notifications →</div>
+        <div className="mt-1.5 text-[12px] font-bold text-primary-deep">View in Notifications →</div>
       </button>
       <button
         onClick={onDismiss}

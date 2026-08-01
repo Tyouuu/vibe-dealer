@@ -98,7 +98,7 @@ export function ResetPasswordForm() {
     return (
       <div className="flex flex-col gap-4">
         <div className="alert alert-bad">That reset link is invalid or has expired.</div>
-        <Link href="/forgot-password" className="text-center text-[11.5px] text-primary-deep">
+        <Link href="/forgot-password" className="text-center text-[12px] text-primary-deep">
           Request a new link
         </Link>
       </div>

@@ -126,7 +126,7 @@ export function AdjustButton({
             />
           </label>
 
-          <p className="text-[11px] text-paper-dim">
+          <p className="text-[12px] text-paper-dim">
             Still needs to be verified before it counts toward reports — by a different accountant or master, not you.
           </p>
 

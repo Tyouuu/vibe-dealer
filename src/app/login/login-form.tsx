@@ -82,20 +82,24 @@ export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-[12.5px] font-medium text-paper-dim">
+      <label className="flex items-center gap-2 text-[12px] font-medium text-paper-dim">
         <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-primary" />
         Remember me on this device
       </label>
 
+      {/* "Sign in" — sentence case, matching the heading above it and every
+          other action label in the app. It was "Sign In". */}
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
-        {pending ? 'Signing in…' : 'Sign In'}
+        {pending ? 'Signing in…' : 'Sign in'}
       </button>
 
-      <p className="text-center text-[11.5px] text-paper-dim">
-        <Link href="/forgot-password" className="text-primary-deep underline underline-offset-2 hover:no-underline">
+      {/* "No account? Contact your admin" moved out to the page footnote,
+          which already says exactly that. What is left is the one thing
+          someone stuck on this form can act on. */}
+      <p className="text-center text-[12px]">
+        <Link href="/forgot-password" className="font-medium text-primary-deep underline underline-offset-2 hover:no-underline">
           Forgot your password?
-        </Link>{' '}
-        · No account? Contact your admin.
+        </Link>
       </p>
     </form>
   )

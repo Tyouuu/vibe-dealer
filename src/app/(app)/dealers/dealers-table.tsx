@@ -162,7 +162,7 @@ export function DealersTable({
                             </span>
                           )}
                         </div>
-                        {d.company_no && <div className="text-[11px] text-paper-dim">{d.company_no}</div>}
+                        {d.company_no && <div className="text-[12px] text-paper-dim">{d.company_no}</div>}
                       </div>
                     </div>
                   </td>

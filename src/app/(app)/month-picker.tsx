@@ -124,7 +124,7 @@ export function MonthPicker({
                   type="button"
                   key={m}
                   onClick={() => pick(i)}
-                  className={`rounded-lg border-[1.5px] py-2 text-[12.5px] font-bold transition-colors ${
+                  className={`rounded-lg border-[1.5px] py-2 text-[12px] font-bold transition-colors ${
                     isSelected
                       ? 'border-primary bg-primary text-white'
                       : isToday

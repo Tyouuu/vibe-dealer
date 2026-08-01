@@ -24,7 +24,7 @@ export function FilterChips({ chips, clearAllHref }: { chips: FilterChip[]; clea
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-paper-dim">Filtered by</span>
+      <span className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Filtered by</span>
       {chips.map((chip) => (
         <Link
           key={`${chip.label}-${chip.value}`}

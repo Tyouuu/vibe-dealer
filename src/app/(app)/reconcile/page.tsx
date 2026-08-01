@@ -150,7 +150,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
            placeholder showing "—", because the verdict genuinely doesn't
            exist yet; QuickBooks' equivalent state is simply its entry screen. */
         <div className="app-card">
-          <h2 className="text-[15px] font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
+          <h2 className="text-[14px] font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
           <p className="mt-1 text-[13px] leading-relaxed text-paper-dim">
             Nothing can be compared until Vibe&apos;s own figures are in. Upload their statement and the numbers below
             fill themselves in, or type them.
@@ -171,7 +171,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         <div className={`app-card ${gap === 0 ? 'ring-1 ring-jade/30' : ''}`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-paper-dim">Difference</div>
+              <div className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Difference</div>
               {/* The number the page exists to produce. The old layout showed
                   your total and Vibe's total side by side and left the reader
                   to subtract them. */}
@@ -195,16 +195,16 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
           <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-ink-800 pt-4 sm:grid-cols-3">
             <div>
-              <div className="text-[11px] font-medium text-paper-dim">Your system</div>
-              <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
+              <div className="text-[12px] font-medium text-paper-dim">Your system</div>
+              <div className="figure-points mt-0.5 text-[14px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
             </div>
             <div>
-              <div className="text-[11px] font-medium text-paper-dim">Vibe&apos;s statement</div>
-              <div className="figure-points mt-0.5 text-[15px] font-semibold text-paper">{Number(companyPoints).toLocaleString()} pts</div>
+              <div className="text-[12px] font-medium text-paper-dim">Vibe&apos;s statement</div>
+              <div className="figure-points mt-0.5 text-[14px] font-semibold text-paper">{Number(companyPoints).toLocaleString()} pts</div>
             </div>
             <div>
-              <div className="text-[11px] font-medium text-paper-dim">Your 2% due</div>
-              <div className="figure-money mt-0.5 text-[15px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
+              <div className="text-[12px] font-medium text-paper-dim">Your 2% due</div>
+              <div className="figure-money mt-0.5 text-[14px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
             </div>
           </div>
         </div>
@@ -219,11 +219,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
             <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-[13px] font-semibold text-paper">Vibe&apos;s statement</span>
-              <span className="figure-points text-[12.5px] text-paper-dim">{Number(companyPoints).toLocaleString()} pts</span>
+              <span className="figure-points text-[12px] text-paper-dim">{Number(companyPoints).toLocaleString()} pts</span>
               {statement?.company_profit_rm != null && (
-                <span className="figure-money text-[12.5px] text-paper-dim">{formatMYR(statement.company_profit_rm)}</span>
+                <span className="figure-money text-[12px] text-paper-dim">{formatMYR(statement.company_profit_rm)}</span>
               )}
-              {statement?.note ? <span className="truncate text-[12.5px] text-paper-dim">{statement.note}</span> : null}
+              {statement?.note ? <span className="truncate text-[12px] text-paper-dim">{statement.note}</span> : null}
             </span>
             <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-primary-deep">
               Change
@@ -311,7 +311,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           )}
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[11.5px] text-paper-dim">
+              <span className="text-[12px] text-paper-dim">
                 Page {currentPage} of {totalPages}
               </span>
               <div className="flex items-center gap-2">
@@ -341,7 +341,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                 touch target (WCAG 2.5.8) rather than just its 15px line box. */}
             <a
               href={`/records?month=${month}&status=verified`}
-              className="inline-block py-1.5 text-[11.5px] font-semibold text-primary hover:underline"
+              className="inline-block py-1.5 text-[12px] font-semibold text-primary hover:underline"
             >
               View all in Transactions →
             </a>
@@ -362,8 +362,8 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                 <IconCheckCircle className="h-5 w-5" />
               </span>
               <div>
-                <div className="text-[15px] font-semibold text-paper">{formatMonthLabel(month)} is closed</div>
-                <div className="mt-0.5 text-[12.5px] text-paper-dim">
+                <div className="text-[14px] font-semibold text-paper">{formatMonthLabel(month)} is closed</div>
+                <div className="mt-0.5 text-[12px] text-paper-dim">
                   Transactions dated in this month can no longer be added, edited or verified.
                 </div>
               </div>
@@ -372,8 +372,8 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           </div>
         ) : (
           <>
-            <div className="text-[15px] font-semibold text-paper">Close {formatMonthLabel(month)}</div>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-paper-dim">
+            <div className="text-[14px] font-semibold text-paper">Close {formatMonthLabel(month)}</div>
+            <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
               Locks the month. Once closed, no transaction dated in {formatMonthLabel(month)} can be added, edited or
               verified — a correction has to reopen the month first.
             </p>
@@ -381,10 +381,10 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                 absent, so it's clear what's left to do — NetSuite shows its
                 blocked close tasks as a lock icon for the same reason. */}
             {!hasStatement && (
-              <p className="mt-2 text-[12.5px] font-medium text-brass-bright">Enter Vibe&apos;s statement first.</p>
+              <p className="mt-2 text-[12px] font-medium text-brass-bright">Enter Vibe&apos;s statement first.</p>
             )}
             {hasStatement && gap !== 0 && (
-              <p className="mt-2 text-[12.5px] font-medium text-brass-bright">
+              <p className="mt-2 text-[12px] font-medium text-brass-bright">
                 Resolve the {Math.abs(gap).toLocaleString()} pt difference, or record a reason for closing anyway.
               </p>
             )}

@@ -116,7 +116,7 @@ function AttrChip({ icon, label, value }: { icon: React.ReactNode; label: string
 
 function RailField({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
-    <div className={`flex items-start justify-between gap-2.5 py-2 text-[12.5px] ${last ? '' : 'border-b border-ink-800'}`}>
+    <div className={`flex items-start justify-between gap-2.5 py-2 text-[12px] ${last ? '' : 'border-b border-ink-800'}`}>
       <span className="whitespace-nowrap font-semibold text-paper-dim">{label}</span>
       <span className="text-right font-bold text-paper">{value}</span>
     </div>
@@ -172,8 +172,8 @@ function TimelineItem({
         )}
       </span>
       <div className="flex-1 pt-0.5">
-        <div className="text-[12.5px] font-bold text-paper">{title}</div>
-        <div className="mt-0.5 text-[11.5px] text-paper-dim">{subtitle}</div>
+        <div className="text-[12px] font-bold text-paper">{title}</div>
+        <div className="mt-0.5 text-[12px] text-paper-dim">{subtitle}</div>
       </div>
     </div>
   )
@@ -471,7 +471,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         <td className="td text-paper-dim">
                           {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                           {tx.type === 'topup' && tx.coupon_rm > 0 && (
-                            <div className="mt-0.5 text-[10.5px] text-paper-dim">
+                            <div className="mt-0.5 text-[11px] text-paper-dim">
                               {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                             </div>
                           )}
@@ -484,7 +484,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         <td className="td">
                           <StatusPill status={tx.status} />
                           {tx.status === 'flagged' && tx.flag_reason && (
-                            <div className="mt-0.5 max-w-[160px] truncate text-[10.5px] text-paper-dim" title={tx.flag_reason}>
+                            <div className="mt-0.5 max-w-[160px] truncate text-[11px] text-paper-dim" title={tx.flag_reason}>
                               {tx.flag_reason}
                             </div>
                           )}
@@ -608,7 +608,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           {typedDealer.notes && (
             <div className="app-card">
               <h3 className="mb-1.5 text-sm font-bold text-paper">Notes</h3>
-              <p className="whitespace-pre-wrap text-[12.5px] text-paper-dim">{typedDealer.notes}</p>
+              <p className="whitespace-pre-wrap text-[12px] text-paper-dim">{typedDealer.notes}</p>
             </div>
           )}
 

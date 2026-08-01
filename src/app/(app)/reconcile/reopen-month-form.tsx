@@ -18,7 +18,7 @@ export function ReopenMonthForm({ month }: { month: string }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-[11.5px] font-semibold text-paper-dim hover:text-paper hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="text-[12px] font-semibold text-paper-dim hover:text-paper hover:underline">
         Reopen this month to make a correction
       </button>
     )
@@ -45,7 +45,7 @@ export function ReopenMonthForm({ month }: { month: string }) {
         className="field-input"
         required
       />
-      <p className="mt-2 text-[11px] text-paper-dim">
+      <p className="mt-2 text-[12px] text-paper-dim">
         This unlocks {month} so its transactions can change again. It&apos;s recorded in the audit log, and you&apos;ll need to mark the month
         reconciled again afterwards.
       </p>
@@ -53,7 +53,7 @@ export function ReopenMonthForm({ month }: { month: string }) {
         <button type="submit" disabled={pending || !reason.trim()} className="btn-ghost py-1.5 text-xs disabled:opacity-50">
           {pending ? 'Reopening…' : 'Reopen month'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-[11.5px] font-semibold text-paper-dim hover:text-paper">
+        <button type="button" onClick={() => setOpen(false)} className="text-[12px] font-semibold text-paper-dim hover:text-paper">
           Cancel
         </button>
       </div>

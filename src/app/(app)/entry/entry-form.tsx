@@ -211,13 +211,13 @@ export function EntryForm({
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
           {recentDealers.length > 0 && !dealerId && (
             <div className="-mb-1 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-paper-dim">Recent:</span>
+              <span className="text-[12px] font-semibold text-paper-dim">Recent:</span>
               {recentDealers.map((d) => (
                 <button
                   key={d.id}
                   type="button"
                   onClick={() => selectDealer(d.id)}
-                  className="rounded-full border border-ink-800 bg-ink-900 px-2.5 py-1 text-[11.5px] font-semibold text-paper transition-colors hover:border-primary hover:text-primary"
+                  className="rounded-full border border-ink-800 bg-ink-900 px-2.5 py-1 text-[12px] font-semibold text-paper transition-colors hover:border-primary hover:text-primary"
                 >
                   {d.company_name}
                 </button>
@@ -234,8 +234,8 @@ export function EntryForm({
               <span className="flex min-w-0 items-center gap-2.5">
                 <Avatar name={dealer.company_name} size={28} />
                 <span className="min-w-0">
-                  <span className="block truncate text-[13.5px] font-semibold text-paper">{dealer.company_name}</span>
-                  <span className="block text-[11.5px] text-paper-dim">
+                  <span className="block truncate text-[13px] font-semibold text-paper">{dealer.company_name}</span>
+                  <span className="block text-[12px] text-paper-dim">
                     {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : 'No package or rate yet'}
                   </span>
                 </span>
@@ -396,7 +396,7 @@ export function EntryForm({
           {preview ? (
             <div className="mt-3 rounded-xl border border-ink-800 bg-ink-850/50 p-4">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="text-[11.5px] font-medium text-paper-dim">
+                <div className="text-[12px] font-medium text-paper-dim">
                   {type === 'package' ? 'Package value' : 'Top-up value'}
                 </div>
                 <span className="live-badge">
@@ -450,7 +450,7 @@ export function EntryForm({
               names what is inside rather than saying "More" so the
               progression carries information scent. */}
           <details className="group mt-2">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-paper-dim hover:text-paper">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold text-paper-dim hover:text-paper">
               <IconChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
               Add a receipt or note
             </summary>
@@ -524,7 +524,7 @@ export function EntryForm({
             <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
           </div>
         )}
-        <p className="mt-3 text-[11px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>
+        <p className="mt-3 text-[12px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>
         <div className="mt-4 flex items-center gap-2">
           <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">
             Back

@@ -59,7 +59,7 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
                 Cancel
               </button>
             </div>
-            <p className="text-[11px] text-paper-dim">Excluded from reports and reconciliation. Cannot be undone.</p>
+            <p className="text-[12px] text-paper-dim">Excluded from reports and reconciliation. Cannot be undone.</p>
           </form>
         </div>
       )}

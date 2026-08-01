@@ -175,7 +175,7 @@ export function DatePicker({
           </div>
           <div className="grid grid-cols-7 gap-y-1 px-3">
             {WEEKDAYS.map((w, i) => (
-              <span key={i} className="grid h-6 place-items-center text-[10.5px] font-bold uppercase text-paper-dim/70">
+              <span key={i} className="grid h-6 place-items-center text-[11px] font-bold uppercase text-paper-dim/70">
                 {w}
               </span>
             ))}
@@ -193,7 +193,7 @@ export function DatePicker({
                   key={i}
                   disabled={disabled}
                   onClick={() => pick(day)}
-                  className={`grid h-8 w-8 place-items-center rounded-lg text-[12.5px] font-bold transition-colors ${
+                  className={`grid h-8 w-8 place-items-center rounded-lg text-[12px] font-bold transition-colors ${
                     disabled
                       ? 'cursor-not-allowed text-paper-dim/30'
                       : isSelected

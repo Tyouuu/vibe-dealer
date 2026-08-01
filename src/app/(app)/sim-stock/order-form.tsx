@@ -101,7 +101,7 @@ export function OrderForm({
           options={dealers.map((d) => ({ value: d.id, label: d.company_name, sublabel: d.address ?? undefined }))}
         />
         {isPhysicalSimType(simType) && (
-          <p className="mt-1 text-[11px] text-paper-dim">
+          <p className="mt-1 text-[12px] text-paper-dim">
             Ship to: {selectedDealer ? (selectedDealer.address ?? 'No address on file') : '—'}
           </p>
         )}
@@ -115,7 +115,7 @@ export function OrderForm({
           Quantity (min {SIM_MIN_ORDER_QTY})
         </label>
         <input id="so-qty" name="quantity" type="number" min={SIM_MIN_ORDER_QTY} step="1" required className="field-input" />
-        <p className="mt-1 text-[11px] text-paper-dim">
+        <p className="mt-1 text-[12px] text-paper-dim">
           {formatMYR(SIM_SELL_PRICE_RM)} per card · {availableByType[simType].toLocaleString()} {SIM_TYPE_LABEL[simType]} in stock right now
         </p>
       </div>

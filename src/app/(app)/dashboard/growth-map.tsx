@@ -41,7 +41,7 @@ export function RegionGrowthCard({ regions }: { regions: Region[] }) {
           {active && <span className="text-paper-dim"> · {active.region}</span>}
         </h3>
         {active && (
-          <button type="button" onClick={() => setSelected(null)} className="shrink-0 text-[11px] font-bold text-primary-deep hover:underline">
+          <button type="button" onClick={() => setSelected(null)} className="shrink-0 text-[12px] font-bold text-primary-deep hover:underline">
             ← All regions
           </button>
         )}
@@ -125,7 +125,7 @@ function RegionList({
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: r.color }} />
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-[12.5px] font-bold text-paper">{r.region}</span>
+                <span className="truncate text-[12px] font-bold text-paper">{r.region}</span>
                 <span className="figure-points shrink-0 text-[12px] font-semibold text-paper">{r.points.toLocaleString()}</span>
               </span>
               <span className="mt-1 flex items-center gap-2">
@@ -135,7 +135,7 @@ function RegionList({
                     style={{ width: `${maxPoints ? Math.max(3, (r.points / maxPoints) * 100) : 0}%`, background: r.color }}
                   />
                 </span>
-                <span className="figure w-8 shrink-0 text-right text-[11px] text-paper-dim">{r.pct}%</span>
+                <span className="figure w-8 shrink-0 text-right text-[12px] text-paper-dim">{r.pct}%</span>
               </span>
             </span>
           </button>
@@ -158,7 +158,7 @@ function DealerList({ active }: { active: Region }) {
         <div key={d.name} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5">
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[12.5px] font-semibold text-paper">{d.name}</span>
+              <span className="truncate text-[12px] font-semibold text-paper">{d.name}</span>
               <span className="figure-points shrink-0 text-[12px] text-paper">{d.points.toLocaleString()}</span>
             </span>
             <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-ink-800">

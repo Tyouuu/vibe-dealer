@@ -39,7 +39,7 @@ export function EmptyState({
       className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-ink-800 px-6 py-14 text-center"
     >
       {icon && <span className="mb-1 grid h-11 w-11 place-items-center rounded-full bg-ink-850 text-paper-dim">{icon}</span>}
-      <p className="text-[15px] font-semibold text-paper">{title}</p>
+      <p className="text-[14px] font-semibold text-paper">{title}</p>
       {description && <p className="max-w-sm text-[13px] leading-relaxed text-paper-dim">{description}</p>}
       {variant === 'empty' && action && (
         <Link href={action.href} className="btn-primary mt-3">

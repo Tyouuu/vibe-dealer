@@ -352,7 +352,7 @@ body {
   }
 
   .field-label {
-    @apply mb-1.5 block text-[12.5px] font-bold text-paper;
+    @apply mb-1.5 block text-[12px] font-bold text-paper;
   }
 
   .field-input {
@@ -390,7 +390,7 @@ body {
   }
 
   .hint {
-    @apply mt-1 block text-[11.5px] text-paper-dim;
+    @apply mt-1 block text-[12px] text-paper-dim;
   }
 
   /* Form section header — icon tile + label + trailing rule, used to break a
@@ -426,7 +426,7 @@ body {
      all-caps tracked label is a display treatment; these are structural
      headings inside a form and should read as quickly as the fields do. */
   .form-section-head span {
-    @apply whitespace-nowrap text-[12.5px] font-semibold text-paper;
+    @apply whitespace-nowrap text-[12px] font-semibold text-paper;
   }
   .form-section-head .rule {
     @apply h-px flex-1 bg-ink-800;
@@ -487,7 +487,7 @@ body {
      compares one small mark rather than re-reading a differently-coloured
      shape each time. */
   .pill {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 px-2 py-[3px] text-[11px] font-medium text-paper;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 px-2 py-[3px] text-[12px] font-medium text-paper;
   }
   .pill-jade::before,
   .pill-clay::before,
@@ -504,7 +504,7 @@ body {
      border-radius stretches into an oval/blob shape as the box gets taller;
      a modest fixed corner radius doesn't have that failure mode. */
   .tag {
-    @apply inline-flex max-w-[150px] items-center gap-1 rounded px-2 py-1 text-[11px] font-medium leading-tight;
+    @apply inline-flex max-w-[150px] items-center gap-1 rounded px-2 py-1 text-[12px] font-medium leading-tight;
   }
   .pill-jade::before {
     @apply bg-jade;
@@ -534,7 +534,7 @@ body {
   /* Small "up/down/warn" change-indicator pill for KPI cards
      (e.g. "↑ 8.2%" against last month). */
   .chg {
-    @apply inline-flex items-center gap-0.5 text-[11.5px] font-semibold tabular-nums;
+    @apply inline-flex items-center gap-0.5 text-[12px] font-semibold tabular-nums;
   }
   /* No fill. A change indicator sits beside a figure that is already the
      largest thing on the page; wrapping it in a tinted blob makes it compete
@@ -596,7 +596,7 @@ body {
   /* purple "info strip" — a step above alert-ok/warn/bad in tone, used for
      neutral explanatory notices (matches the reference's `.info-strip`). */
   .info-strip {
-    @apply mb-4 flex items-start gap-2.5 rounded-xl border border-ink-800 bg-ink-850 px-4 py-3 text-[12.5px] leading-relaxed text-paper-dim;
+    @apply mb-4 flex items-start gap-2.5 rounded-xl border border-ink-800 bg-ink-850 px-4 py-3 text-[12px] leading-relaxed text-paper-dim;
   }
 
   /* At-a-glance status counts above a transaction table. The trailing total
@@ -697,7 +697,7 @@ body {
     @apply fixed inset-y-0 left-0 z-20 flex h-screen w-[248px] shrink-0 flex-col border-r border-ink-800 bg-ink-900 p-3.5;
   }
   .rail-group-label {
-    @apply px-2.5 pb-1.5 pt-3.5 text-[11px] font-bold text-paper-dim first:pt-1;
+    @apply px-2.5 pb-1.5 pt-3.5 text-[12px] font-bold text-paper-dim first:pt-1;
   }
   .rail-item {
     @apply mb-0.5 flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
@@ -712,7 +712,7 @@ body {
     @apply overflow-hidden whitespace-nowrap;
   }
   .rail-item .badge {
-    @apply ml-auto shrink-0 rounded-full bg-ink-800 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-paper;
+    @apply ml-auto shrink-0 rounded-full bg-ink-800 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-paper;
   }
   .rail-item.active .badge {
     @apply bg-white/15 text-white;
@@ -730,7 +730,7 @@ body {
     @apply absolute right-0 top-[calc(100%+8px)] z-50 min-w-[210px] rounded-xl border border-ink-800 bg-ink-900 p-1.5 shadow-2xl;
   }
   .dropdown-panel .hd {
-    @apply px-2.5 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-wide text-paper-dim;
+    @apply px-2.5 pb-1 pt-1.5 text-[12px] font-bold uppercase tracking-wide text-paper-dim;
   }
   /* Same popover, opening rightward from a rail item instead of downward
      from a topbar icon — bottom-anchored since these live near the bottom
@@ -780,7 +780,7 @@ body {
      loudest thing in a panel whose job is to be read, not noticed. The dot
      already says "live"; the fill was saying it a second time. */
   .live-badge {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 py-[3px] pl-1.5 pr-2 text-[10.5px] font-semibold text-paper-dim;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-800 bg-ink-900 py-[3px] pl-1.5 pr-2 text-[11px] font-semibold text-paper-dim;
   }
   .live-dot {
     @apply h-1.5 w-1.5 shrink-0 rounded-full bg-jade;
@@ -837,7 +837,7 @@ body {
     @apply grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2;
   }
   .profile-field label {
-    @apply mb-1 block text-[11.5px] font-bold text-paper-dim;
+    @apply mb-1 block text-[12px] font-bold text-paper-dim;
   }
 }
 

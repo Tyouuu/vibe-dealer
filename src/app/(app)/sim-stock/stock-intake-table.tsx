@@ -67,15 +67,15 @@ export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
                   <div className="rounded-xl border border-ink-800 bg-ink-900/60 p-4">
                     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
                       <div>
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
+                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Cost/Unit</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">{formatMYR(r.cost_per_unit_rm)}</dd>
                       </div>
                       <div>
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Recorded By</dt>
+                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Recorded By</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">{r.recordedByName}</dd>
                       </div>
                       <div>
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-paper-dim">Note</dt>
+                        <dt className="text-[11px] font-bold uppercase tracking-wide text-paper-dim">Note</dt>
                         <dd className="mt-1 text-[13px] font-semibold text-paper">
                           {r.note ?? <span className="font-normal text-paper-dim/50">—</span>}
                         </dd>

@@ -162,20 +162,20 @@ export function RailNav({
               aria-haspopup="true"
               aria-expanded={open === 'profile'}
             >
-              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[9.5px] font-bold text-primary-deep">
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-bold text-primary-deep">
                 {initials}
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
                 <span className="block truncate">{userName}</span>
-                <span className="flex items-center gap-1 text-[10.5px] font-medium normal-case text-paper-dim">
+                <span className="flex items-center gap-1 text-[11px] font-medium normal-case text-paper-dim">
                   {roleLabel}
-                  {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[9px] font-bold text-primary-deep">Preview</span>}
+                  {role !== actualRole && <span className="rounded-full bg-primary-soft px-1.5 py-px text-[11px] font-bold text-primary-deep">Preview</span>}
                 </span>
               </span>
             </button>
             {open === 'profile' && (
               <div className="dropdown-panel-rail w-56">
-                <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
+                <div className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wide text-paper-dim">Demo: view as</div>
                 <div className="flex gap-1 px-2.5 pb-2">
                   {PREVIEW_ROLES.map((r) => (
                     <button
@@ -183,7 +183,7 @@ export function RailNav({
                       type="button"
                       disabled={pending}
                       onClick={() => pickPreviewRole(r)}
-                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-bold transition-colors disabled:opacity-60 ${
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] font-bold transition-colors disabled:opacity-60 ${
                         role === r ? 'border-primary bg-primary-soft text-primary-deep' : 'border-ink-800 text-paper-dim hover:bg-ink-850 hover:text-paper'
                       }`}
                     >
@@ -196,12 +196,12 @@ export function RailNav({
           </div>
         ) : (
           <div className="rail-item cursor-default hover:bg-transparent hover:text-paper-dim">
-            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[9.5px] font-bold text-primary-deep">
+            <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-primary-soft text-[11px] font-bold text-primary-deep">
               {initials}
             </span>
             <span className="min-w-0 flex-1 overflow-hidden text-left leading-tight">
               <span className="block truncate">{userName}</span>
-              <span className="block text-[10.5px] font-medium normal-case text-paper-dim">{roleLabel}</span>
+              <span className="block text-[11px] font-medium normal-case text-paper-dim">{roleLabel}</span>
             </span>
           </div>
         )}

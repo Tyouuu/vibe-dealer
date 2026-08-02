@@ -117,7 +117,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const isClosed = Boolean(statement?.reconciled)
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-8">
       {/* Month is the page's scope, so it belongs in the header rather than
           as the first control inside the content — the same place QuickBooks,
           NetSuite and Stripe all settle it before any work begins. Changing it
@@ -146,22 +146,35 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
       {reopened && <div className="alert alert-ok">{formatMonthLabel(month)} reopened. Make the correction, then close it again.</div>}
 
       {!hasStatement ? (
-        /* STATE A — no statement yet. The form IS the page. No verdict
-           placeholder showing "—", because the verdict genuinely doesn't
-           exist yet; QuickBooks' equivalent state is simply its entry screen. */
+        /* STATE A — no statement yet.
+           The page used to open on the entry form, and measured against the
+           rest of the app that was the odd one out: every other page paints a
+           summary card directly under the title and this one opened on an
+           empty form at y=112. The earlier note here was right that a verdict
+           placeholder reading "—" would be a lie — the difference genuinely
+           cannot exist yet. But your own side of the comparison does exist,
+           and stating it is not a verdict. So the card carries what is known
+           and names what is missing, and the form moves below it as a band. */
         <div className="app-card">
-          <h2 className="text-[14px] font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-paper-dim">
-            Nothing can be compared until Vibe&apos;s own figures are in. Upload their statement and the numbers below
-            fill themselves in, or type them.
-          </p>
-          <div className="mt-4">
-            <StatementForm
-              month={month}
-              initialPoints={companyPoints}
-              initialProfit={statement?.company_profit_rm ?? null}
-              initialNote={statement?.note ?? ''}
-            />
+          <div className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Your verified total</div>
+          <div className="figure-points mt-1 text-[34px] font-semibold leading-none text-paper">{systemPoints.toLocaleString()} pts</div>
+          <div className="mt-2 text-[13px] text-paper-dim">
+            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} in {formatMonthLabel(month)}. Nothing can be
+            compared until Vibe&apos;s own figures are in.
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-ink-800 pt-4 sm:grid-cols-3">
+            <div>
+              <div className="text-[12px] font-medium text-paper-dim">Your system</div>
+              <div className="figure-points mt-0.5 text-[14px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
+            </div>
+            <div>
+              <div className="text-[12px] font-medium text-paper-dim">Vibe&apos;s statement</div>
+              <div className="mt-0.5 text-[14px] font-semibold text-brass-bright">Not entered yet</div>
+            </div>
+            <div>
+              <div className="text-[12px] font-medium text-paper-dim">Your 2% due</div>
+              <div className="figure-money mt-0.5 text-[14px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
+            </div>
           </div>
         </div>
       ) : (
@@ -210,12 +223,32 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {/* The entry form, once the summary above has said where you stand.
+          A band, not a card: this page's one card is the summary, and the
+          three things below it — enter, check, close — are the task itself
+          laid out in order. Same reasoning as an index page's table, which
+          also stopped being boxed. */}
+      {!hasStatement && (
+        <div className="page-band">
+          <h2 className="text-sm font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
+          <p className="mb-4 mt-1 text-[12px] leading-relaxed text-paper-dim">
+            Upload their statement and the numbers below fill themselves in, or type them.
+          </p>
+          <StatementForm
+            month={month}
+            initialPoints={companyPoints}
+            initialProfit={statement?.company_profit_rm ?? null}
+            initialNote={statement?.note ?? ''}
+          />
+        </div>
+      )}
+
       {/* Once entered, the statement collapses to a read-only summary with a
           Change affordance — GOV.UK's check-answers pattern. Showing the live
           form again would imply the entry step is still outstanding. Source is
           named because OCR can misread, and that's worth being able to see. */}
       {hasStatement && !isClosed && (
-        <details className="app-card group">
+        <details className="page-band group">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
             <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-[13px] font-semibold text-paper">Vibe&apos;s statement</span>
@@ -248,7 +281,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           investigating and the rows stop being background material. The
           summary line carries the count and total, since NN/g requires the
           progression mechanic to say what's behind it. */}
-      <details className="app-card group" open={hasStatement && gap !== 0}>
+      <details className="page-band group" open={hasStatement && gap !== 0}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
           <span className="text-[13px] font-semibold text-paper">
             {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} behind your total
@@ -354,7 +387,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           Xero all put visible preconditions, a separate confirmation and an
           audit trail around the equivalent action; this gets its own block at
           the end of the task rather than sitting beside the figures. */}
-      <div className="app-card">
+      <div className="page-band">
         {isClosed ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">

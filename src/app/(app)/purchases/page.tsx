@@ -5,8 +5,7 @@ import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { COMMISSION_RATE } from '@/lib/packages'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { todayInMalaysia } from '@/lib/month'
-import { PurchaseForm } from './purchase-form'
+
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
@@ -40,7 +39,6 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
     return <PermissionDenied role={user.role} action="view credit purchases" />
   }
 
-  const today = todayInMalaysia()
   const supabase = await createClient()
   const [{ data: allPurchases }, { data: pagedPurchases, count }, { data: verifiedRows }, { data: profiles }, creditBalance] = await Promise.all([
     // Separate from the paged query below — Total Bought/Total Cost Paid/
@@ -91,14 +89,17 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       <PageHeader
         title="Credit Purchases"
         subtitle="What we pay Vibe Mobile for points, before any of it is resold to dealers."
+        action={{ href: '/purchases/new', label: 'Log a purchase' }}
       />
       {/* Single column, and the hero is no longer a card inside a card.
           Measured before: three cards at 651x460, 603x227 (nested in the
           first) and 465x559, each about a third full — 35%, 30% and 37% of
           their own area carrying content. Two thirds of every card was
           empty, which reads as unfinished rather than restrained. */}
+      {error && <div className="alert alert-bad">{error}</div>}
+      {saved && <div className="alert alert-ok">Purchase recorded.</div>}
+
       <div className="stack-loose mt-8 w-full">
-        {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
         {/* Was four equal tiles. Only two of them are decisions — "how much
             can I still sell" (Balance) and "am I ahead or behind" (Cash
@@ -161,43 +162,18 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
             a third full is to give the space something to do, not to delete a
             column. Two columns where both are genuinely full is denser and
             calmer than three stacked rows where one is mostly air. */}
-        {/* Form first and full width, history under it. These were a two-up
-            row, and their heights can never match: the form is ~200px now
-            (fields laid out horizontally) and the history is however many
-            purchases exist — one row today, dozens next year. taste-redesign
-            names this directly: "inconsistent vertical rhythm in side-by-side
-            elements". Stacked, there is nothing beside either one to fail to
-            match, so the page composes the same whether the log holds one row
-            or a hundred. The order is also the order of the work: record what
-            was bought, then check the record. */}
-        <div className="app-card">
-          <h2 className="text-sm font-semibold text-paper">Log a purchase</h2>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-paper-dim">
-            Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance above
-            is what&apos;s left to sell.
-          </p>
-          <div className="mt-4">
-            {error && <div className="alert alert-bad">{error}</div>}
-            <PurchaseForm today={today} />
-          </div>
-        </div>
+        {/* The form used to be a card here, and this page was one of only
+            three in the app carrying more than one. It now lives at
+            /purchases/new, reached from the primary button in the header —
+            the same route New Transaction and Onboard Dealer already take.
 
-
-        {/* The form is visible and permanent. It was briefly folded behind a
-            button on the reasoning that buying credit happens monthly — which
-            applied the "rare occasion" test to how often a purchase happens
-            rather than to what this page is for. The page is called Credit
-            Purchases; someone opening it is most likely here to log one. That
-            is the primary task, and hiding the primary task is the failure
-            NN/g's progressive-disclosure article warns about. Second time
-            that mistake was made here, after gating New Transaction behind
-            the dealer.
-
-            It sits above the history because that is the order of the work:
-            see what's left, record what was bought, then check the record.
-            Fields are capped rather than the page — a date and two amounts
-            stretched across 1136px is the field-width mismatch Baymard warns
-            about. */}
+            The note this replaces argued the form should stay visible because
+            logging a purchase is what someone opens this page to do, and that
+            hiding the primary task is the mistake NN/g warns about. That was
+            right about *disclosure*: the form had been folded behind a toggle
+            in place, which does hide it. A primary button in the page header
+            is not that. What it buys is that this page now has the same shape
+            as the other nine — one card, then flat content. */}
         <div className="index-surface">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-paper">

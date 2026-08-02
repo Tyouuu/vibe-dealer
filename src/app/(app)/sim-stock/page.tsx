@@ -6,14 +6,11 @@ import { createClient } from '@/lib/supabase/server'
 import {
   SIM_BOX_SIZE,
   SIM_MARGIN_RM,
-  SIM_MIN_ORDER_QTY,
   SIM_SELL_PRICE_RM,
   SIM_STOCK_TYPES,
   SIM_UNIT_COST_RM,
   type SimStockType,
 } from '@/lib/sim-stock'
-import { OrderForm } from './order-form'
-import { IntakeForm } from './intake-form'
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { PageHeader } from '../page-header'
@@ -94,7 +91,6 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const emptyBalanceFor = (t: SimStockType): BalanceRow => ({ sim_type: t, total_intake: 0, total_sold: 0, available: 0 })
   const balances = SIM_STOCK_TYPES.map((t) => balanceByType.get(t) ?? emptyBalanceFor(t))
   const totalAvailable = balances.reduce((sum, b) => sum + b.available, 0)
-  const availableByType = Object.fromEntries(balances.map((b) => [b.sim_type, b.available])) as Record<SimStockType, number>
 
   const dealerList = (dealers ?? []) as { id: string; company_name: string; address: string | null }[]
   const dealerNameById = new Map(dealerList.map((d) => [d.id, d.company_name]))
@@ -159,9 +155,33 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   // forms), a log is something you only read, so the logs lose theirs.
   return (
     <div className="flex flex-col gap-8">
+      {/* Both forms moved to their own pages and are reached from here.
+          This page was one of only three in the app carrying more than one
+          card, and both extras were forms — a page whose job is to show you
+          stock levels and two logs, interrupted twice by something to fill
+          in. New Transaction and Onboard Dealer already work this way, so no
+          new pattern is introduced. */}
       <PageHeader
         title="SIM Card Stock"
-        subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} at ${formatMYR(SIM_UNIT_COST_RM)}/card and resold at ${formatMYR(SIM_SELL_PRICE_RM)} — a flat ${formatMYR(SIM_MARGIN_RM)} per card, separate from the points ledger.`}
+        /* The unit economics used to be in here too. At 390px that made this
+           the tallest header in the app — five lines of subtitle plus two
+           buttons pushed the summary card to y=215, which design-audit
+           flags. Those figures moved into the card's own facts line below,
+           beside the money they explain, which is where you would look for
+           them anyway. Nothing was dropped. */
+        subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} and resold to dealers — separate from the points ledger.`}
+        action={
+          isFinance ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link href="/sim-stock/intake" className="btn-ghost">
+                Log intake
+              </Link>
+              <Link href="/sim-stock/order" className="btn-primary">
+                Place order
+              </Link>
+            </div>
+          ) : undefined
+        }
       />
 
       {error && <div className="alert alert-bad">{error}</div>}
@@ -221,7 +241,8 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             </div>
             {isFinance && (
               <p className="mt-3.5 text-[12px] text-paper-dim">
-                Spent {formatMYR(totalIntakeCost)} on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
+                {formatMYR(SIM_UNIT_COST_RM)} a card in, {formatMYR(SIM_SELL_PRICE_RM)} out — a flat {formatMYR(SIM_MARGIN_RM)} each ·{' '}
+                {formatMYR(totalIntakeCost)} spent on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
                 {formatMYR(totalOrderMargin)} so far
               </p>
             )}
@@ -271,8 +292,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               `${totalBought.toLocaleString()} cards at ${formatMYR(SIM_UNIT_COST_RM)} each`,
             ]}
           />
-          <div className="flex flex-col gap-6">
-            <div className="band-log min-w-0">
+          <div className="band-log min-w-0">
               {intakes.length ? (
                 <StockIntakeTable
                   intakes={pagedIntakes.map((r) => ({
@@ -316,13 +336,6 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="app-card min-w-0">
-              <h3 className="mb-1 text-sm font-semibold text-paper">Log Stock Intake</h3>
-              <p className="mb-4 text-[12px] text-paper-dim">A box from Vibe Mobile. Adds to the pool you pick.</p>
-              <IntakeForm />
-            </div>
           </div>
         </section>
       )}
@@ -344,8 +357,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               : [`${orders.length} order${orders.length === 1 ? '' : 's'}`, `${totalSold.toLocaleString()} cards`]
           }
         />
-        <div className="flex flex-col gap-6">
-          <div className="band-log min-w-0">
+        <div className="band-log min-w-0">
             {orders.length ? (
               <DealerOrdersTable
                 orders={pagedOrders.map((o) => {
@@ -399,18 +411,6 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="app-card min-w-0">
-            <h3 className="mb-1 text-sm font-semibold text-paper">Place Order</h3>
-            <p className="mb-4 text-[12px] text-paper-dim">
-              Draws from the pool you pick. {formatMYR(SIM_SELL_PRICE_RM)} per card, minimum {SIM_MIN_ORDER_QTY}.
-            </p>
-            <OrderForm
-              dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
-              availableByType={availableByType}
-            />
-          </div>
         </div>
       </section>
     </div>

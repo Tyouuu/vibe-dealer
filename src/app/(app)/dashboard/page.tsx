@@ -13,7 +13,7 @@ import {
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import Link from 'next/link'
-import { StatTiles, PaceRing, Leaderboard, StatusSplit, RegionBars, GhostEmpty } from './elements'
+import { StatTiles, Leaderboard, RegionBars, GhostEmpty } from './elements'
 import { PeriodSwitcher } from './period-switcher'
 import { balanceSeries, dealersTradingSeries, resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
@@ -220,7 +220,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const prevSpanPoints = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'points') : 0
   const prevMonthLabel = prevMonthKey ? formatMonthLabel(prevMonthKey) : null
   const commissionChg = prevSpanCommission > 0 ? pctChange(totalCommission, prevSpanCommission) : null
-  const paceRatio = prevSpanCommission > 0 ? (totalCommission / prevSpanCommission) * 100 : null
   const projected = periodComplete || dayOfMonth === 0 ? totalCommission : (totalCommission / dayOfMonth) * daysInPeriod
 
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
@@ -247,20 +246,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     trendMonths,
   )
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
-
-  const countStatuses = (key: string | null) => {
-    const out = { verified: 0, pending: 0, flagged: 0 }
-    if (!key) return out
-    for (const r of windowTx.filter((t) => t.tx_date.slice(0, 7) === key)) {
-      const k = r.status as keyof typeof out
-      if (k in out) out[k] += 1
-    }
-    return out
-  }
-  const statusCounts = countStatuses(periodKey)
-  const ghostStatusCounts = countStatuses(prevMonthKey)
-  const statusTotal = statusCounts.verified + statusCounts.pending + statusCounts.flagged
-  const ghostStatusTotal = ghostStatusCounts.verified + ghostStatusCounts.pending + ghostStatusCounts.flagged
 
   // Recent Transactions — last 10 by created_at, any status, and deliberately
   // not scoped to the selected period: "what happened lately" is not a
@@ -321,7 +306,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               href: `/records?status=verified&month=${periodKey}`,
               chg: commissionChg,
               spark: commissionSeries,
-              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod}`,
+              // What the removed Pace ring knew and nothing else did: where
+              // this month lands if it carries on at the rate it is going.
+              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod} · on track for ${formatMYR(projected)}`,
             },
             {
               label: `Top-up — ${periodLabel}`,
@@ -345,27 +332,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
             },
           ]}
-          pace={
-            <PaceRing
-              label={prevMonthLabel ? `Pace vs ${prevMonthLabel}` : 'Pace'}
-              ratio={paceRatio}
-              value={formatMYR(totalCommission)}
-              target={
-                prevMonthLabel
-                  ? periodComplete
-                    ? `vs ${formatMYR(prevSpanCommission)} in ${prevMonthLabel}`
-                    : `vs ${formatMYR(prevSpanCommission)} by day ${spanDays} of ${prevMonthLabel}`
-                  : 'no earlier month to compare'
-              }
-              line={
-                !prevMonthLabel
-                  ? 'A comparison appears once there is a month behind this one.'
-                  : periodComplete
-                    ? `${periodLabel} finished at ${formatMYR(totalCommission)}.`
-                    : `Same ${spanDays} day${spanDays === 1 ? '' : 's'} either month. At this pace ${periodLabel} lands near ${formatMYR(projected)}.`
-              }
-            />
-          }
         />
       </div>
 
@@ -376,12 +342,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           empty state, three columns. */}
       <div className="page-band">
         <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
-        <p className="mb-5 text-[12px] text-paper-dim">Who bought, what state it is in, and where it came from — three cuts of the same month.</p>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-3">
+        <p className="mb-5 text-[12px] text-paper-dim">Who bought, and where it came from.</p>
+        <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
           <div>
             <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
             {leaders.length ? (
-              <Leaderboard rows={leaders} compact />
+              <Leaderboard rows={leaders} />
             ) : ghostLeaders.length ? (
               <GhostEmpty
                 note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
@@ -393,32 +359,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   ) : null
                 }
               >
-                <Leaderboard rows={ghostLeaders} compact />
+                <Leaderboard rows={ghostLeaders} />
               </GhostEmpty>
             ) : (
               <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
-            )}
-          </div>
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By status</h4>
-            {statusTotal > 0 || ghostStatusTotal === 0 ? (
-              <StatusSplit
-                parts={[
-                  { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${periodKey}` },
-                  { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${periodKey}` },
-                  { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${periodKey}` },
-                ]}
-              />
-            ) : (
-              <GhostEmpty note={`Nothing recorded in ${periodLabel} yet. ${prevMonthLabel} split like this:`}>
-                <StatusSplit
-                  parts={[
-                    { label: 'Verified', count: ghostStatusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: '#' },
-                    { label: 'Pending', count: ghostStatusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: '#' },
-                    { label: 'Flagged', count: ghostStatusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: '#' },
-                  ]}
-                />
-              </GhostEmpty>
             )}
           </div>
           <div>
@@ -506,7 +450,6 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   const spanDays = periodComplete ? daysInPeriod : dayOfMonth
   const prevSpanPoints = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'points') : 0
   const pointsChg = prevSpanPoints > 0 ? pctChange(totalPoints, prevSpanPoints) : null
-  const paceRatio = prevSpanPoints > 0 ? (totalPoints / prevSpanPoints) * 100 : null
   const projectedPoints = periodComplete || dayOfMonth === 0 ? totalPoints : Math.round((totalPoints / dayOfMonth) * daysInPeriod)
 
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
@@ -522,20 +465,6 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   const pendingSeries = trendMonths.map(({ key }) => windowTx.filter((t) => t.tx_date.slice(0, 7) === key && t.status === 'pending').length)
   const balances = balanceSeries(creditBalance.available, purchaseRows ?? [], windowTx.filter((t) => t.status !== 'flagged'), trendMonths)
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
-
-  const countStatuses = (key: string | null) => {
-    const out = { verified: 0, pending: 0, flagged: 0 }
-    if (!key) return out
-    for (const r of windowTx.filter((t) => t.tx_date.slice(0, 7) === key)) {
-      const k = r.status as keyof typeof out
-      if (k in out) out[k] += 1
-    }
-    return out
-  }
-  const statusCounts = countStatuses(periodKey)
-  const ghostStatusCounts = countStatuses(prevMonthKey)
-  const statusTotal = statusCounts.verified + statusCounts.pending + statusCounts.flagged
-  const ghostStatusTotal = ghostStatusCounts.verified + ghostStatusCounts.pending + ghostStatusCounts.flagged
 
   const statement = (statements ?? []).find((s) => (s.month as string).slice(0, 7) === periodKey)
 
@@ -583,7 +512,7 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
               href: `/records?status=verified&month=${periodKey}`,
               chg: pointsChg,
               spark: pointsSeries,
-              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod}`,
+              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod} · on track for ${projectedPoints.toLocaleString()} pts`,
             },
             {
               label: 'Pending review',
@@ -607,27 +536,6 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
               sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
             },
           ]}
-          pace={
-            <PaceRing
-              label={prevMonthLabel ? `Pace vs ${prevMonthLabel}` : 'Pace'}
-              ratio={paceRatio}
-              value={`${totalPoints.toLocaleString()} pts`}
-              target={
-                prevMonthLabel
-                  ? periodComplete
-                    ? `vs ${prevSpanPoints.toLocaleString()} in ${prevMonthLabel}`
-                    : `vs ${prevSpanPoints.toLocaleString()} by day ${spanDays} of ${prevMonthLabel}`
-                  : 'no earlier month to compare'
-              }
-              line={
-                !prevMonthLabel
-                  ? 'A comparison appears once there is a month behind this one.'
-                  : periodComplete
-                    ? `${periodLabel} finished at ${totalPoints.toLocaleString()} pts.`
-                    : `Same ${spanDays} day${spanDays === 1 ? '' : 's'} either month. At this pace ${periodLabel} lands near ${projectedPoints.toLocaleString()} pts.`
-              }
-            />
-          }
         />
       </div>
 
@@ -643,12 +551,12 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
       {/* Three sections became one — see the note in the master branch. */}
       <div className="page-band">
         <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
-        <p className="mb-5 text-[12px] text-paper-dim">Who bought, what state it is in, and where it came from — three cuts of the same month.</p>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-3">
+        <p className="mb-5 text-[12px] text-paper-dim">Who bought, and where it came from.</p>
+        <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
           <div>
             <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
             {leaders.length ? (
-              <Leaderboard rows={leaders} compact />
+              <Leaderboard rows={leaders} />
             ) : ghostLeaders.length ? (
               <GhostEmpty
                 note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
@@ -660,32 +568,10 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
                   ) : null
                 }
               >
-                <Leaderboard rows={ghostLeaders} compact />
+                <Leaderboard rows={ghostLeaders} />
               </GhostEmpty>
             ) : (
               <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
-            )}
-          </div>
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By status</h4>
-            {statusTotal > 0 || ghostStatusTotal === 0 ? (
-              <StatusSplit
-                parts={[
-                  { label: 'Verified', count: statusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: `/records?status=verified&month=${periodKey}` },
-                  { label: 'Pending', count: statusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: `/records?status=pending&month=${periodKey}` },
-                  { label: 'Flagged', count: statusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: `/records?status=flagged&month=${periodKey}` },
-                ]}
-              />
-            ) : (
-              <GhostEmpty note={`Nothing recorded in ${periodLabel} yet. ${prevMonthLabel} split like this:`}>
-                <StatusSplit
-                  parts={[
-                    { label: 'Verified', count: ghostStatusCounts.verified, className: 'bg-jade', dot: 'bg-jade', href: '#' },
-                    { label: 'Pending', count: ghostStatusCounts.pending, className: 'bg-brass', dot: 'bg-brass', href: '#' },
-                    { label: 'Flagged', count: ghostStatusCounts.flagged, className: 'bg-clay', dot: 'bg-clay', href: '#' },
-                  ]}
-                />
-              </GhostEmpty>
             )}
           </div>
           <div>

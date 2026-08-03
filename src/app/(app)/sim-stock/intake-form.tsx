@@ -75,9 +75,15 @@ export function IntakeForm() {
           <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
         </div>
       </div>
-      <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-60 sm:w-auto sm:self-end sm:px-10">
-        {pending ? 'Saving…' : 'Save Intake'}
-      </button>
+      {/* The footer shape Onboard Dealer uses: the action sits on the rule
+          that closes its section, left-aligned, with one line of guidance
+          beside it rather than a full-width bar. */}
+      <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-6">
+        <button type="submit" disabled={pending} className="btn-primary disabled:opacity-60">
+          {pending ? 'Saving…' : 'Save intake'}
+        </button>
+        <span className="text-[12px] text-paper-dim">Adds to the pool you picked. Nothing leaves stock.</span>
+      </div>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <p className="text-sm font-semibold text-paper">Confirm this stock intake</p>

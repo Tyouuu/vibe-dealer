@@ -19,6 +19,10 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Transactions' },
   { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },
   { href: '/sim-stock', label: 'SIM Card Stock', roles: ['cs', 'accountant', 'master'], group: 'Transactions' },
+  // Sits under the page it feeds, the way Onboard Dealer sits under Dealers.
+  // One entry, not two: intake and orders are the same job seen from two
+  // directions and share one page.
+  { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'master'], group: 'Transactions' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },

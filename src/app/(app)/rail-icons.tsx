@@ -101,6 +101,20 @@ export function IconLayers({ className = 'h-[18px] w-[18px]' }: IconProps) {
   )
 }
 
+// The "add to" sibling of IconLayers, the way IconUserPlus is the sibling of
+// IconUsersRail. The top sheet is replaced by a plus so the pair reads as
+// "the stack" and "add to the stack" rather than as two unrelated marks.
+export function IconLayersPlus({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+      <path d="M2 12l10 5 4-2" />
+      <path d="M18 15v6" />
+      <path d="M15 18h6" />
+    </svg>
+  )
+}
+
 export function IconSettings({ className = 'h-[18px] w-[18px]' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>

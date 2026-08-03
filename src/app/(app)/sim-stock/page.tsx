@@ -155,12 +155,12 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   // forms), a log is something you only read, so the logs lose theirs.
   return (
     <div className="flex flex-col gap-8">
-      {/* Both forms moved to their own pages and are reached from here.
-          This page was one of only three in the app carrying more than one
-          card, and both extras were forms — a page whose job is to show you
-          stock levels and two logs, interrupted twice by something to fill
-          in. New Transaction and Onboard Dealer already work this way, so no
-          new pattern is introduced. */}
+      {/* Both forms moved to /sim-stock/log and are reached from here and
+          from the sidebar, the way Onboard Dealer is reached from /dealers
+          and from the sidebar. This page was one of only three in the app
+          carrying more than one card, and both extras were forms — a page
+          whose job is to show you stock levels and two logs, interrupted
+          twice by something to fill in. */}
       <PageHeader
         title="SIM Card Stock"
         /* The unit economics used to be in here too. At 390px that made this
@@ -170,18 +170,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
            beside the money they explain, which is where you would look for
            them anyway. Nothing was dropped. */
         subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} and resold to dealers — separate from the points ledger.`}
-        action={
-          isFinance ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Link href="/sim-stock/intake" className="btn-ghost">
-                Log intake
-              </Link>
-              <Link href="/sim-stock/order" className="btn-primary">
-                Place order
-              </Link>
-            </div>
-          ) : undefined
-        }
+        action={isFinance ? { href: '/sim-stock/log', label: 'Log stock' } : undefined}
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

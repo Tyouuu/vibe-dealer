@@ -20,6 +20,7 @@ import {
   IconShield,
   IconSettings,
   IconLayers,
+  IconLayersPlus,
 } from './rail-icons'
 import { IconBell } from './icons'
 
@@ -33,6 +34,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/records': IconList,
   '/delivery': IconTruckRail,
   '/sim-stock': IconLayers,
+  '/sim-stock/log': IconLayersPlus,
   '/reports': IconChart,
   '/reconcile': IconReconcile,
   '/purchases': IconShoppingBag,
@@ -149,7 +151,13 @@ export function RailNav({
             <div className="rail-group-label">{group}</div>
             {groupItems.map((item) => {
               const Icon = ICONS[item.href]
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              // Longest match wins. A prefix test alone lit both SIM Card
+              // Stock and Log SIM Stock on /sim-stock/log, because one href
+              // is a prefix of the other. The same would happen to any
+              // future child route, so the rule is "this item is active only
+              // if no other item matches this path more specifically".
+              const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+              const active = matches(item.href) && !items.some((o) => o.href !== item.href && o.href.startsWith(item.href) && matches(o.href))
               return (
                 <a key={item.href} href={item.href} className={`rail-item${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
                   {Icon && <Icon />}

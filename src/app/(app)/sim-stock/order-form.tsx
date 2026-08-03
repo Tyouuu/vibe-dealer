@@ -169,9 +169,13 @@ export function OrderForm({
           </div>
         )}
       </div>
-      <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto sm:self-end sm:px-10">
-        {uploading ? 'Uploading invoice…' : submitting ? 'Saving…' : 'Save Order'}
-      </button>
+      {/* Same footer shape as the intake form above and as Onboard Dealer. */}
+      <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-6">
+        <button type="submit" disabled={submitting} className="btn-primary">
+          {uploading ? 'Uploading invoice…' : submitting ? 'Saving…' : 'Save order'}
+        </button>
+        <span className="text-[12px] text-paper-dim">Draws from the pool you picked and adds the dealer to SIM Delivery.</span>
+      </div>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <p className="text-sm font-semibold text-paper">Confirm this order</p>

@@ -31,7 +31,7 @@ export function ForgotPasswordForm({ initialError }: { initialError?: string }) 
       <div className="flex flex-col gap-4">
         <div className="alert alert-ok">If that email has an account, we&apos;ve sent a link to reset your password.</div>
         <Link href="/login" className="foot-link text-center text-[12px] text-primary-deep">
-          Back to Sign In
+          Back to sign in
         </Link>
       </div>
     )
@@ -60,13 +60,14 @@ export function ForgotPasswordForm({ initialError }: { initialError?: string }) 
         </div>
       </div>
 
+      {/* "Send reset link", sentence case, like every other action label in
+          the app — Sign in, Save purchase, Onboard Dealer's own button. */}
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
-        {pending ? 'Sending…' : 'Send Reset Link'}
+        {pending ? 'Sending…' : 'Send reset link'}
       </button>
-
-      <Link href="/login" className="text-center text-[12px] text-primary-deep">
-        Back to Sign In
-      </Link>
+      {/* No "Back to Sign In" here. The page prints "Remembered it? Back to
+          sign in" immediately below this card — the two sat about 60px apart,
+          pointing at the same place, in two different casings. */}
     </form>
   )
 }

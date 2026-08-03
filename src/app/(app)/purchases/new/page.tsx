@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../../permission-denied'
 import { todayInMalaysia } from '@/lib/month'
+import { createClient } from '@/lib/supabase/server'
+import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { PageHeader } from '../../page-header'
 import { PurchaseForm } from '../purchase-form'
 
@@ -38,11 +40,16 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
     return <PermissionDenied role={user.role} action="log credit purchases" />
   }
 
+  // The form prints where this purchase lands the balance, so it needs the
+  // one it is landing on — the same aggregate the sale hard-block uses.
+  const supabase = await createClient()
+  const creditBalance = await getAvailablePointsBalance(supabase)
+
   return (
     <div className="flex w-full flex-col">
       <PageHeader
         title="Log a purchase"
-        subtitle="Each entry adds to the points balance. Verified dealer transactions subtract from it — the balance on Credit Purchases is what's left to sell."
+        subtitle="A batch of credit bought from Vibe Mobile. It adds to the balance every dealer sale is checked against."
         action={
           <Link href="/purchases" className="btn-ghost shrink-0">
             Back to Credit Purchases
@@ -52,8 +59,8 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
 
       {error && <div className="alert alert-bad">{error}</div>}
 
-      <div className="app-card mt-4">
-        <PurchaseForm today={todayInMalaysia()} />
+      <div className="app-card mt-6">
+        <PurchaseForm today={todayInMalaysia()} balance={creditBalance.available} />
       </div>
     </div>
   )

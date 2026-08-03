@@ -7,7 +7,7 @@ import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
 
-export function PurchaseForm({ today }: { today: string }) {
+export function PurchaseForm({ today, balance }: { today: string; balance: number }) {
   const [moneyRm, setMoneyRm] = useState('')
   // Suggested from the money paid, at the one rate this has ever used (see
   // packages.ts) — still editable for the rare case Vibe actually charged
@@ -37,15 +37,17 @@ export function PurchaseForm({ today }: { today: string }) {
 
   return (
     <>
-      {/* One row of fields, not a stacked column.
-          This form was the right-hand panel of a two-up row, so it ran ~580px
-          tall next to a history card that is ~190px when there is one
-          purchase on record. Two panels whose heights can never match should
-          not be a row — taste-redesign lists exactly this as "inconsistent
-          vertical rhythm in side-by-side elements". Full width and horizontal
-          instead, which is ~200px tall and leaves nothing beside it to fail
-          to match. */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* Sections with a heading and a line of explanation, the shape Onboard
+          Dealer and Log SIM Stock already use. This page was four bare fields
+          stretched edge to edge under nothing, which is why it read as a strip
+          floating on an empty page rather than as a form. */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="form-block">
+        <h2 className="form-block-title">The purchase</h2>
+        <p className="form-block-desc">
+          What you paid Vibe Mobile, and how much credit they gave you for it. Points fill themselves in at the usual rate — overwrite them if this
+          batch was priced differently.
+        </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
           <div className="sm:col-span-3 lg:col-span-3">
             <label className="field-label">Date</label>
@@ -91,13 +93,56 @@ export function PurchaseForm({ today }: { today: string }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-4">
+        </div>
+
+        {/* What it will do, before you do it. The Place Order form already
+            works this way — it prints how many cards are in the pool you are
+            drawing from — and it is the one thing this page can say that the
+            reader cannot work out in their head. */}
+        <div className="form-block">
+          <h2 className="form-block-title">After this purchase</h2>
+          <p className="form-block-desc">The balance every sale is checked against, once this is saved.</p>
+          {points > 0 ? (
+            <div className="grid grid-cols-2 gap-x-10 gap-y-5 sm:grid-cols-4">
+              <div>
+                <div className="text-[12px] text-paper-dim">Balance now</div>
+                <div className="figure-points mt-1 text-[20px]">{balance.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[12px] text-paper-dim">This purchase</div>
+                <div className="figure-points mt-1 text-[20px]" style={{ color: 'var(--color-jade-bright)' }}>
+                  +{points.toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <div className="text-[12px] text-paper-dim">Balance after</div>
+                <div className="figure-points mt-1 text-[20px] font-semibold">{(balance + points).toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[12px] text-paper-dim">Cost a point</div>
+                <div className="figure-money mt-1 text-[20px] tracking-[-.02em]">
+                  {Number(moneyRm) > 0 ? formatMYR(Number(moneyRm) / points) : '—'}
+                </div>
+                <div className="mt-1 text-[12px] text-paper-dim">
+                  {Number(moneyRm) > 0 && Math.abs(Number(moneyRm) / points - (1 - CREDIT_PURCHASE_RATE)) > 0.005
+                    ? `not the usual ${formatMYR(1 - CREDIT_PURCHASE_RATE)}`
+                    : 'the usual rate'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[13px] text-paper-dim">
+              Balance stands at <b className="figure-points font-semibold text-paper">{balance.toLocaleString()}</b> pts. Enter an amount above and
+              this will show where it lands.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 border-t border-ink-800 pt-6">
           <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-60">
             {submitting ? 'Saving…' : 'Save purchase'}
           </button>
-          <span className="text-[12px] text-paper-dim">
-            Points are auto-calculated at the usual rate — edit them if Vibe charged something else this time.
-          </span>
+          <span className="text-[12px] text-paper-dim">Nothing is saved until you confirm on the next step.</span>
         </div>
       </form>
 

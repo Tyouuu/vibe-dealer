@@ -276,6 +276,50 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* Opening balance, what moved, closing balance — the shape every
+            distributor statement of account uses.
+
+            This was a band at the foot of the page and that was wrong: "what
+            did I make" and "what have I got left to sell" are the same rank
+            of question, and the second one was arriving last. It sits in the
+            card now as its second row, the anatomy SIM Card Stock uses —
+            headline, rule, the figures that break it down, rule, the figures
+            that follow from them.
+
+            The closing figure ties to the balance printed on Credit
+            Purchases: it is walked backwards from the live number by
+            balanceSeries, not recomputed. */}
+        <div className="mt-7 border-t border-ink-800 pt-6">
+          <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h3 className="text-sm font-semibold text-paper">Points ledger</h3>
+            <span className="text-[12px] text-paper-dim">
+              what {monthLabel} did to the credit you hold — sold counts pending as well as verified, the way the live balance does
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-10 gap-y-5 sm:grid-cols-4">
+            <div>
+              <div className="text-[12px] text-paper-dim">Opened with</div>
+              <div className="figure-points mt-1 text-[20px]">{openingBalance.toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-[12px] text-paper-dim">Bought from Vibe</div>
+              <div className="figure-points mt-1 text-[20px]">{pointsBought > 0 ? `+${pointsBought.toLocaleString()}` : '0'}</div>
+              <div className="mt-1 text-[12px] text-paper-dim">{formatMYR(paidToVibe)} paid</div>
+            </div>
+            <div>
+              <div className="text-[12px] text-paper-dim">Sold to dealers</div>
+              <div className="figure-points mt-1 text-[20px]">{pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}</div>
+            </div>
+            <div>
+              <div className="text-[12px] text-paper-dim">Closed with</div>
+              <div className="figure-points mt-1 text-[20px] font-semibold">{closingBalance.toLocaleString()}</div>
+              <div className="mt-1 text-[12px] text-paper-dim">
+                {cardsBought > 0 ? `${cardsBought.toLocaleString()} SIM cards bought, ${formatMYR(stockBought)}` : 'No SIM stock bought'}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Whether these figures can be trusted, and what they leave out. A
@@ -506,37 +550,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         ) : (
           <p className="text-[13px] text-paper-dim">No SIM orders in {monthLabel}.</p>
         )}
-      </div>
-
-      {/* Opening balance, what moved, closing balance — the shape every
-          distributor statement of account uses, and the one thing that says
-          whether the month left you with more or less to sell than it found.
-          The closing figure ties to the balance on Credit Purchases. */}
-      <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Points ledger</h3>
-        <p className="mb-4 text-[12px] text-paper-dim">What {monthLabel} did to the credit you hold. Sold counts pending as well as verified, the way the live balance does.</p>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
-          <div>
-            <div className="text-[12px] text-paper-dim">Opened with</div>
-            <div className="figure-points mt-1 text-[20px]">{openingBalance.toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">Bought from Vibe</div>
-            <div className="figure-points mt-1 text-[20px]">{pointsBought > 0 ? `+${pointsBought.toLocaleString()}` : '0'}</div>
-            <div className="mt-1 text-[12px] text-paper-dim">{formatMYR(paidToVibe)} paid</div>
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">Sold to dealers</div>
-            <div className="figure-points mt-1 text-[20px]">{pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}</div>
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">Closed with</div>
-            <div className="figure-points mt-1 text-[20px] font-semibold">{closingBalance.toLocaleString()}</div>
-            <div className="mt-1 text-[12px] text-paper-dim">
-              {cardsBought > 0 ? `${cardsBought.toLocaleString()} SIM cards bought, ${formatMYR(stockBought)}` : 'No SIM stock bought'}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

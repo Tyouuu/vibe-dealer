@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../../permission-denied'
 import { todayInMalaysia } from '@/lib/month'
@@ -50,11 +49,6 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
       <PageHeader
         title="Log a purchase"
         subtitle="A batch of credit bought from Vibe Mobile. It adds to the balance every dealer sale is checked against."
-        action={
-          <Link href="/purchases" className="btn-ghost shrink-0">
-            Back to Credit Purchases
-          </Link>
-        }
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

@@ -17,6 +17,7 @@ import {
   IconChart,
   IconReconcile,
   IconShoppingBag,
+  IconShoppingBagPlus,
   IconShield,
   IconSettings,
   IconLayers,
@@ -38,6 +39,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/reports': IconChart,
   '/reconcile': IconReconcile,
   '/purchases': IconShoppingBag,
+  '/purchases/new': IconShoppingBagPlus,
   '/audit': IconShield,
 }
 

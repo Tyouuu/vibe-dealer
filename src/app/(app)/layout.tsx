@@ -26,6 +26,9 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },
+  // Under the page it feeds, the way Onboard Dealer sits under Dealers and
+  // Log SIM Stock under SIM Card Stock.
+  { href: '/purchases/new', label: 'Log Purchase', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Finance' },
 ]
 

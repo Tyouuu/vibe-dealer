@@ -91,6 +91,19 @@ export function IconShoppingBag({ className = 'h-[18px] w-[18px]' }: IconProps) 
   )
 }
 
+// The "add to" sibling of IconShoppingBag — the bag with its handle replaced
+// by a plus, the same relationship IconLayersPlus has to IconLayers and
+// IconUserPlus has to IconUsersRail.
+export function IconShoppingBagPlus({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8Z" />
+      <path d="M12 12v6" />
+      <path d="M9 15h6" />
+    </svg>
+  )
+}
+
 export function IconLayers({ className = 'h-[18px] w-[18px]' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>

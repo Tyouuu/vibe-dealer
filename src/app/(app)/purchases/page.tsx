@@ -46,12 +46,12 @@ function withRunningBalance(movements: Movement[], closing: number): (Movement &
 }
 
 type PageProps = {
-  searchParams: Promise<{ error?: string; saved?: string }>
+  searchParams: Promise<{ saved?: string }>
 }
 
 export default async function PurchasesPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error, saved } = await searchParams
+  const { saved } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view credit purchases" />
@@ -140,7 +140,8 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         action={{ href: '/purchases/new', label: 'Log a purchase' }}
       />
 
-      {error && <div className="alert alert-bad">{error}</div>}
+      {/* No error slot: recordCreditPurchase now fails back to /purchases/new,
+          where the form is, so nothing sends an error here any more. */}
       {saved && <div className="alert alert-ok">Purchase recorded.</div>}
 
       <div className="stack-loose mt-8 w-full">

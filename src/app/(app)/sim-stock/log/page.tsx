@@ -9,7 +9,7 @@ import { SIM_BOX_SIZE, SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SI
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Log SIM stock — DealerHub',
+  title: 'Log SIM Stock — DealerHub',
 }
 
 type BalanceRow = { sim_type: SimStockType; available: number }
@@ -31,11 +31,25 @@ type PageProps = {
 // Two <form> elements inside one card, not one form with two submits: they
 // post to different server actions and either can be used without the other.
 // Sibling forms are fine; nesting them would not be.
+//
+// The two movements have different owners, and this page has to say so. Stock
+// in is a finance act (it books what was paid to Vibe); stock out is an ops
+// act (it draws down a pool and joins the delivery queue) — recordSimIntake
+// and createSimOrder have always disagreed about who may call them. When both
+// forms lived on /sim-stock that was invisible, because that page admits all
+// three roles. Moving them here behind one accountant/master gate broke it in
+// both directions: cs lost the only place a SIM order could be placed, and
+// accountant got a Place order form that always answered "you do not have
+// permission". So the gate is now the union, and each block renders only for
+// the role that can actually submit it.
 export default async function LogSimStockPage({ searchParams }: PageProps) {
   const user = await requireUser()
   const { error } = await searchParams
 
-  if (user.role !== 'accountant' && user.role !== 'master') {
+  const canLogIntake = user.role === 'accountant' || user.role === 'master'
+  const canPlaceOrder = user.role === 'cs' || user.role === 'master'
+
+  if (!canLogIntake && !canPlaceOrder) {
     return <PermissionDenied role={user.role} action="log SIM stock" />
   }
 
@@ -49,36 +63,46 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
   const availableByType = Object.fromEntries(SIM_STOCK_TYPES.map((t) => [t, byType.get(t) ?? 0])) as Record<SimStockType, number>
   const dealerList = (dealers ?? []) as { id: string; company_name: string; address: string | null }[]
 
+  // Says what this page holds for whoever opened it, rather than naming a
+  // movement they will not find below.
+  const subtitle =
+    canLogIntake && canPlaceOrder
+      ? 'A box arriving from Vibe Mobile, or an order going out to a dealer. Both land on SIM Card Stock.'
+      : canLogIntake
+        ? 'A box arriving from Vibe Mobile. It lands on SIM Card Stock.'
+        : 'An order going out to a dealer. It lands on SIM Card Stock.'
+
   return (
     <div className="w-full">
-      <PageHeader
-        title="Log SIM stock"
-        subtitle="A box arriving from Vibe Mobile, or an order going out to a dealer. Both land on SIM Card Stock."
-      />
+      <PageHeader title="Log SIM Stock" subtitle={subtitle} />
 
       {error && <div className="alert alert-bad">{error}</div>}
 
       <div className="app-card mt-6 flex flex-col gap-6">
-        <div className="form-block">
-          <h2 className="form-block-title">Stock in — bought from Vibe Mobile</h2>
-          <p className="form-block-desc">
-            A box of {SIM_BOX_SIZE} at {formatMYR(SIM_UNIT_COST_RM)} a card. It adds to whichever pool you pick — the three cannot borrow
-            from each other.
-          </p>
-          <IntakeForm />
-        </div>
+        {canLogIntake && (
+          <div className="form-block">
+            <h2 className="form-block-title">Stock in — bought from Vibe Mobile</h2>
+            <p className="form-block-desc">
+              A box of {SIM_BOX_SIZE} at {formatMYR(SIM_UNIT_COST_RM)} a card. It adds to whichever pool you pick — the three cannot borrow
+              from each other.
+            </p>
+            <IntakeForm />
+          </div>
+        )}
 
-        <div className="form-block">
-          <h2 className="form-block-title">Stock out — sold to a dealer</h2>
-          <p className="form-block-desc">
-            {formatMYR(SIM_SELL_PRICE_RM)} a card, minimum {SIM_MIN_ORDER_QTY}, drawn from the pool you pick. A physical order also joins the
-            SIM Delivery queue; an eSIM order does not.
-          </p>
-          <OrderForm
-            dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
-            availableByType={availableByType}
-          />
-        </div>
+        {canPlaceOrder && (
+          <div className="form-block">
+            <h2 className="form-block-title">Stock out — sold to a dealer</h2>
+            <p className="form-block-desc">
+              {formatMYR(SIM_SELL_PRICE_RM)} a card, minimum {SIM_MIN_ORDER_QTY}, drawn from the pool you pick. A physical order also joins
+              the SIM Delivery queue; an eSIM order does not.
+            </p>
+            <OrderForm
+              dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
+              availableByType={availableByType}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

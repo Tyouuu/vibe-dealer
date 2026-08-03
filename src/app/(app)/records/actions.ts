@@ -9,6 +9,7 @@ import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { computeAdjustmentDelta } from '@/lib/adjustment'
 import { todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
+import { friendlyDbError } from '@/lib/db-error'
 
 function fail(message: string): never {
   redirect('/records?error=' + encodeURIComponent(message))
@@ -59,7 +60,11 @@ export async function flagTransaction(formData: FormData) {
 
   const id = String(formData.get('id') ?? '')
   const reason = String(formData.get('reason') ?? '').trim()
-  if (!id || !reason) return
+  // Was a bare `return`: the dialog closed, nothing happened, and nothing said
+  // why — the operator had every reason to believe the row was flagged. A
+  // reason is required for the audit trail to be worth reading, so say so.
+  if (!id) fail('Missing transaction id.')
+  if (!reason) fail('A flag needs a reason — the audit log is only useful for tracing a dispute if it says why.')
 
   const supabase = await createClient()
 
@@ -152,7 +157,7 @@ export async function adjustTransaction(formData: FormData) {
   // (prior-period adjustment), so it normally isn't affected by the lock at
   // all — this only trips if the current month has itself been reconciled.
   if (error && isPeriodLockError(error.message)) fail(periodLockedMessage(todayInMalaysia()))
-  if (error) fail(error.message)
+  if (error) fail(friendlyDbError(error.message))
 
   revalidatePath('/records')
   revalidatePath('/dealers')

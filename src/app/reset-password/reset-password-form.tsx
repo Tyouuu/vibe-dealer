@@ -111,7 +111,7 @@ export function ResetPasswordForm() {
 
       <div>
         <label htmlFor="password" className="field-label">
-          New Password
+          New password
         </label>
         <input
           id="password"
@@ -128,7 +128,7 @@ export function ResetPasswordForm() {
 
       <div>
         <label htmlFor="confirm" className="field-label">
-          Confirm New Password
+          Confirm new password
         </label>
         <input
           id="confirm"
@@ -144,7 +144,7 @@ export function ResetPasswordForm() {
       <span className="hint">Must be at least 8 characters.</span>
 
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
-        {pending ? 'Saving…' : 'Set New Password'}
+        {pending ? 'Saving…' : 'Set new password'}
       </button>
     </form>
   )

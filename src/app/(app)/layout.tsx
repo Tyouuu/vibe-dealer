@@ -22,7 +22,10 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   // Sits under the page it feeds, the way Onboard Dealer sits under Dealers.
   // One entry, not two: intake and orders are the same job seen from two
   // directions and share one page.
-  { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'master'], group: 'Transactions' },
+  // All three roles, because the page holds one movement for finance (stock
+  // in) and one for ops (stock out) — see log/page.tsx. Narrowing this to the
+  // finance pair is what had cut cs off from placing SIM orders entirely.
+  { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'cs', 'master'], group: 'Transactions' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },

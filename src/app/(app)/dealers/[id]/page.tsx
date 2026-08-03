@@ -8,7 +8,7 @@ import { getDealerRankingMap } from '@/lib/dealer-ranking'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { markDelivered } from '../../delivery/actions'
 import { deleteDealer } from '../actions'
-import { IconMapPin, IconTag, IconUsers } from '../../icons'
+import { IconMapPin, IconPaperclip, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
 import { EditDealerButton } from './edit-dealer-button'
@@ -51,6 +51,7 @@ type TxRow = {
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
   note: string | null
+  receipt_url: string | null
 }
 
 type DeliveryRow = {
@@ -240,7 +241,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     // ever truncated.
     const { data } = await supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note')
+      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note, receipt_url')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -487,6 +488,20 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                             <div className="mt-0.5 text-[11px] text-paper-dim">
                               {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                             </div>
+                          )}
+                          {/* Same link as the Transactions table. This is the
+                              page someone lands on when a dealer queries a
+                              charge, so it is the one that most needs it. */}
+                          {tx.receipt_url && (
+                            <a
+                              href={`/api/receipts/view?path=${encodeURIComponent(tx.receipt_url)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-paper-dim hover:text-jade-bright"
+                            >
+                              <IconPaperclip className="h-3 w-3" />
+                              Receipt
+                            </a>
                           )}
                         </td>
                         <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>

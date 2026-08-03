@@ -39,11 +39,15 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
   // Cron jobs call this with no browser session; it authenticates itself via CRON_SECRET.
   const isCronRoute = pathname.startsWith('/api/cron/')
-  // The password-reset email link lands here with no session yet — this route
-  // exchanges the recovery code for one (see src/app/auth/confirm/route.ts).
-  const isAuthRoute = pathname.startsWith('/auth/')
 
-  if (!user && !isPublicRoute && !isCronRoute && !isAuthRoute && pathname !== '/') {
+  // There was a third exemption here letting anything under /auth/ through
+  // unauthenticated, justified by a comment citing src/app/auth/confirm/
+  // route.ts. That file has never existed — the recovery link is handled
+  // entirely client-side by reset-password-form.tsx, which is why
+  // /reset-password is in PUBLIC_ROUTES above. An open prefix defended by a
+  // file that isn't there is worth removing before it becomes true.
+
+  if (!user && !isPublicRoute && !isCronRoute && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

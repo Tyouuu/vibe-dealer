@@ -5,7 +5,16 @@ import { createServerClient } from '@supabase/ssr'
 import { getCurrentUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 
+// Two axes, because they stop different attacks. The email key stops someone
+// grinding one known staff account; the IP key stops credential stuffing —
+// five guesses each against two hundred addresses from one machine, which the
+// email key alone never sees. OWASP pairs them for exactly this reason.
+//
+// The IP ceiling is deliberately much higher: a whole office behind one NAT
+// shares it, and locking that out over one person's typo would be worse than
+// the attack. It only has to be low enough to make a spray uneconomic.
 const LOGIN_MAX_ATTEMPTS = 5
+const LOGIN_MAX_ATTEMPTS_PER_IP = 30
 const LOGIN_WINDOW_SECONDS = 15 * 60
 
 function clientIp(h: Headers): string | null {
@@ -42,12 +51,27 @@ export async function signIn(email: string, password: string, rememberMe: boolea
     },
   })
 
-  const { data: allowed } = await supabase.rpc('check_rate_limit', {
-    p_key: `login:${email.trim().toLowerCase()}`,
-    p_max_hits: LOGIN_MAX_ATTEMPTS,
-    p_window_seconds: LOGIN_WINDOW_SECONDS,
-  })
-  if (allowed === false) {
+  const ip = clientIp(h)
+  const emailKey = `login:${email.trim().toLowerCase()}`
+
+  const [{ data: emailAllowed }, { data: ipAllowed }] = await Promise.all([
+    supabase.rpc('check_rate_limit', {
+      p_key: emailKey,
+      p_max_hits: LOGIN_MAX_ATTEMPTS,
+      p_window_seconds: LOGIN_WINDOW_SECONDS,
+    }),
+    // No IP header (local dev, an odd proxy) means no second axis rather than
+    // one shared bucket every request on the box would pile into.
+    ip
+      ? supabase.rpc('check_rate_limit', {
+          p_key: `login-ip:${ip}`,
+          p_max_hits: LOGIN_MAX_ATTEMPTS_PER_IP,
+          p_window_seconds: LOGIN_WINDOW_SECONDS,
+        })
+      : Promise.resolve({ data: true }),
+  ])
+
+  if (emailAllowed === false || ipAllowed === false) {
     return { error: 'Too many attempts. Please wait 15 minutes and try again.' }
   }
 
@@ -56,7 +80,18 @@ export async function signIn(email: string, password: string, rememberMe: boolea
     return { error: 'Sign in failed. Please check your email / password.' }
   }
 
-  await supabase.from('login_events').insert({ user_id: data.user.id, user_agent: h.get('user-agent'), ip: clientIp(h) })
+  // Signing in correctly must not spend one of your tries. Without this the
+  // counter is "attempts per window" rather than "failed attempts per window",
+  // and six ordinary sign-ins in a quarter of an hour — a demo, or switching
+  // between roles — lock the account out of itself. Only the email key is
+  // cleared: the IP key is shared with everyone else behind that address, so
+  // one person's success is not evidence about the others.
+  //
+  // Best-effort. A failed cleanup must never turn a successful sign-in into a
+  // failed one; the worst case is the pre-existing behaviour.
+  await supabase.rpc('clear_rate_limit', { p_key: emailKey })
+
+  await supabase.from('login_events').insert({ user_id: data.user.id, user_agent: h.get('user-agent'), ip })
 
   return { error: null }
 }

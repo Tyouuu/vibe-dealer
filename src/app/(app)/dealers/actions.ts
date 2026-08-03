@@ -7,6 +7,15 @@ import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { normalizeRegion } from '@/lib/regions'
 import { sanitizeSearchTerm } from '@/lib/search'
+import { friendlyDbError } from '@/lib/db-error'
+
+// The import reads the whole file into memory and parses it in one pass, so it
+// needs the same two bounds every other upload path in this app already has
+// (the OCR route caps bytes and MIME type; this had neither). 2MB is roughly
+// 20,000 dealer rows of CSV — far past the 242 dealers this business has, and
+// small enough that a mistaken upload can't exhaust the function's memory.
+const IMPORT_MAX_BYTES = 2 * 1024 * 1024
+const IMPORT_MAX_ROWS = 5000
 
 function assertCanManage(role: string) {
   if (role !== 'cs' && role !== 'master') {
@@ -67,7 +76,7 @@ export async function updateDealer(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/dealers/${id}?error=` + encodeURIComponent(error.message))
+    redirect(`/dealers/${id}?error=` + encodeURIComponent(friendlyDbError(error.message)))
   }
 
   revalidatePath('/dealers')
@@ -95,7 +104,7 @@ export async function deleteDealer(formData: FormData) {
 
   const { error } = await supabase.from('dealers').delete().eq('id', id)
   if (error) {
-    redirect(`/dealers/${id}?error=` + encodeURIComponent(error.message))
+    redirect(`/dealers/${id}?error=` + encodeURIComponent(friendlyDbError(error.message)))
   }
 
   revalidatePath('/dealers')
@@ -156,10 +165,19 @@ export async function importDealers(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     redirect('/dealers?import_error=' + encodeURIComponent('Please choose a CSV file.'))
   }
+  if (file.size > IMPORT_MAX_BYTES) {
+    redirect('/dealers?import_error=' + encodeURIComponent('That file is too large (max 2MB). Split it and import in parts.'))
+  }
 
   const rows = parseCsv(await file.text())
   if (rows.length < 2) {
     redirect('/dealers?import_error=' + encodeURIComponent('CSV has no data rows.'))
+  }
+  if (rows.length - 1 > IMPORT_MAX_ROWS) {
+    redirect(
+      '/dealers?import_error=' +
+        encodeURIComponent(`That file has ${(rows.length - 1).toLocaleString()} rows (max ${IMPORT_MAX_ROWS.toLocaleString()}). Split it and import in parts.`)
+    )
   }
 
   const header = rows[0].map((h) => h.trim().toLowerCase())
@@ -240,7 +258,7 @@ export async function importDealers(formData: FormData) {
     const rows = toInsert.map((d) => ({ ...d, id: crypto.randomUUID() }))
     const { error } = await supabase.from('dealers').insert(rows)
     if (error) {
-      redirect('/dealers?import_error=' + encodeURIComponent(error.message))
+      redirect('/dealers?import_error=' + encodeURIComponent(friendlyDbError(error.message)))
     }
     created = rows.length
 

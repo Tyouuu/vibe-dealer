@@ -33,7 +33,20 @@ export type OrderItem = {
 // outright — hiding them now only leaves a hole on the right of every row.
 // What stays behind the chevron is what genuinely cannot be a column: the
 // invoice link / eSIM codes, and the Mark as Sent action.
-export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; isFinance: boolean }) {
+// isFinance and canMarkSent are two different splits and both are needed here.
+// isFinance decides whether the margin column exists; canMarkSent mirrors who
+// markSimOrderSent will actually accept (cs/master), which is not the same
+// set. Showing the button to an accountant meant offering an action that
+// always came back "you do not have permission".
+export function DealerOrdersTable({
+  orders,
+  isFinance,
+  canMarkSent,
+}: {
+  orders: OrderItem[]
+  isFinance: boolean
+  canMarkSent: boolean
+}) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   return (
@@ -148,7 +161,7 @@ export function DealerOrdersTable({ orders, isFinance }: { orders: OrderItem[]; 
                         </dd>
                       </div>
                     </dl>
-                    {o.delivery_status === 'pending' && (
+                    {canMarkSent && o.delivery_status === 'pending' && (
                       <form action={markSimOrderSent} className="mt-4" onClick={(e) => e.stopPropagation()}>
                         <input type="hidden" name="id" value={o.id} />
                         <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this order as shipped? This cannot be undone.">

@@ -66,7 +66,7 @@ export default async function AccountPage() {
     // belongs to. Stripe, GitHub and Linear all build settings as stacked
     // cards instead, and that is what this is now.
     <div className="flex w-full flex-col gap-5">
-      <PageHeader title="Account settings" subtitle="Your profile, alerts, sessions and password" />
+      <PageHeader title="Account Settings" subtitle="Your profile, alerts, sessions and password" />
 
       <section className="app-card">
         <h2 className="form-block-title">Profile</h2>

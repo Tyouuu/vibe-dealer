@@ -18,7 +18,7 @@ export default function ResetPasswordPage() {
 
         <div className="app-card p-7">
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-paper">Set a new password</h1>
-          <p className="mt-1.5 text-[13px] text-paper-dim">Choose something you haven&apos;t used before.</p>
+          <p className="mt-1.5 text-[13px] text-paper-dim">At least 8 characters, and not one you use anywhere else.</p>
 
           <div className="mt-6">
             <ResetPasswordForm />

@@ -9,6 +9,7 @@ import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
+import { friendlyDbError } from '@/lib/db-error'
 
 function fail(message: string): never {
   redirect('/entry?error=' + encodeURIComponent(message))
@@ -128,8 +129,13 @@ export async function createTransaction(formData: FormData) {
   // Lost the race: the month was reconciled between the check above and this
   // insert. The trigger is the authority, so translate its error rather than
   // leaking raw Postgres text.
+  // The other thing the database can refuse here is the credit-balance
+  // trigger from 0016, when a concurrent sale wins the advisory lock after the
+  // app-layer check above already passed. That used to reach the screen as
+  // `insufficient_credit_balance: 21501 pts available, 30000 pts requested` —
+  // the period-lock case had been given a human sentence and this one hadn't.
   if (txError && isPeriodLockError(txError.message)) fail(periodLockedMessage(txDate))
-  if (txError && txError.code !== '23505') fail(txError.message)
+  if (txError && txError.code !== '23505') fail(friendlyDbError(txError.message))
 
   if (type === 'package' && pkg) {
     // Packages bought the same day count as one batch (e.g. dealer buys A + B + C

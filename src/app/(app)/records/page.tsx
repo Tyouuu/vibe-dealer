@@ -10,7 +10,7 @@ import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { VerifyButton } from './verify-button'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
-import { IconSearch } from '../icons'
+import { IconPaperclip, IconSearch } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { Listbox } from '../listbox'
@@ -43,6 +43,7 @@ type TxRow = {
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
+  receipt_url: string | null
   recorded_by: string | null
   dealers: { company_name: string } | { company_name: string }[] | null
 }
@@ -104,7 +105,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, recorded_by, dealers(company_name)',
+      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
   if (monthWindow) query = query.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
@@ -395,6 +396,25 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         <div className="truncate text-[12px] text-paper-dim">
                           {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                         </div>
+                      )}
+                      {/* The evidence behind the row, and the reason to keep a
+                          receipt at all: when a dealer queries a transaction,
+                          this is what settles it. Uploading one has worked
+                          since day one — nothing had ever read it back.
+
+                          relative z-10 because the dealer link above spans the
+                          whole row via after:inset-0; without it this sits
+                          under that overlay and opens the dealer instead. */}
+                      {tx.receipt_url && (
+                        <a
+                          href={`/api/receipts/view?path=${encodeURIComponent(tx.receipt_url)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative z-10 mt-0.5 inline-flex items-center gap-1 text-[12px] font-medium text-paper-dim hover:text-jade-bright"
+                        >
+                          <IconPaperclip className="h-3 w-3" />
+                          Receipt
+                        </a>
                       )}
                     </td>
                     <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>

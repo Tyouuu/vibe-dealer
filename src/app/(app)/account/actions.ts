@@ -36,13 +36,23 @@ export async function setNotificationCategoryEnabled(category: NotificationCateg
 // email), but not re-checked here — an accountant/cs hitting this action
 // directly would just set a column nothing reads for their own role, which
 // is harmless, so it's not worth a second authorization check.
+// This value is interpolated straight into the daily report's From header
+// (`${senderName} <onboarding@resend.dev>`), so it has to survive being put in
+// one. The form caps it at 80 characters, but that is a client-side attribute
+// and the action accepted anything — including a pasted multi-line value,
+// which would break the header for every master on the list, not just the one
+// who typed it. Newlines and angle brackets out, length enforced here too.
+const SENDER_NAME_MAX = 80
+
 export async function updateReportSenderName(name: string) {
   const user = await requireUser()
   const supabase = await createClient()
 
+  const cleaned = name.replace(/[\r\n<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, SENDER_NAME_MAX)
+
   await supabase
     .from('profiles')
-    .update({ report_sender_name: name.trim() || null })
+    .update({ report_sender_name: cleaned || null })
     .eq('id', user.id)
 
   revalidatePath('/account')

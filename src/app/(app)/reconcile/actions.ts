@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
+import { friendlyDbError } from '@/lib/db-error'
 
 function fail(month: string, message: string): never {
   redirect(`/reconcile?month=${month}&error=${encodeURIComponent(message)}`)
@@ -19,6 +20,10 @@ export async function saveStatement(formData: FormData) {
   const totalPoints = Number(formData.get('company_total_points') ?? 0)
   const profitRm = Number(formData.get('company_profit_rm') ?? 0)
   const note = String(formData.get('note') ?? '').trim() || null
+  // isFinite first: NaN fails every comparison, so a non-numeric field slipped
+  // past the two range checks below and reached Postgres as NaN.
+  if (!Number.isFinite(totalPoints)) fail(month, "Vibe's total top-up could not be read as a number.")
+  if (!Number.isFinite(profitRm)) fail(month, "Vibe's profit figure could not be read as a number.")
   if (totalPoints < 0) fail(month, 'Vibe total top-up cannot be negative.')
   if (profitRm < 0) fail(month, "Vibe's profit figure cannot be negative.")
   const monthDate = `${month}-01`
@@ -27,9 +32,20 @@ export async function saveStatement(formData: FormData) {
 
   const { data: existing } = await supabase
     .from('company_statements')
-    .select('id')
+    .select('id, reconciled')
     .eq('month', monthDate)
     .maybeSingle()
+
+  // The period lock (0031) stops a transaction moving inside a closed month,
+  // but the reconciliation's own reference figure sat outside it: this action
+  // could rewrite company_total_points for an already-reconciled month with no
+  // gate at all, so the number the closure was checked against could change
+  // after the fact while `reconciled` stayed true. reopenMonth exists to be
+  // the one traceable way to change a closed month — routing through it makes
+  // that true rather than merely intended.
+  if (existing?.reconciled) {
+    fail(month, 'This month is reconciled — reopen it before changing the statement figures.')
+  }
 
   const payload = { month: monthDate, company_total_points: totalPoints, company_profit_rm: profitRm, note }
 
@@ -37,7 +53,7 @@ export async function saveStatement(formData: FormData) {
     ? await supabase.from('company_statements').update(payload).eq('id', existing.id)
     : await supabase.from('company_statements').insert(payload)
 
-  if (error) fail(month, error.message)
+  if (error) fail(month, friendlyDbError(error.message))
 
   // Append-only history — company_statements only holds the latest value per
   // month, so log every save here to keep what it used to say and who changed it.
@@ -88,7 +104,7 @@ export async function markReconciled(formData: FormData) {
 
   const { error } = await supabase.from('company_statements').update({ reconciled: true }).eq('month', monthDate)
 
-  if (error) fail(month, error.message)
+  if (error) fail(month, friendlyDbError(error.message))
 
   // Reconciliation itself is a real change of record — log it in the same
   // append-only history saveStatement uses, so audit shows who formally
@@ -139,7 +155,7 @@ export async function reopenMonth(formData: FormData) {
   if (!existing.reconciled) fail(month, 'This month is not currently reconciled.')
 
   const { error } = await supabase.from('company_statements').update({ reconciled: false }).eq('month', monthDate)
-  if (error) fail(month, error.message)
+  if (error) fail(month, friendlyDbError(error.message))
 
   await supabase.from('company_statement_revisions').insert({
     month: monthDate,

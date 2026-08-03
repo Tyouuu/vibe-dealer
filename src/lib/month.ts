@@ -35,6 +35,28 @@ export function formatMonthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleString('en-MY', { year: 'numeric', month: 'long' })
 }
 
+// The one date check every "when did this happen" field needs, in one place.
+//
+// createTransaction had grown this inline and documented why it mattered: the
+// picker blocks a future date client-side, but that is a nicety, and the
+// action is the real backstop. The three actions written after it —
+// recordCreditPurchase, recordSimIntake, createSimOrder — each only checked
+// that the string was non-empty, so any text at all reached Postgres and a
+// stock intake could be dated 2030.
+//
+// Returns null rather than throwing so each caller can phrase its own message
+// with the field's own name.
+export function parseBusinessDate(raw: unknown, today: string): string | null {
+  const s = String(raw ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
+  // Rejects 2026-02-31 and 2026-13-01, which the pattern alone accepts.
+  const d = new Date(`${s}T00:00:00Z`)
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) return null
+  // Business dates record something that already happened.
+  if (s > today) return null
+  return s
+}
+
 export function formatDateLabel(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00Z').toLocaleString('en-MY', {
     timeZone: 'Asia/Kuala_Lumpur',

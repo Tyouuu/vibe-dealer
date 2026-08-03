@@ -26,12 +26,12 @@ type RawDeliveryRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ all?: string }>
+  searchParams: Promise<{ all?: string; error?: string }>
 }
 
 export default async function DeliveryPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { all } = await searchParams
+  const { all, error } = await searchParams
   const showAll = all === '1'
 
   if (user.role !== 'cs' && user.role !== 'master') {
@@ -86,6 +86,8 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
         title="SIM Delivery"
         subtitle="Physical SIMs ship to the office and then on to the dealer; eSIMs activate instantly and never appear here."
       />
+
+      {error && <div className="alert alert-bad">{error}</div>}
 
       <HeroCard
         label={showAll ? 'Deliveries pending' : 'Waiting to be sent'}

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { normalizeRegion } from '@/lib/regions'
 import { sanitizeSearchTerm } from '@/lib/search'
+import { friendlyDbError } from '@/lib/db-error'
 
 // dealers_directory (0015) is the cs-safe view — cs has no SELECT on the
 // dealers base table, so this is the only way this lookup works for cs too,
@@ -89,7 +90,7 @@ export async function createDealer(formData: FormData) {
   })
 
   if (error) {
-    redirect('/onboard?error=' + encodeURIComponent(error.message))
+    redirect('/onboard?error=' + encodeURIComponent(friendlyDbError(error.message)))
   }
 
   // Onboarding can set an Initial Package directly on the new dealer row

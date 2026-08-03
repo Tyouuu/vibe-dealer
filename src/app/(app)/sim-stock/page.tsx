@@ -381,6 +381,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   }
                 })}
                 isFinance={isFinance}
+                canMarkSent={user.role === 'cs' || user.role === 'master'}
               />
             ) : (
               <p className="text-sm text-paper-dim">No orders recorded yet.</p>

@@ -3,7 +3,7 @@ import { LogoMark } from './(app)/icons'
 
 export default function NotFound() {
   return (
-    <div className="grid min-h-screen place-items-center bg-ink-950 px-4">
+    <div className="grid min-h-screen place-items-center bg-canvas px-4">
       <div className="w-full max-w-sm text-center">
         <LogoMark className="mx-auto mb-5 h-11 w-11" />
         <p className="text-[64px] font-semibold leading-none tracking-tight text-paper">404</p>

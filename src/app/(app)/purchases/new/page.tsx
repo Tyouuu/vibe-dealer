@@ -11,7 +11,7 @@ import { PurchaseForm } from '../purchase-form'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Log purchase — DealerHub',
+  title: 'Log Purchase — DealerHub',
 }
 
 type PurchaseRow = {
@@ -63,7 +63,7 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
   return (
     <div className="flex w-full flex-col">
       <PageHeader
-        title="Log purchase"
+        title="Log Purchase"
         subtitle="A batch of credit bought from Vibe Mobile. It adds to the balance every dealer sale is checked against."
       />
 

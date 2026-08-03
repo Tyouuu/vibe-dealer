@@ -127,6 +127,27 @@ export async function GET(request: NextRequest) {
   // fixed default when nobody has customized it.
   const senderName = masters?.find((m) => m.report_sender_name)?.report_sender_name ?? 'DealerHub Daily Report'
 
+  // The address the report is sent from, once a real domain is verified in
+  // Resend. It stays configurable rather than hardcoded because the value is
+  // deployment-specific, not code: a preview deploy and production can point
+  // at different senders without a commit.
+  //
+  // The fallback is Resend's shared sandbox domain, which only delivers to the
+  // Resend account owner's own address. That is fine for one master trying it
+  // out and silently wrong the moment a second recipient exists — so it warns
+  // rather than failing, and the Sentry report below names it explicitly when
+  // a send does fail.
+  const fromEmail = process.env.REPORT_FROM_EMAIL?.trim() || 'onboarding@resend.dev'
+  const usingSandboxSender = fromEmail.endsWith('@resend.dev')
+  if (usingSandboxSender && recipients.length > 1) {
+    await reportToSentry(() =>
+      Sentry.captureMessage(
+        `Daily report is still sending from ${fromEmail} (Resend's shared sandbox) to ${recipients.length} recipients — all but the Resend account owner will be refused. Verify a domain and set REPORT_FROM_EMAIL.`,
+        { level: 'warning', tags: { cron: 'daily-report' } }
+      )
+    )
+  }
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -134,7 +155,7 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `${senderName} <onboarding@resend.dev>`,
+      from: `${senderName} <${fromEmail}>`,
       to: recipients,
       subject: `DealerHub Daily Report — ${summary.date}`,
       html: reportHtml(summary),
@@ -143,16 +164,17 @@ export async function GET(request: NextRequest) {
 
   if (!res.ok) {
     const body = await res.text()
-    // The most likely real-world trigger isn't an outage: the sender is still
-    // Resend's shared onboarding@resend.dev, which may only deliver to the
-    // Resend account owner. Adding a second master, or moving the existing one
-    // to a company address, starts failing here — so this needs to be loud.
+    // The most likely real-world trigger isn't an outage: an unverified
+    // sender domain. Resend's shared sandbox address only delivers to the
+    // Resend account owner, so adding a second master — or moving the existing
+    // one to a company address — starts failing here. The sender in use is
+    // included below so the report says which case this is.
     await reportToSentry(() =>
       Sentry.captureException(new Error(`Daily report email failed: Resend returned ${res.status}`), {
         tags: { cron: 'daily-report' },
         // Recipients are the point of the alert (which address was refused),
         // and no report content is included.
-        extra: { status: res.status, recipients, resendResponse: body.slice(0, 500) },
+        extra: { status: res.status, from: fromEmail, usingSandboxSender, recipients, resendResponse: body.slice(0, 500) },
       })
     )
     return NextResponse.json({ error: 'Resend request failed', detail: body }, { status: 502 })

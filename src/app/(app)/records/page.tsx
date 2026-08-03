@@ -312,7 +312,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </div>
         {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
         <input type="hidden" name="sort" value={sort} />
-        <button type="submit" className="btn-primary">
+        {/* Secondary, like the same control on Audit Log and Dealers. Applying a
+            filter is reversible; Export writes a file that leaves the system. */}
+        <button type="submit" className="btn-ghost">
           Filter
         </button>
       </form>
@@ -336,17 +338,26 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               what gave the table three different row heights (61/59/74,
               measured). Ten columns, percentages summing to 100. */}
           <table className="w-full min-w-[1040px] table-fixed border-collapse text-sm">
+            {/* Dealer 19% -> 24%. At 1440 the company name was truncating
+                mid-word ("ZZZ TEST - Kampar De…") while Rate, which has been
+                6% on every row since migration 0010 flattened the package
+                rates, and Delivery, which is an em dash on every top-up and
+                adjustment, each held more width than they can use. Nothing is
+                removed — both still record something real about the row — the
+                five points simply go to the column you actually read the row
+                by. Date keeps 9%: "28 Jul 2026" needs more room than the ISO
+                string it replaced. */}
             <colgroup>
               <col className="w-[9%]" />
-              <col className="w-[19%]" />
-              <col className="w-[13%]" />
+              <col className="w-[24%]" />
+              <col className="w-[11%]" />
               <col className="w-[11%]" />
               <col className="w-[8%]" />
-              <col className="w-[5%]" />
+              <col className="w-[4%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
               <col className="w-[9%]" />
               <col className="w-[8%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
             </colgroup>
             <thead>
               <tr>

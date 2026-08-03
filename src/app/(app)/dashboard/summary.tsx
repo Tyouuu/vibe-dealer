@@ -37,8 +37,18 @@ function byUrgency(a: BuiltNotification, b: BuiltNotification) {
   return SEVERITY[a.variant] - SEVERITY[b.variant] || b.staleDays - a.staleDays
 }
 
+// One item, not four.
+//
+// This card and /notifications were reading the same list and showing it the
+// same way, in nearly the same words — a cs user had two pages telling them
+// about the same two deliveries. They are not the same job: the dashboard is
+// glanced at, /notifications is worked through. So the dashboard answers "what
+// is the single most urgent thing right now" and hands off the rest, and the
+// full list has one home instead of one and a half.
+const DASHBOARD_PREVIEW_COUNT = 1
+
 export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; flat?: boolean }) {
-  const shown = [...items].sort(byUrgency).slice(0, 4)
+  const shown = [...items].sort(byUrgency).slice(0, DASHBOARD_PREVIEW_COUNT)
   const rest = items.length - shown.length
 
   if (shown.length === 0) {
@@ -62,9 +72,11 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
         <h2 className="text-[15px] font-semibold text-paper">
           {items.length} {items.length === 1 ? 'thing needs' : 'things need'} you
         </h2>
+        {/* The only route to the rest of the list now, so it says where it
+            goes rather than just counting. */}
         {rest > 0 && (
           <Link href="/notifications" className="text-[12px] font-semibold text-primary hover:underline">
-            {rest} more
+            {`${rest} more in Notifications →`}
           </Link>
         )}
       </div>
@@ -74,7 +86,9 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
           notices — and the order is now deliberate (see byUrgency) instead
           of whatever order the builder happened to emit. */}
       <ol className="relative mt-4 flex flex-col pl-7">
-        <span aria-hidden="true" className="absolute bottom-4 left-[6px] top-4 w-px bg-ink-800" />
+        {/* The rail is what makes several notices read as one ordered
+            sequence. Beside a single row it is a 20px stub joining nothing. */}
+        {shown.length > 1 && <span aria-hidden="true" className="absolute bottom-4 left-[6px] top-4 w-px bg-ink-800" />}
         {shown.map((n) => (
           <li key={n.id} className="relative">
             <span

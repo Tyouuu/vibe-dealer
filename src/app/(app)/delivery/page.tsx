@@ -100,6 +100,10 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
               : `oldest has waited ${oldestDays} day${oldestDays === 1 ? '' : 's'}`
         }
         href="/delivery"
+        // "Showing N items / pending only" used to sit here as a third stat.
+        // The segmented control directly below already says which set is on
+        // screen, and the rows themselves are under that — three ways of
+        // saying the same thing within 200px, at any amount of data.
         stats={[
           {
             label: 'Overdue',
@@ -114,7 +118,6 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
             href: '/delivery',
             sub: 'not late yet',
           },
-          { label: 'Showing', value: `${typed.length} item${typed.length === 1 ? '' : 's'}`, href: '/delivery?all=1', sub: showAll ? 'all deliveries' : 'pending only' },
         ]}
       />
 

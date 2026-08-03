@@ -59,6 +59,10 @@ export default async function NotificationsPage() {
               : 'all raised recently'
         }
         href="/notifications"
+        // "Worth a look" was here, valued at notifications.length - urgent.
+        // It held no information the other two did not: with the headline
+        // above it, the card had two cells that added up to a third, in front
+        // of a list short enough to count by eye.
         stats={[
           {
             label: 'Needs action now',
@@ -66,12 +70,6 @@ export default async function NotificationsPage() {
             href: '/notifications',
             tone: urgent ? 'warn' : 'normal',
             sub: 'flagged as blocking',
-          },
-          {
-            label: 'Worth a look',
-            value: String(notifications.length - urgent),
-            href: '/notifications',
-            sub: 'not blocking anything',
           },
           {
             label: 'Categories',

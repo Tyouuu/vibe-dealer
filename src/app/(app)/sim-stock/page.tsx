@@ -108,7 +108,15 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
   const totalIntakeCost = intakes.reduce((s, r) => s + r.quantity * Number(r.cost_per_unit_rm), 0)
   const totalOrderRevenue = orders.reduce((s, o) => s + o.quantity * Number(o.unit_price_rm), 0)
-  const totalOrderMargin = isFinance ? orders.reduce((s, o) => s + o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)), 0) : 0
+  // Shipping comes off the margin. The client confirmed the fee recorded on
+  // an order is what was paid to send it, not something charged on to the
+  // dealer — and until now nothing in this app subtracted it. Every margin
+  // figure on this page was therefore overstated by whatever shipping had
+  // been paid: RM 82.50 against a true RM 58.50 on the seeded month, 41% high.
+  const totalShipping = orders.reduce((s, o) => s + Number(o.shipping_fee_rm ?? 0), 0)
+  const totalOrderMargin = isFinance
+    ? orders.reduce((s, o) => s + o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) - Number(o.shipping_fee_rm ?? 0), 0)
+    : 0
   const soldAtCost = isFinance ? orders.reduce((s, o) => s + o.quantity * Number(o.unit_cost_rm ?? 0), 0) : 0
 
   // What the shelf is doing, in the three states a card can be in. `sold`
@@ -232,7 +240,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               <p className="mt-3.5 text-[12px] text-paper-dim">
                 {formatMYR(SIM_UNIT_COST_RM)} a card in, {formatMYR(SIM_SELL_PRICE_RM)} out — a flat {formatMYR(SIM_MARGIN_RM)} each ·{' '}
                 {formatMYR(totalIntakeCost)} spent on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
-                {formatMYR(totalOrderMargin)} so far
+                {formatMYR(totalOrderMargin)} after shipping
               </p>
             )}
           </div>
@@ -341,7 +349,8 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   `${orders.length} order${orders.length === 1 ? '' : 's'}`,
                   `${formatMYR(totalOrderRevenue)} collected`,
                   `${totalSold.toLocaleString()} cards at ${formatMYR(SIM_SELL_PRICE_RM)} each`,
-                  `margin ${formatMYR(totalOrderMargin)}`,
+                  `${formatMYR(totalShipping)} paid to ship`,
+                  `margin ${formatMYR(totalOrderMargin)} after shipping`,
                 ]
               : [`${orders.length} order${orders.length === 1 ? '' : 's'}`, `${totalSold.toLocaleString()} cards`]
           }
@@ -353,7 +362,10 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                   const dealerRel = Array.isArray(o.dealers) ? o.dealers[0] : o.dealers
                   const dealerName = dealerRel?.company_name ?? dealerNameById.get(o.dealer_id) ?? '—'
                   const paid = o.quantity * Number(o.unit_price_rm)
-                  const margin = isFinance ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) : 0
+                  // Net of what it cost to ship — see totalOrderMargin above.
+                  const margin = isFinance
+                    ? o.quantity * (Number(o.unit_price_rm) - Number(o.unit_cost_rm ?? 0)) - Number(o.shipping_fee_rm ?? 0)
+                    : 0
                   return {
                     id: o.id,
                     order_date: o.order_date,

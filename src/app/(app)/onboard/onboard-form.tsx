@@ -62,7 +62,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
     // Attio, Linear and Salesforce all build as a single panel.
     <div className="w-full">
       <PageHeader
-        title="Onboard dealer"
+        title="Onboard Dealer"
         subtitle="Company name is the only thing required. Everything else can be filled in later from the dealer's own page."
       />
 

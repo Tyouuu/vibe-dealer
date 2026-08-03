@@ -84,7 +84,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
           and the rows it describes. */}
       <PageHeader
         title="SIM Delivery"
-        subtitle="Physical SIMs ship to the office and then on to the dealer; eSIMs activate instantly and never appear here."
+        subtitle="Physical SIMs ship to the office and then on to the dealer. eSIMs activate instantly — they only appear here under Show all, marked Instant."
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

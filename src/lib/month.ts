@@ -57,11 +57,27 @@ export function parseBusinessDate(raw: unknown, today: string): string | null {
   return s
 }
 
-export function formatDateLabel(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00Z').toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+// The app's one date format: "3 Aug 2026".
+//
+// It had three. The date picker rendered "3 Aug 2026" from its own private
+// formatter, this helper rendered "03 Aug 2026" and was called from exactly
+// one place (the report subtitle), and all six tables printed the raw ISO
+// string — so a sale entered as "3 Aug 2026" came back as "2026-08-03" on
+// every screen that showed it afterwards.
+//
+// Matches what the picker already showed, since that is the one place a date
+// is typed rather than read. date-picker.tsx now calls this rather than
+// keeping its own copy, so the two cannot drift again.
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export function formatDateLabel(dateStr: string | null | undefined): string {
+  const s = String(dateStr ?? '')
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
+  // Anything that isn't an ISO date comes back untouched rather than as
+  // "Invalid Date" — a table cell should show what it has, not a JS error.
+  if (!m) return s
+  const [, y, mo, d] = m
+  const monthIndex = Number(mo) - 1
+  if (monthIndex < 0 || monthIndex > 11) return s
+  return `${Number(d)} ${MONTHS_SHORT[monthIndex]} ${y}`
 }

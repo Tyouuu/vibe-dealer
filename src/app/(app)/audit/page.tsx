@@ -155,7 +155,11 @@ export default async function AuditPage({ searchParams }: PageProps) {
         <div className="w-44">
           <MonthPicker name="month" defaultValue={month} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
         </div>
-        <button type="submit" className="btn-primary">
+        {/* Secondary, not primary. Applying a filter is reversible and changes
+            nothing; Export produces a file that leaves the system. As
+            btn-primary this was the heaviest control on the page and outranked
+            the one with a real consequence. */}
+        <button type="submit" className="btn-ghost">
           Filter
         </button>
       </form>
@@ -185,9 +189,16 @@ export default async function AuditPage({ searchParams }: PageProps) {
                     <Avatar name={run.actor} size={26} />
                     <div className="min-w-0">
                       <div className="truncate text-[13px] font-semibold text-paper">{run.actor}</div>
+                      {/* The time was printed here and again on every row to the
+                          right. For a one-event run that is the identical
+                          string twice, side by side; for a seven-event run it
+                          was the run's own time above seven more. What this
+                          column is for is who and how many — each event keeps
+                          its own time, which is the one that can differ. */}
                       <div className="text-[12px] text-paper-dim">
-                        {formatEventTime(run.items[0].createdAt)}
-                        {run.items.length > 1 && ` · ${run.items.length} events`}
+                        {run.items.length > 1
+                          ? `${run.items.length} events`
+                          : formatEventTime(run.items[0].createdAt)}
                       </div>
                     </div>
                   </div>
@@ -197,7 +208,9 @@ export default async function AuditPage({ searchParams }: PageProps) {
                         key={e.id}
                         row={{
                           id: e.id,
-                          time: formatEventTime(e.createdAt),
+                          // Suppressed for a one-event run: the left column
+                          // already shows it and they would sit level.
+                          time: run.items.length > 1 ? formatEventTime(e.createdAt) : null,
                           actor: e.actor,
                           event: e.event,
                           dealer: e.dealer,

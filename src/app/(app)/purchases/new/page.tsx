@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../../permission-denied'
-import { todayInMalaysia } from '@/lib/month'
+import { todayInMalaysia, formatDateLabel } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { CREDIT_PURCHASE_RATE } from '@/lib/packages'
@@ -117,7 +117,7 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
                   const offRate = points > 0 && Math.abs(rate - usualRate) > 0.005
                   return (
                     <tr key={p.id} className="tr-row h-14">
-                      <td className="td whitespace-nowrap text-paper-dim">{p.purchase_date}</td>
+                      <td className="td whitespace-nowrap text-paper-dim">{formatDateLabel(p.purchase_date)}</td>
                       <td className="td figure-money whitespace-nowrap text-right">{formatMYR(Number(p.money_rm))}</td>
                       <td className="td figure-points whitespace-nowrap text-right">{points.toLocaleString()}</td>
                       <td className="td figure-money whitespace-nowrap text-right" style={offRate ? { color: 'var(--color-brass-bright)' } : undefined}>

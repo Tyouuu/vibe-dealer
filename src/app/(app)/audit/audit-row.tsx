@@ -5,7 +5,8 @@ import { type PackageCode } from '@/lib/packages'
 
 export type AuditRowData = {
   id: string
-  time: string
+  /** null on a one-event run, where the actor column already carries it. */
+  time: string | null
   actor: string
   event: string
   dealer: string | null
@@ -86,7 +87,7 @@ export function AuditRow({ row }: { row: AuditRowData }) {
           <span className="block text-[13px] font-semibold leading-snug text-paper">{sentence(row)}</span>
           {bits.length > 0 && <span className="mt-0.5 block truncate text-[12px] text-paper-dim">{bits.join(' · ')}</span>}
         </span>
-        <span className="figure mt-px shrink-0 text-[12px] text-paper-dim">{row.time}</span>
+        {row.time && <span className="figure mt-px shrink-0 text-[12px] text-paper-dim">{row.time}</span>}
         <svg
           viewBox="0 0 24 24"
           fill="none"

@@ -7,6 +7,7 @@ import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, isPhysicalSimType, type SimStockTy
 import { ScrollFade } from '../scroll-fade'
 import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
+import { formatDateLabel } from '@/lib/month'
 
 export type OrderItem = {
   id: string
@@ -89,7 +90,7 @@ export function DealerOrdersTable({
           return (
             <Fragment key={o.id}>
               <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim`}>
-                {o.order_date}
+                {formatDateLabel(o.order_date)}
               </div>
               <div onClick={toggle} title={o.dealerName} className={`cursor-pointer truncate py-3.5 font-semibold text-paper`}>
                 {o.dealerName}

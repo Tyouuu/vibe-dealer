@@ -139,6 +139,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // live problem here: `count` is the DB's pre-filter total, and the inactive
   // view filters afterward in JS, which is why displayCount exists at all.
   const sellingCount = rows.filter((r) => r.totalPoints > 0).length
+  // The number this card was hiding. "Gone quiet" is built from
+  // dealer_last_verified_activity, which only ever contains dealers who have
+  // transacted — so a dealer who has never bought anything cannot appear in it
+  // by construction, and the card read "249 dealers, 1 gone quiet" while 242 of
+  // them had never placed a single order. Never-sold and went-quiet are
+  // different problems with different fixes, so both are named.
+  const neverSoldCount = rows.length - sellingCount
   const quietCount = rows.filter((r) => r.isInactive).length
   const noRegionCount = rows.filter((r) => !r.region).length
 
@@ -221,7 +228,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
             label: 'Ever topped up',
             value: sellingCount.toLocaleString(),
             href: '/records?status=verified',
-            sub: 'has verified volume on record',
+            tone: neverSoldCount > sellingCount ? 'caution' : 'normal',
+            sub:
+              neverSoldCount > 0
+                ? `${neverSoldCount.toLocaleString()} on the roster never have`
+                : 'every dealer has verified volume on record',
           },
           {
             label: 'Gone quiet',
@@ -301,7 +312,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
           <div className="w-44">
             <Listbox name="region" defaultValue={region} options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]} />
           </div>
-          <button type="submit" className="btn-primary">
+          {/* Secondary, not primary. Applying a filter is reversible and changes
+              nothing; Export produces a file that leaves the system. As
+              btn-primary this was the heaviest control on the page and outranked
+              the one with a real consequence. */}
+          <button type="submit" className="btn-ghost">
             Filter
           </button>
         </form>

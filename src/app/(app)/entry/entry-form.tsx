@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
 import { createTransaction } from './actions'
-import { IconCoin, IconUpload, IconChevronDown } from '../icons'
+import { IconCoin, IconUpload, IconChevronDown, IconUsers } from '../icons'
 import { Avatar } from '../avatar'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
@@ -209,6 +209,17 @@ export function EntryForm({
 
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
+          {/* The Amount half of this form has always announced itself; the half
+              above it did not, so the page opened on unlabelled fields and then
+              acquired a section heading partway down. Onboard Dealer and Log SIM
+              Stock name every block they contain — this now does too. */}
+          <div className="form-section-head">
+            <span className="tile">
+              <IconUsers />
+            </span>
+            <span>The sale</span>
+            <span className="rule" />
+          </div>
           {recentDealers.length > 0 && !dealerId && (
             <div className="-mb-1 flex flex-wrap items-center gap-1.5">
               <span className="text-[12px] font-semibold text-paper-dim">Recent:</span>
@@ -251,7 +262,7 @@ export function EntryForm({
             </div>
           ) : (
           <div>
-            <label className="field-label">Dealer</label>
+            <label className="field-label">Dealer<span className="req"> *</span></label>
             <Combobox
               name="dealer_id"
               value={dealerId}
@@ -333,7 +344,7 @@ export function EntryForm({
           ) : (
             <div className="form-grid">
               <div>
-                <label className="field-label">Amount collected (RM)</label>
+                <label className="field-label">Amount collected (RM)<span className="req"> *</span></label>
                 <input
                   name="money_rm"
                   type="number"

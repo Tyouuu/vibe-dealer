@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, todayInMalaysia, formatMonthLabel } from '@/lib/month'
+import { monthRange, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
@@ -376,7 +376,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
                   <tr key={tx.id} className="tr-row relative h-16">
-                    <td className="td whitespace-nowrap text-paper-dim">{tx.tx_date}</td>
+                    <td className="td whitespace-nowrap text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                     <td className="td">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar name={dealerName ?? '?'} size={24} />

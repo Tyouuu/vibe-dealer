@@ -1,10 +1,23 @@
 import Link from 'next/link'
 
-// null means "no meaningful baseline" (the prior period was 0) — callers must
-// skip the change badge rather than render a divide-by-zero NaN/Infinity.
+// null means "no meaningful baseline" — callers must skip the change badge
+// rather than render it.
+//
+// Two ways a baseline stops being meaningful. The prior period being 0 is the
+// obvious one: the arithmetic is a divide by zero. The other showed up on the
+// dashboard as "34,799 pts ↑ 840.5%", which is arithmetically right and tells
+// the reader nothing — June happened to be a 3,700 pt month, so the percentage
+// is really a statement about how small June was, not how big July is. Past a
+// few hundred percent the number reads as a bug and the two absolute figures
+// say it better; the caption beside the badge already names the period being
+// compared, so dropping the badge loses nothing.
+const MAX_MEANINGFUL_PCT = 300
+
 export function pctChange(curr: number, prev: number): number | null {
   if (!prev) return null
-  return ((curr - prev) / prev) * 100
+  const pct = ((curr - prev) / prev) * 100
+  if (Math.abs(pct) >= MAX_MEANINGFUL_PCT) return null
+  return pct
 }
 
 // One headline figure with its supporting numbers. Shared by Dashboard,

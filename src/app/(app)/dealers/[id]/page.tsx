@@ -11,10 +11,12 @@ import { deleteDealer } from '../actions'
 import { IconMapPin, IconPaperclip, IconTag, IconUsers } from '../../icons'
 import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
+import { StatusDot } from '../../status-dot'
 import { EditDealerButton } from './edit-dealer-button'
 import { ScrollFade } from '../../scroll-fade'
 import { formatMYR } from '@/lib/money'
 import { HeroCard } from '../../hero-card'
+import { formatDateLabel } from '@/lib/month'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — DealerHub',
@@ -89,21 +91,23 @@ const DELIVERY_LABEL: Record<string, string> = {
   sent: 'Sent',
 }
 
-function StatusPill({ status }: { status: 'pending' | 'verified' | 'flagged' }) {
-  if (status === 'verified') return <span className="pill pill-jade">Verified</span>
-  if (status === 'flagged') return <span className="pill pill-clay">Flagged</span>
-  return <span className="pill pill-brass">Pending</span>
+// These three were local copies of a vocabulary the rest of the app already
+// had. Every other page renders a transaction's status with the shared
+// StatusDot — a coloured dot and a word, with pending pulsing. Here the same
+// three statuses were pills, and pending did not pulse, so clicking a dealer
+// name in Transactions changed how the identical status looked mid-click.
+// SimPill was worse than inconsistent: it gave eSIM a pill and physical plain
+// text, so one column had some rows in a container and some not.
+function TxStatus({ status }: { status: 'pending' | 'verified' | 'flagged' }) {
+  if (status === 'verified') return <StatusDot color="jade-bright" label="Verified" />
+  if (status === 'flagged') return <StatusDot color="clay-bright" label="Flagged" />
+  return <StatusDot color="brass-bright" label="Pending" pulse />
 }
 
-function SimPill({ simType }: { simType: 'physical' | 'esim' | null }) {
-  if (simType === 'esim') return <span className="pill pill-neutral">eSIM</span>
-  return <span className="text-paper-dim">Physical SIM</span>
-}
-
-function DeliveryPill({ status }: { status: 'na' | 'pending' | 'sent' }) {
-  if (status === 'sent') return <span className="pill pill-jade">Sent</span>
-  if (status === 'pending') return <span className="pill pill-brass">Pending</span>
-  return <span className="pill pill-slate">Instant</span>
+function DeliveryStatus({ status }: { status: 'na' | 'pending' | 'sent' }) {
+  if (status === 'sent') return <StatusDot color="jade-bright" label="Sent" />
+  if (status === 'pending') return <StatusDot color="brass-bright" label="Pending" pulse />
+  return <StatusDot color="slate-bright" label="Instant" />
 }
 
 function AttrChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -465,7 +469,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
             {isFinance ? (
               <ScrollFade label="All transactions for this dealer">
-                <table className="w-full min-w-[820px] border-collapse text-sm">
+                {/* 720, not 820. The dealer page is two columns, so this table lives in a
+                        772px well at 1440 — an 820px minimum meant it scrolled sideways on a
+                        full desktop and the column pushed out of view was Status, on the page
+                        someone opens precisely to check a transaction. */}
+                <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead>
                     <tr>
                       <th className="th">Date</th>
@@ -481,7 +489,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   <tbody>
                     {txRows.map((tx) => (
                       <tr key={tx.id} className="tr-row">
-                        <td className="td text-paper-dim">{tx.tx_date}</td>
+                        <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                         <td className="td text-paper-dim">
                           {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                           {tx.type === 'topup' && tx.coupon_rm > 0 && (
@@ -510,7 +518,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
                         <td className="td text-paper-dim">{DELIVERY_LABEL[tx.delivery_status] ?? '—'}</td>
                         <td className="td">
-                          <StatusPill status={tx.status} />
+                          <TxStatus status={tx.status} />
                           {tx.status === 'flagged' && tx.flag_reason && (
                             <div className="mt-0.5 max-w-[160px] truncate text-[11px] text-paper-dim" title={tx.flag_reason}>
                               {tx.flag_reason}
@@ -547,10 +555,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         <td className="td text-paper-dim">{row.tx_date}</td>
                         <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
                         <td className="td">
-                          <SimPill simType={row.sim_type} />
+                          <span className="text-paper-dim">{row.sim_type === 'esim' ? 'eSIM' : 'Physical SIM'}</span>
                         </td>
                         <td className="td">
-                          <DeliveryPill status={row.delivery_status} />
+                          <DeliveryStatus status={row.delivery_status} />
                         </td>
                         <td className="td">
                           {row.delivery_status === 'pending' ? (

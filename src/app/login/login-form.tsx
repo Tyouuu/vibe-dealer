@@ -11,7 +11,10 @@ export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
+  // Off by default. This is a financial system and the machines it runs on are
+  // shared, so staying signed in is a choice someone makes, not one made for
+  // them — the same default Stripe, Mercury and every bank ships.
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 

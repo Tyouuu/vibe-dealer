@@ -8,6 +8,7 @@ import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { pctChange } from '../hero-card'
+import { resolveReportMonth } from '@/lib/reporting-month'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { balanceSeries } from '@/lib/dashboard-period'
 import { formatMYR } from '@/lib/money'
@@ -42,18 +43,23 @@ type PageProps = {
 // closing balance.
 export default async function ReportsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month = currentMonth(), by: byRaw } = await searchParams
+  const { month: monthParam, by: byRaw } = await searchParams
   const by: 'dealer' | 'type' = byRaw === 'type' ? 'type' : 'dealer'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view monthly reports" />
   }
 
+  const supabaseForMonth = await createClient()
+  // Opens on the last month that has anything in it, the way the dashboard
+  // already does. On the 3rd of a month this page led with "RM 0.00 ↓ 100%".
+  const { month, auto: monthAuto } = await resolveReportMonth(supabaseForMonth, monthParam)
+
   const { start, end } = monthRange(month)
   const prevMonth = previousMonth(month)
   const { start: prevStart, end: prevEnd } = monthRange(prevMonth)
   const today = todayInMalaysia()
-  const supabase = await createClient()
+  const supabase = supabaseForMonth
 
   const [
     { data: monthTxAll },
@@ -125,6 +131,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const prevTotalCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
 
   const totalEarned = totalCommission + simMargin
+  const earnedChg = pctChange(totalEarned, prevTotalCommission + marginOf(simPrev))
   const prevEarned = prevTotalCommission + marginOf(simPrev)
   const moneyCollected = totalMoney + simRevenue
 
@@ -215,7 +222,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Monthly Report"
-        subtitle={`${monthLabel} · generated ${formatDateLabel(todayInMalaysia())}`}
+        subtitle={
+          monthAuto
+            ? `Showing ${monthLabel} — nothing verified in ${formatMonthLabel(currentMonth())} yet. Generated ${formatDateLabel(todayInMalaysia())}.`
+            : `${monthLabel} · generated ${formatDateLabel(todayInMalaysia())}`
+        }
         action={
           <div className="flex flex-wrap items-center gap-2">
             <form className="flex items-center gap-2" action="/reports" method="GET">
@@ -240,9 +251,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <div className="text-[12px] text-paper-dim">What you made — {monthLabel}</div>
         <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="tnum text-[38px] font-semibold leading-none tracking-[-.03em] text-paper">{formatMYR(totalEarned)}</span>
-          {prevEarned > 0 && (
-            <span className={`chg text-[13px] ${totalEarned >= prevEarned ? 'chg-up' : 'chg-down'}`}>
-              {totalEarned >= prevEarned ? '↑' : '↓'} {Math.abs(Math.round(pctChange(totalEarned, prevEarned) ?? 0)).toFixed(0)}%
+          {/* Reads pctChange's null as "don't show a badge" rather than
+              coercing it to 0% — a `?? 0` here printed "↓ 0%" for a month with
+              no baseline, and printed a real percentage for changes so large
+              (a month against a near-empty one) that the two absolute figures
+              in the line below say it better. */}
+          {earnedChg != null && (
+            <span className={`chg text-[13px] ${earnedChg >= 0 ? 'chg-up' : 'chg-down'}`}>
+              {earnedChg >= 0 ? '↑' : '↓'} {Math.abs(Math.round(earnedChg)).toFixed(0)}%
             </span>
           )}
         </div>

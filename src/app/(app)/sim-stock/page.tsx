@@ -178,7 +178,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
            beside the money they explain, which is where you would look for
            them anyway. Nothing was dropped. */
         subtitle={`Bought from Vibe Mobile in boxes of ${SIM_BOX_SIZE} and resold to dealers — separate from the points ledger.`}
-        action={isFinance ? { href: '/sim-stock/log', label: 'Log stock' } : undefined}
+        action={isFinance ? { href: '/sim-stock/log', label: 'Log SIM Stock' } : undefined}
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

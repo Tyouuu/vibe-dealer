@@ -6,6 +6,7 @@ import { Avatar } from '../avatar'
 import { ScrollFade } from '../scroll-fade'
 import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
+import { formatDateLabel } from '@/lib/month'
 
 export type RecentTxRow = {
   id: string
@@ -61,7 +62,7 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
             {filtered.map((tx) => (
               <tr key={tx.id} className="tr-row relative">
                 <td className="td figure text-paper-dim">#{tx.id.slice(0, 6).toUpperCase()}</td>
-                <td className="td text-paper-dim">{tx.tx_date}</td>
+                <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                 <td className="td">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={tx.dealerName} size={24} />

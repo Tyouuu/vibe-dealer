@@ -137,7 +137,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       <PageHeader
         title="Credit Purchases"
         subtitle="What we pay Vibe Mobile for points, and every movement in and out of that credit."
-        action={{ href: '/purchases/new', label: 'Log a purchase' }}
+        action={{ href: '/purchases/new', label: 'Log Purchase' }}
       />
 
       {/* No error slot: recordCreditPurchase now fails back to /purchases/new,

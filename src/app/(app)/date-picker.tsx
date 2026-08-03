@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { IconChevronDown } from './icons'
+import { formatDateLabel } from '@/lib/month'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -16,10 +17,10 @@ function toISO(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+// Delegates to the shared formatter so the picker and every table that reads
+// the value back can never drift apart again. See formatDateLabel.
 function formatDisplay(v: string): string {
-  const p = parseISO(v)
-  if (!p) return ''
-  return `${p.d} ${MONTHS[p.m].slice(0, 3)} ${p.y}`
+  return formatDateLabel(v)
 }
 
 function daysInMonth(y: number, m: number): number {

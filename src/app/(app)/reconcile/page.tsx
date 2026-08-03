@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel } from '@/lib/month'
+import { resolveReportMonth } from '@/lib/reporting-month'
+import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { IconCheckCircle, IconChevronDown } from '../icons'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
@@ -37,15 +38,20 @@ type PageProps = {
 
 export default async function ReconcilePage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month = currentMonth(), error, saved, reopened, page } = await searchParams
+  const { month: monthParam, error, saved, reopened, page } = await searchParams
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view reconciliation" />
   }
 
-  const { start, end } = monthRange(month)
   const supabase = await createClient()
+  // The month you reconcile is the one that has transactions in it. Opening on
+  // an untouched current month put a 38px "0 pts" at the top of the page and
+  // disabled the only button on it.
+  const { month, auto: monthAuto } = await resolveReportMonth(supabase, monthParam)
+
+  const { start, end } = monthRange(month)
 
   const [{ data: verifiedTx }, { data: statement }] = await Promise.all([
     // No .limit() — systemPoints below is a real sum over every verified row
@@ -129,7 +135,10 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             Reconciliation
             <span className={`pill ${isClosed ? 'pill-jade' : 'pill-neutral'}`}>{isClosed ? 'Closed' : 'Open'}</span>
           </h1>
-          <p className="page-subtitle">Compare your verified total against Vibe&apos;s own statement, then close the month.</p>
+          <p className="page-subtitle">
+            {monthAuto && `Showing ${formatMonthLabel(month)} — nothing verified in ${formatMonthLabel(currentMonth())} yet. `}
+            Compare your verified total against Vibe&apos;s own statement, then close the month.
+          </p>
         </div>
         <form action="/reconcile" method="GET" className="flex items-center gap-2">
           <div className="w-44">
@@ -310,7 +319,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                     const dealerName = dealerRel?.company_name
                     return (
                       <tr key={tx.id} className="tr-row relative">
-                        <td className="td text-paper-dim">{tx.tx_date}</td>
+                        <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                         <td className="td">
                           <div className="flex items-center gap-2.5">
                             <Avatar name={dealerName ?? '?'} size={24} />

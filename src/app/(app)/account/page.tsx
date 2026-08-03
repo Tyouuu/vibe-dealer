@@ -7,7 +7,7 @@ import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
-import { IconInfo } from '../icons'
+
 import { ROLE_LABEL } from '../types'
 import { PageHeader } from '../page-header'
 
@@ -70,15 +70,21 @@ export default async function AccountPage() {
 
       <section className="app-card">
         <h2 className="form-block-title">Profile</h2>
-        <p className="form-block-desc">How you&apos;re identified across the app — on the audit log, and as the author of anything you verify.</p>
+        {/* "Managed by your admin" was on all three rows, which is three
+            copies of one fact stacked in a column. It belongs to the block, so
+            it is said once where the block is introduced. */}
+        <p className="form-block-desc">
+          How you&apos;re identified across the app — on the audit log, and as the author of anything you verify.
+          {user.role !== 'master' && ' All three are set by your admin and cannot be changed here.'}
+        </p>
 
         {/* A definition list, not three disabled inputs. None of these can be
             edited here, and drawing an input box around a value that cannot
             be typed into invites people to try. */}
         <dl className="max-w-2xl divide-y divide-ink-800 border-y border-ink-800">
-          <ReadOnlyRow label="Name" value={user.name ?? '—'} note={user.role !== 'master'} />
-          <ReadOnlyRow label="Email" value={user.email ?? '—'} note={user.role !== 'master'} />
-          <ReadOnlyRow label="Role" value={ROLE_LABEL[user.role]} note={user.role !== 'master'} />
+          <ReadOnlyRow label="Name" value={user.name ?? '—'} />
+          <ReadOnlyRow label="Email" value={user.email ?? '—'} />
+          <ReadOnlyRow label="Role" value={ROLE_LABEL[user.role]} />
         </dl>
 
         {user.role === 'master' && (
@@ -124,21 +130,11 @@ export default async function AccountPage() {
 
 // One immutable fact about the account. Label left, value right, hairline
 // between — the shape a value you can only read should have.
-function ReadOnlyRow({ label, value, note }: { label: string; value: string; note?: boolean }) {
+function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3">
       <dt className="text-[13px] text-paper-dim">{label}</dt>
       <dd className="flex items-center gap-3 text-[13px]">
-        {/* The per-field note the client picked from GitHub Primer, kept —
-            it just no longer needs a block of its own under a fake input.
-            It sits before the value so the value stays flush to the right
-            edge of the list and the three of them line up. */}
-        {note && (
-          <span className="inline-flex items-center gap-1 text-[12px] text-paper-dim">
-            <IconInfo className="h-3 w-3 shrink-0" />
-            Managed by your admin
-          </span>
-        )}
         <span className="font-semibold text-paper">{value}</span>
       </dd>
     </div>

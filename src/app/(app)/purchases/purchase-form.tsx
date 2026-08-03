@@ -50,12 +50,12 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
         </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
           <div className="sm:col-span-3 lg:col-span-3">
-            <label className="field-label">Date</label>
+            <label className="field-label">Date<span className="req"> *</span></label>
             <DatePicker name="purchase_date" max={today} todayIso={today} required />
           </div>
           <div className="sm:col-span-3 lg:col-span-3">
             <label htmlFor="cp-money" className="field-label">
-              Amount paid (RM)
+              Amount paid (RM)<span className="req"> *</span>
             </label>
             <input
               id="cp-money"

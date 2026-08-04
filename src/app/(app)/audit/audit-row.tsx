@@ -106,7 +106,7 @@ export function AuditRow({ row }: { row: AuditRowData }) {
         <dl className="mx-2 mb-3 grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-ink-800 bg-ink-850 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {row.detail.map((d) => (
             <div key={d.label}>
-              <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">{d.label}</dt>
+              <dt className="text-[12px] font-semibold uppercase tracking-wide text-paper-dim">{d.label}</dt>
               <dd className="mt-1 text-[13px] font-semibold text-paper">{d.value}</dd>
             </div>
           ))}

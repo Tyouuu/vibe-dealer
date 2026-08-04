@@ -17,7 +17,7 @@ import { StatTiles, Leaderboard, RegionBars, GhostEmpty } from './elements'
 import { PeriodSwitcher } from './period-switcher'
 import { balanceSeries, dealersTradingSeries, resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
-import { pctChange } from '../hero-card'
+import { pctChange, HeroCard } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { PageHeader } from '../page-header'
@@ -685,38 +685,44 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
       {/* Same ranking as the other two roles: the work first. */}
       <NeedsAttention items={alerts} />
 
-      {/* cs has no financial visibility, so these four are the roster and the
-          queue rather than money. No sparklines: the series behind them are
-          transaction values cs is not allowed to see. */}
-      <div className="page-band">
-        <StatTiles
-          stats={[
-            {
-              label: 'SIM deliveries pending',
-              value: String(pendingDeliveryCount ?? 0),
-              href: '/delivery',
-              sub: pendingDeliveryCount
-                ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
-                  ? `oldest is ${oldestDeliveryDays}d old`
-                  : 'all recently queued'
-                : 'nothing waiting on you',
-            },
-            {
-              label: 'Needs follow-up',
-              value: String(inactiveCount),
-              href: '/dealers?view=inactive',
-              sub: 'no verified top-up in 30+ days',
-            },
-            { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers', sub: 'on the roster' },
-            {
-              label: 'New this month',
-              value: String((dealerCount ?? 0) - (dealerCountLastMonth ?? 0)),
-              href: '/dealers',
-              sub: 'onboarded since the 1st',
-            },
-          ]}
-        />
-      </div>
+      {/* cs has no financial visibility, so these are the roster and the queue
+          rather than money. No sparklines: the series behind them are
+          transaction values cs is not allowed to see.
+
+          A card, not a band of four equal tiles. On a quiet day — which for
+          cs is most days, since the job is to clear the queue — every figure
+          here is zero and the whole page was one 52px strip followed by a
+          screen of bare canvas with text floating on it. The queue is what cs
+          opens this page to see, so it leads, the way pending review leads on
+          /records. */}
+      <HeroCard
+        label={pendingDeliveryCount ? 'SIM deliveries waiting' : 'No SIM deliveries waiting'}
+        value={String(pendingDeliveryCount ?? 0)}
+        href="/delivery"
+        chgSuffix={
+          pendingDeliveryCount
+            ? oldestDeliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
+              ? `oldest has been waiting ${oldestDeliveryDays} days`
+              : 'all recently queued'
+            : 'every SIM ordered has been sent'
+        }
+        stats={[
+          {
+            label: 'Needs follow-up',
+            value: String(inactiveCount),
+            href: '/dealers?view=inactive',
+            tone: inactiveCount ? 'caution' : 'normal',
+            sub: 'no verified top-up in 30+ days',
+          },
+          { label: 'Dealers', value: String(dealerCount ?? 0), href: '/dealers', sub: 'on the roster' },
+          {
+            label: 'New this month',
+            value: String((dealerCount ?? 0) - (dealerCountLastMonth ?? 0)),
+            href: '/dealers',
+            sub: 'onboarded since the 1st',
+          },
+        ]}
+      />
 
       <div className="page-band">
         <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>

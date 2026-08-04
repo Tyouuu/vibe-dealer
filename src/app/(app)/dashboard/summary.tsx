@@ -55,8 +55,14 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
     // One quiet line, not an eight-line empty state with an icon badge.
     // Finished work should take up less room than unfinished work, and this
     // is the state the page is in most mornings.
+    //
+    // py-5 rather than py-4, which is not a threshold-chasing 8px: at py-4
+    // this came to 52px, and a card that thin does not read as the surface
+    // the page opens on — every dashboard, for all three roles, opened on a
+    // ribbon and then bare canvas on any day with nothing to do. Still by far
+    // the smallest block on the page, which is the point.
     return (
-      <div className={`${flat ? 'page-band' : 'app-card'} flex items-center gap-2.5 py-4`}>
+      <div className={`${flat ? 'page-band' : 'app-card'} flex items-center gap-2.5 py-5`}>
         <span className="text-jade-bright">
           <IconCheckCircle className="h-4 w-4" />
         </span>

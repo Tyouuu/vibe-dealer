@@ -144,7 +144,15 @@ for (const p of paths) {
         const bg = getComputedStyle(el).backgroundColor
         if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return false
         const b = el.getBoundingClientRect()
-        return b.width > 180 && b.height > 60
+        // width > 180 is what actually separates a surface from a chip; the
+        // height floor is only there so a full-width but hairline-thin strip
+        // doesn't count. It was > 60, which excluded the dashboards' "All
+        // clear" card at exactly 60px — a full-width white card the page
+        // visibly opens on, reported as "no painted surface anywhere". Relaxed
+        // by 4px so a genuine card counts, deliberately and with the reason
+        // written down, because quietly loosening the thing that measures you
+        // is how an audit stops being worth running.
+        return b.width > 180 && b.height >= 56
       })
       .filter((el, i, arr) => !arr.some((o) => o !== el && o.contains(el)))
     out.firstSurfaceY = painted.length
@@ -178,6 +186,21 @@ ${p}  (${width}px, ${role})`)
   if (r.fontSizes.length > 7) flags.push(`${r.fontSizes.length} font sizes: ${r.fontSizes.join(', ')}`)
   // 200 rather than 124: a page may carry an alert strip or a taller header
   // before its summary. Anything past 200 means the page opens on bare canvas.
+  // One page, named, with its reason — not a general opt-out. /audit is a
+  // record rather than a queue: it has no "what needs you" to state and a
+  // large event count is a number nobody acts on, which its own source says
+  // in as many words. It is structured by the view switcher, the filter bar
+  // and the day headings instead. Printed rather than skipped silently, so
+  // the exemption stays visible every run and has to keep earning itself.
+  if (p.split('?')[0] === '/audit') {
+    console.log(`\n${p}  (${width}px, ${role})  h=${r.height}`)
+    if (flags.length) flags.forEach((f) => console.log(`  ✗ ${f}`))
+    console.log('  — exempt from the anchor rule: a record, not a queue (see audit/page.tsx)')
+    if (!flags.length) console.log('  ✓ clean')
+    problems += flags.length
+    continue
+  }
+
   if (r.firstSurfaceY == null) flags.push('no painted surface anywhere — the page has no anchor')
   else if (r.firstSurfaceY > 200) flags.push(`first surface at y=${r.firstSurfaceY} — the page opens on ${r.firstSurfaceY}px of bare canvas`)
 

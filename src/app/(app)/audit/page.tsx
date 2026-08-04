@@ -177,7 +177,9 @@ export default async function AuditPage({ searchParams }: PageProps) {
             more, so there is nothing to scroll sideways. */}
           {groups.map((group, i) => (
             <section key={`${group.label}-${i}`}>
-              <h2 className="border-b border-ink-800 pb-2 text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
+              {/* 12px, not 11: the day heading is what orients you in a long log, and
+                  it was the one element in the app under the 12px floor. */}
+              <h2 className="border-b border-ink-800 pb-2 text-[12px] font-semibold uppercase tracking-wide text-paper-dim">
                 {group.label}
               </h2>
               {byActorRun(group.events).map((run, r) => (

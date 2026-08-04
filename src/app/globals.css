@@ -161,6 +161,17 @@ html {
   letter-spacing: var(--tracking-body);
 }
 
+/* The weight ceiling, enforced rather than only written down.
+   <b> and <strong> default to 700 — 900 in this stack — which is heavier than
+   anything the token block above allows, and heavier than Linear, Vercel or
+   Mercury use anywhere. Mercury remaps <b> for exactly this reason. Two of
+   them were on the dealer detail page, rendering a region and a contact name
+   at 900 next to headings at 600. */
+b,
+strong {
+  font-weight: var(--fw-semibold);
+}
+
 /* Tabular figures belong on numeric columns, not on running prose — in body
    text they open awkward gaps around "1". Vercel scopes it to a utility
    (.geist-tabular-nums) rather than setting it on html, which is what this

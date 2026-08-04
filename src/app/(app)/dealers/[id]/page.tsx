@@ -527,10 +527,25 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                         </td>
                       </tr>
                     ))}
+                    {/* A dealer with nothing on record is not an error state,
+                        it is a dealer whose first sale has not happened — so
+                        this says the one thing someone standing here would
+                        want to do next, aimed at this dealer. It was a single
+                        grey line, which also left the transactions column
+                        126px shorter than the contact panel beside it on
+                        every one of the 284 dealers imported so far. */}
                     {!txRows.length && (
                       <tr>
-                        <td colSpan={8} className="px-3 py-8 text-center text-paper-dim">
-                          No transactions yet.
+                        <td colSpan={8} className="px-3 py-10 text-center">
+                          <p className="text-[13px] font-semibold text-paper">No transactions yet</p>
+                          <p className="mx-auto mt-1 max-w-[380px] text-[12px] leading-relaxed text-paper-dim">
+                            Everything this dealer buys — packages and top-ups — will appear here, newest first.
+                          </p>
+                          {isFinance && (
+                            <Link href={`/entry?dealer=${id}`} className="btn-ghost mt-4 inline-flex">
+                              Record their first transaction
+                            </Link>
+                          )}
                         </td>
                       </tr>
                     )}

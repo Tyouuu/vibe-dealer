@@ -11,7 +11,7 @@ import { NewStaffForm } from './new-staff-form'
 import { StaffRow } from './staff-row'
 
 export const metadata: Metadata = {
-  title: 'Staff — DealerHub',
+  title: 'Staff — Vibe456',
 }
 
 type StaffProfile = {
@@ -70,7 +70,7 @@ export default async function StaffPage({ searchParams }: PageProps) {
     <>
       <PageHeader
         title="Staff"
-        subtitle="Who can sign in to DealerHub, and what each of them can see. Accounts are created here — there is no self-signup."
+        subtitle="Who can sign in to Vibe456, and what each of them can see. Accounts are created here — there is no self-signup."
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

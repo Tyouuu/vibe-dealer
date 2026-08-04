@@ -9,7 +9,7 @@ import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Credit Purchases — DealerHub',
+  title: 'Credit Purchases — Vibe456',
 }
 
 // Enough to cover a normal month of movement without pulling the whole

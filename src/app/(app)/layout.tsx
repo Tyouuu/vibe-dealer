@@ -135,7 +135,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 lg:hidden">
             <Link href="/dashboard" className="flex items-center gap-3">
               <LogoMark className="h-8 w-8 shrink-0" />
-              <span className="text-sm font-semibold text-paper">DealerHub</span>
+              <span className="text-sm font-semibold text-paper">Vibe456</span>
             </Link>
             <div className="flex-1" />
             <MobileNav

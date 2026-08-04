@@ -18,7 +18,7 @@ import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Reconciliation — DealerHub',
+  title: 'Reconciliation — Vibe456',
 }
 
 const PAGE_SIZE = 50

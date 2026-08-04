@@ -10,7 +10,7 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 
 export const metadata: Metadata = {
-  title: 'SIM Delivery — DealerHub',
+  title: 'SIM Delivery — Vibe456',
 }
 
 type RawDeliveryRow = {

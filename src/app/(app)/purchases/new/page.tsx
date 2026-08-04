@@ -11,7 +11,7 @@ import { PurchaseForm } from '../purchase-form'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Log Purchase — DealerHub',
+  title: 'Log Purchase — Vibe456',
 }
 
 type PurchaseRow = {

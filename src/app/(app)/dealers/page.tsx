@@ -15,7 +15,7 @@ import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 
 export const metadata: Metadata = {
-  title: 'Dealers — DealerHub',
+  title: 'Dealers — Vibe456',
 }
 
 type Dealer = {

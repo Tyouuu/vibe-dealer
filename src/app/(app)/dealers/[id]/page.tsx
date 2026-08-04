@@ -19,7 +19,7 @@ import { HeroCard } from '../../hero-card'
 import { formatDateLabel } from '@/lib/month'
 
 export const metadata: Metadata = {
-  title: 'Dealer Details — DealerHub',
+  title: 'Dealer Details — Vibe456',
 }
 
 type Dealer = {

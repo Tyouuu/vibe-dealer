@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from './forgot-password-form'
 import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
-  title: 'Reset Password — DealerHub',
+  title: 'Reset Password — Vibe456',
 }
 
 type PageProps = {
@@ -21,7 +21,7 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps) {
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
-          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">DealerHub</span>
+          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
         </div>
 
         <div className="app-card p-7">

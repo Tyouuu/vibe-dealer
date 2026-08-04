@@ -8,7 +8,7 @@ import { EntryForm, type LastTxInfo } from './entry-form'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
-  title: 'New Transaction — DealerHub',
+  title: 'New Transaction — Vibe456',
 }
 
 type PageProps = {

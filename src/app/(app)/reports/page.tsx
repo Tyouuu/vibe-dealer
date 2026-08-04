@@ -14,7 +14,7 @@ import { balanceSeries } from '@/lib/dashboard-period'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Monthly Report — DealerHub',
+  title: 'Monthly Report — Vibe456',
 }
 
 type PageProps = {

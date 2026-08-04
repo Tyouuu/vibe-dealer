@@ -64,7 +64,7 @@ function escapeHtml(s: string): string {
 function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
   return `
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-      <h2 style="margin-bottom: 4px;">DealerHub — Daily Report</h2>
+      <h2 style="margin-bottom: 4px;">Vibe456 — Daily Report</h2>
       <p style="color: #666; margin-top: 0;">${summary.date}</p>
       <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
         <tr>
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
   // The report goes to every master in one email, so there's only room for
   // one "from" name — the first master who's set one wins. Falls back to a
   // fixed default when nobody has customized it.
-  const senderName = masters?.find((m) => m.report_sender_name)?.report_sender_name ?? 'DealerHub Daily Report'
+  const senderName = masters?.find((m) => m.report_sender_name)?.report_sender_name ?? 'Vibe456 Daily Report'
 
   // The address the report is sent from, once a real domain is verified in
   // Resend. It stays configurable rather than hardcoded because the value is
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
     body: JSON.stringify({
       from: `${senderName} <${fromEmail}>`,
       to: recipients,
-      subject: `DealerHub Daily Report — ${summary.date}`,
+      subject: `Vibe456 Daily Report — ${summary.date}`,
       html: reportHtml(summary),
     }),
   })

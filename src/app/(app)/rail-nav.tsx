@@ -186,7 +186,7 @@ export function RailNav({
     <aside className="rail" ref={wrapRef}>
       <Link href="/dashboard" className="flex items-center gap-2.5 px-1.5 pb-3 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
-        <span className="overflow-hidden whitespace-nowrap text-base font-semibold tracking-tight text-paper">DealerHub</span>
+        <span className="overflow-hidden whitespace-nowrap text-base font-semibold tracking-tight text-paper">Vibe456</span>
       </Link>
 
       {/* Credit balance sits with the brand mark, the way Vercel and Linear

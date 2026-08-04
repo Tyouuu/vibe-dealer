@@ -27,7 +27,7 @@ export function ReportSenderNameForm({ initialValue }: { initialValue: string })
             setValue(e.target.value)
             setSaved(false)
           }}
-          placeholder="DealerHub Daily Report"
+          placeholder="Vibe456 Daily Report"
           maxLength={80}
           className="field-input"
         />

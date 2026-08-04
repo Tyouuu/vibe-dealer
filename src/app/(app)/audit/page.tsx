@@ -14,7 +14,7 @@ import { Avatar } from '../avatar'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
-  title: 'Audit Log — DealerHub',
+  title: 'Audit Log — Vibe456',
 }
 
 type View = 'all' | AuditKind

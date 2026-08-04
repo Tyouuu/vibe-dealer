@@ -4,7 +4,7 @@ import { PermissionDenied } from '../permission-denied'
 import { OnboardForm } from './onboard-form'
 
 export const metadata: Metadata = {
-  title: 'Onboard Dealer — DealerHub',
+  title: 'Onboard Dealer — Vibe456',
 }
 
 type PageProps = {

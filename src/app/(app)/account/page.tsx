@@ -12,7 +12,7 @@ import { ROLE_LABEL } from '../types'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
-  title: 'Account — DealerHub',
+  title: 'Account — Vibe456',
 }
 
 function formatSignInTime(iso: string): string {

@@ -3,7 +3,7 @@ import { ResetPasswordForm } from './reset-password-form'
 import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
-  title: 'Set New Password — DealerHub',
+  title: 'Set New Password — Vibe456',
 }
 
 // Same shell as /login and /forgot-password.
@@ -13,7 +13,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
-          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">DealerHub</span>
+          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
         </div>
 
         <div className="app-card p-7">

@@ -7,7 +7,7 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 
 export const metadata: Metadata = {
-  title: 'Notifications — DealerHub',
+  title: 'Notifications — Vibe456',
 }
 
 export default async function NotificationsPage() {

@@ -3,7 +3,7 @@ import { LoginForm } from './login-form'
 import { LogoMark } from '../(app)/icons'
 
 export const metadata: Metadata = {
-  title: 'Sign In — DealerHub',
+  title: 'Sign In — Vibe456',
 }
 
 type PageProps = {
@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
             the card holds only the task. */}
         <div className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
-          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">DealerHub</span>
+          <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
         </div>
 
         <div className="app-card p-7">

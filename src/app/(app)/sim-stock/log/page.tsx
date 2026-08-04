@@ -9,7 +9,7 @@ import { SIM_BOX_SIZE, SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SI
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Log SIM Stock — DealerHub',
+  title: 'Log SIM Stock — Vibe456',
 }
 
 type BalanceRow = { sim_type: SimStockType; available: number }

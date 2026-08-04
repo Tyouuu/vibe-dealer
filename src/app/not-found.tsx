@@ -12,7 +12,7 @@ export default function NotFound() {
           That page doesn&apos;t exist, or you don&apos;t have a link to it anymore.
         </p>
         <Link href="/" className="btn-primary mt-6 inline-flex">
-          Back to DealerHub
+          Back to Vibe456
         </Link>
       </div>
     </div>

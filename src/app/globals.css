@@ -5,7 +5,7 @@
   --font-mono: var(--font-plex-mono);
 }
 
-/* DealerHub token system v3 — adopted from the "DealerHub — App" design
+/* Vibe456 token system v3 — adopted from the "Vibe456 — App" design
    reference (sidebar rail + topbar shell, purple brand accent, light
    card-on-gray surface). Purple is a BRAND/ACCENT color (logo, focus rings,
    chart highlight, "Live" indicator, rail active state's soft badge) — it is
@@ -466,7 +466,7 @@ body {
   }
 
   /* Form section header — icon tile + label + trailing rule, used to break a
-     long form into named zones (adopted from the DealerHub App prototype). */
+     long form into named zones (adopted from the Vibe456 App prototype). */
   .form-section-head {
     @apply mb-4 mt-6 flex items-center gap-2.5 first:mt-0;
   }

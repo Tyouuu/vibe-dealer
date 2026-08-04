@@ -19,7 +19,7 @@ import { BandHeading, Pool, StockBar } from './elements'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'SIM Card Stock — DealerHub',
+  title: 'SIM Card Stock — Vibe456',
 }
 
 type IntakeRow = {

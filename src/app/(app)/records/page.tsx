@@ -27,7 +27,7 @@ import { FilterChips } from '../filter-chips'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Transactions — DealerHub',
+  title: 'Transactions — Vibe456',
 }
 
 const PAGE_SIZE = 50

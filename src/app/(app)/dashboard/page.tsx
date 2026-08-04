@@ -24,7 +24,7 @@ import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
-  title: 'Dashboard — DealerHub',
+  title: 'Dashboard — Vibe456',
 }
 
 function monthsBack(n: number): { key: string; label: string }[] {

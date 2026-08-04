@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { setPreviewRole } from './preview-role-actions'
@@ -23,7 +23,7 @@ import {
   IconLayers,
   IconLayersPlus,
 } from './rail-icons'
-import { IconBell } from './icons'
+import { IconBell, IconChevronDown } from './icons'
 
 export type RailItem = { href: string; label: string; group: string; badge?: number }
 
@@ -47,6 +47,36 @@ const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']
 
 type Panel = 'profile' | null
 
+// localStorage-backed store for the folded nav groups, read through
+// useSyncExternalStore. Module scope so the snapshot functions keep a stable
+// identity across renders — passing fresh closures re-subscribes on every
+// render. The `storage` event covers other tabs; the custom event covers this
+// one, which `storage` deliberately does not fire for.
+const COLLAPSED_KEY = 'railCollapsedGroups'
+const COLLAPSED_EVENT = 'rail-collapsed-change'
+
+function subscribeToCollapsed(onChange: () => void) {
+  window.addEventListener(COLLAPSED_EVENT, onChange)
+  window.addEventListener('storage', onChange)
+  return () => {
+    window.removeEventListener(COLLAPSED_EVENT, onChange)
+    window.removeEventListener('storage', onChange)
+  }
+}
+
+function getCollapsedSnapshot(): string {
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+// Nothing folded on the server, so the first paint matches a fresh visitor.
+function getCollapsedServerSnapshot(): string {
+  return ''
+}
+
 export function RailNav({
   items,
   notifications,
@@ -69,6 +99,47 @@ export function RailNav({
   const router = useRouter()
   const [open, setOpen] = useState<Panel>(null)
   const [pending, startTransition] = useTransition()
+
+  // Which nav groups the user has folded away.
+  //
+  // The rail holds thirteen destinations for a master, and measured against a
+  // real laptop that does not fit: at a 720px viewport 204px of it — about
+  // five items — sits below the fold and has to be scrolled to. Folding a
+  // group you are not working in today is the way to get that back without
+  // taking anything away.
+  //
+  // useSyncExternalStore rather than reading localStorage into state in an
+  // effect. localStorage does not exist on the server, so a lazy initialiser
+  // would render a different tree on each side and trip hydration; setting
+  // state from an effect avoids that but is what the React compiler's
+  // set-state-in-effect rule exists to stop. This is the shape the API was
+  // added for: a server snapshot, a client snapshot, and a subscription.
+  //
+  // The snapshots return the raw string, not a parsed array — getSnapshot has
+  // to be referentially stable or React re-renders forever, and JSON.parse
+  // hands back a new array every call.
+  const collapsedRaw = useSyncExternalStore(subscribeToCollapsed, getCollapsedSnapshot, getCollapsedServerSnapshot)
+  const collapsed = useMemo<string[]>(() => {
+    try {
+      const parsed = JSON.parse(collapsedRaw || '[]')
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }, [collapsedRaw])
+
+  function toggleGroup(group: string) {
+    const next = collapsed.includes(group) ? collapsed.filter((g) => g !== group) : [...collapsed, group]
+    try {
+      window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next))
+    } catch {
+      // A blocked or full localStorage must not take the navigation with it.
+      // Without the write the store never changes and the group stays as it
+      // was, which is the right failure: nothing is hidden.
+    }
+    window.dispatchEvent(new Event(COLLAPSED_EVENT))
+  }
+
   const wrapRef = useRef<HTMLDivElement>(null)
   const profileTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -148,9 +219,35 @@ export function RailNav({
           when it needs to, while the footer (Notifications/Account
           Settings/profile) stays pinned and always reachable. */}
       <div className="flex-1 overflow-y-auto">
-        {[...groups.entries()].map(([group, groupItems]) => (
+        {[...groups.entries()].map(([group, groupItems]) => {
+          // A group of one is not worth a disclosure — the chevron would be
+          // the only thing it hides.
+          const collapsible = groupItems.length > 1
+          // The group holding the current page never collapses. Otherwise the
+          // first navigation inside a folded group hides the very item you
+          // just landed on, and the rail stops telling you where you are.
+          const holdsCurrent = groupItems.some((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+          const openGroup = !collapsible || holdsCurrent || !collapsed.includes(group)
+          return (
           <div key={group}>
-            <div className="rail-group-label">{group}</div>
+            {collapsible ? (
+              <button
+                type="button"
+                className="rail-group-label flex w-full items-center justify-between gap-2 hover:text-paper"
+                aria-expanded={openGroup}
+                aria-controls={`rail-group-${group}`}
+                onClick={() => toggleGroup(group)}
+                // A folded group still contains the page you are on only while
+                // that page is open; saying so stops the control looking stuck.
+                title={holdsCurrent ? `${group} — holds the page you are on` : undefined}
+              >
+                <span>{group}</span>
+                <IconChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${openGroup ? '' : '-rotate-90'}`} />
+              </button>
+            ) : (
+              <div className="rail-group-label">{group}</div>
+            )}
+            <div id={`rail-group-${group}`} hidden={!openGroup}>
             {groupItems.map((item) => {
               const Icon = ICONS[item.href]
               // Longest match wins. A prefix test alone lit both SIM Card
@@ -168,8 +265,10 @@ export function RailNav({
                 </a>
               )
             })}
+            </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="shrink-0 border-t border-ink-800 pt-2">

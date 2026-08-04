@@ -17,8 +17,8 @@ export function ChangePasswordForm() {
     setError(null)
     setSuccess(false)
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+    if (password.length < 10) {
+      setError('Password must be at least 10 characters.')
       return
     }
     if (password !== confirm) {
@@ -46,7 +46,7 @@ export function ChangePasswordForm() {
       {error && <div className="alert alert-bad">{error}</div>}
       {success && <div className="alert alert-ok">Password updated.</div>}
       <div className="form-grid">
-        <Field label="New password" hint="Must be at least 8 characters." required>
+        <Field label="New password" hint="Must be at least 10 characters." required>
           {(id) => (
             <input
               id={id}

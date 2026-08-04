@@ -119,7 +119,7 @@ export default async function AccountPage() {
 
       <section className="app-card">
         <h2 className="form-block-title">Security</h2>
-        <p className="form-block-desc">Change your password. At least 8 characters; you&apos;ll stay signed in on this device.</p>
+        <p className="form-block-desc">Change your password. At least 10 characters; you&apos;ll stay signed in on this device.</p>
         <div className="max-w-xl">
           <ChangePasswordForm />
         </div>

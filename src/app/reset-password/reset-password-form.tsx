@@ -65,8 +65,13 @@ export function ResetPasswordForm() {
     e.preventDefault()
     setError(null)
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+    // 10, matching what Supabase Auth itself now enforces (password_min_length)
+    // and what the Staff screen requires for a temporary password. At 8 this
+    // check passed and the server rejected it a moment later in its own words,
+    // which is the worst of both: the form said yes, then something else said
+    // no in language nobody wrote for this screen.
+    if (password.length < 10) {
+      setError('Password must be at least 10 characters.')
       return
     }
     if (password !== confirm) {
@@ -141,7 +146,7 @@ export function ResetPasswordForm() {
           className="field-input"
         />
       </div>
-      <span className="hint">Must be at least 8 characters.</span>
+      <span className="hint">Must be at least 10 characters.</span>
 
       <button type="submit" disabled={pending} className="btn-primary mt-1 w-full py-2.5">
         {pending ? 'Saving…' : 'Set new password'}

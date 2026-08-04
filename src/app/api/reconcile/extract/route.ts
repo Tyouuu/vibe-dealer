@@ -85,7 +85,30 @@ export async function POST(request: NextRequest) {
 
     const parsed = JSON.parse(textBlock.text) as { company_total_points: number | null; company_profit_rm: number | null }
     return NextResponse.json(parsed)
-  } catch {
+  } catch (err) {
+    // This used to be a bare `catch {}`, which meant a feature that could not
+    // work at all — an unfunded API key, a revoked one, the service down —
+    // reported itself as "couldn't read that image". The operator is then
+    // told, in effect, that their photo is the problem, and retakes it. For
+    // ever. Found exactly that way: every call was failing on
+    // "Your credit balance is too low to access the Anthropic API" and the
+    // screen said the image was unreadable.
+    //
+    // Two different sentences because they need two different actions: retake
+    // the photo, or go and fix the account. And the real reason goes to the
+    // server log either way, because a swallowed error is one nobody can ever
+    // diagnose from the outside.
+    const status = (err as { status?: number })?.status
+    const detail = String((err as Error)?.message ?? err)
+    console.error('[reconcile/extract] statement read failed:', status ?? '-', detail.slice(0, 300))
+
+    const unavailable = status === 401 || status === 403 || status === 429 || (status ?? 0) >= 500 || /credit balance|billing|quota|rate limit/i.test(detail)
+    if (unavailable) {
+      return NextResponse.json(
+        { error: 'Statement reading is unavailable right now — type the numbers in below. (Nothing is wrong with your image; ask your admin to check the AI service.)' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json({ error: "Couldn't read that image — enter the numbers manually." }, { status: 502 })
   }
 }

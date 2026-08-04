@@ -31,20 +31,27 @@ export function PeriodSwitcher({
     // periods wrapped onto a second line at 390px and pushed the page's
     // first surface down to y=219, which design-audit flags — a phone should
     // still land on the alerts card, not on a control.
-    <div className="-mx-1 flex max-w-full items-center gap-x-3 overflow-x-auto px-1 py-0.5">
-      <div className="segmented shrink-0 flex-nowrap">
-        {shown.map((m) => (
-          <Link
-            key={m.key}
-            href={`/dashboard?month=${m.key}`}
-            aria-current={m.key === selected ? 'page' : undefined}
-            className={`segmented-btn shrink-0 ${m.key === selected ? 'active' : ''}`}
-          >
-            {m.label}
-          </Link>
-        ))}
+    // The months scroll; the comparison label does not. It used to sit inside
+    // the same scrolling strip, so on a phone "vs July 2026" was pushed off
+    // the right edge and only appeared if you thought to swipe a control that
+    // looks like a row of buttons. It is not a button — it is the sentence
+    // that says what every figure below is measured against.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="-mx-1 flex max-w-full overflow-x-auto px-1">
+        <div className="segmented shrink-0 flex-nowrap">
+          {shown.map((m) => (
+            <Link
+              key={m.key}
+              href={`/dashboard?month=${m.key}`}
+              aria-current={m.key === selected ? 'page' : undefined}
+              className={`segmented-btn shrink-0 ${m.key === selected ? 'active' : ''}`}
+            >
+              {m.label}
+            </Link>
+          ))}
+        </div>
       </div>
-      {compareLabel && <span className="shrink-0 whitespace-nowrap text-[12px] text-paper-dim">vs {compareLabel}</span>}
+      {compareLabel && <span className="whitespace-nowrap text-[12px] text-paper-dim">vs {compareLabel}</span>}
     </div>
   )
 }

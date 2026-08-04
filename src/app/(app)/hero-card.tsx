@@ -190,8 +190,17 @@ function Sparkline({ values, label }: { values: number[]; label?: string }) {
   const H = 22
   const max = Math.max(...values)
   const min = Math.min(...values)
-  // A flat series would divide by zero and collapse every point onto y=0;
-  // drawing it mid-height is the honest reading of "nothing changed".
+
+  // Nothing at all is not the same as nothing changed. Six months of zero
+  // rendered a dead-straight rule the full width of the card — on a phone,
+  // four of them down the page, each reading as a stray horizontal line
+  // rather than a chart. A trend line implies there is a trend; when every
+  // point is zero there is no history yet, and the honest thing is to draw
+  // nothing. (A flat series that is *not* zero still draws — that genuinely
+  // is "nothing changed", which is worth showing.)
+  if (values.every((v) => v === 0)) return null
+
+  // A flat series would divide by zero and collapse every point onto y=0.
   const span = max - min || 1
   const pt = (v: number, i: number) => {
     const x = (i / (values.length - 1)) * W

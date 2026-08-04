@@ -37,6 +37,16 @@ function sparkPath(values: number[]) {
 
 function Sparkline({ values, id }: { values: number[]; id: string }) {
   if (values.length < 2) return null
+
+  // Nothing at all is not the same as nothing changed. Six months of zero drew
+  // a dead-straight rule the full width of the tile, with a dot on the end —
+  // on a phone, four of them down the page, each reading as a stray horizontal
+  // line rather than a chart. A trend line implies there is a trend. Before
+  // any real transaction exists there is no history to draw, so draw none.
+  // A flat series that is not zero still draws: that genuinely is "nothing
+  // changed", which is worth seeing.
+  if (values.every((v) => v === 0)) return null
+
   const pts = sparkPath(values)
   const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
   const [lx, ly] = pts[pts.length - 1]

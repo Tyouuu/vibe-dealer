@@ -229,7 +229,13 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               legend and the shelf count sat at opposite ends of the page
               with 700px of nothing between them — the exact "empty here,
               crowded there" the client keeps pointing at. */}
-          <div className="min-w-[320px] max-w-[620px] flex-1">
+          {/* min-w-0, not min-w-[320px]. A hard 320px floor is wider than the
+              content area of a 320px phone once padding is taken, so the whole
+              page scrolled sideways by 40px — the one thing a page must never
+              do. basis-[320px] keeps the same intent (do not squeeze this
+              below a readable width while there is room) without making it a
+              floor the viewport cannot honour. */}
+          <div className="min-w-0 basis-[320px] max-w-[620px] flex-1">
             <StockBar sent={sentQty} pending={pendingQty} total={totalBought} />
             <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
               <StatusDot color="jade-bright" label={`${sentQty.toLocaleString()} sent`} />

@@ -159,6 +159,46 @@ for (const p of paths) {
       ? Math.round(Math.min(...painted.map((el) => el.getBoundingClientRect().top - mb.top + main.scrollTop)))
       : null
 
+    // 6. Text that is being cut off rather than wrapped.
+    //    The page-level overflow check below is blind to this: a `truncate`
+    //    span clips its own content, so the document never scrolls and the
+    //    audit passed while a phone showed "Enter the Vibe statement and …",
+    //    which is the half that says what to do. Only flagged when a
+    //    meaningful amount is missing, since truncation is often correct
+    //    (a dealer name in a table cell).
+    out.clipped = [...main.querySelectorAll('*')]
+      .filter((el) => {
+        if (!el.textContent?.trim() || el.children.length) return false
+        const s = getComputedStyle(el)
+        if (s.overflow === 'visible' && s.overflowX === 'visible') return false
+        // Abbreviated is not the same as lost. A cell whose title carries the
+        // full string can still be read — hover on a desktop, long-press on a
+        // phone — so it is a table doing what tables do. What this rule is
+        // for is text that is cut with no way to recover it, which is how an
+        // instruction ends up half-delivered on the device it matters on.
+        const title = el.getAttribute('title') || el.closest('[title]')?.getAttribute('title') || ''
+        if (title.includes(el.textContent.trim().replace(/…$/, ''))) return false
+        const hidden = el.scrollWidth - el.clientWidth
+        return el.clientWidth > 60 && hidden / el.scrollWidth > 0.25
+      })
+      .map((el) => `${Math.round(((el.scrollWidth - el.clientWidth) / el.scrollWidth) * 100)}% of "${el.textContent.trim().slice(0, 45)}"`)
+      .slice(0, 4)
+
+    // 7. A chart drawn from nothing.
+    //    Six months of zero rendered a dead-straight rule the full width of
+    //    the card, with a dot on the end — four of them down a phone screen,
+    //    each reading as a stray horizontal line. A trend line implies there
+    //    is a trend; before any real data exists there is none to draw.
+    out.deadCharts = [...main.querySelectorAll('svg')]
+      .filter((svg) => {
+        if (svg.getBoundingClientRect().width < 80) return false
+        const geom = [...svg.querySelectorAll('path,polyline')]
+          .map((n) => n.getAttribute('d') || n.getAttribute('points') || '')
+          .join(' ')
+        const ys = [...geom.matchAll(/[-\d.]+[ ,]([-\d.]+)/g)].map((m) => Number(m[1])).filter((n) => !Number.isNaN(n))
+        return ys.length > 2 && new Set(ys.map((y) => y.toFixed(1))).size === 1
+      }).length
+
     out.overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth
     out.height = document.querySelector('main')?.scrollHeight ?? 0
     return out
@@ -183,6 +223,8 @@ ${p}  (${width}px, ${role})`)
   if (r.overweight) flags.push(`${r.overweight} elements above the 600 weight ceiling`)
   if (r.axe.length) flags.push(`axe: ${r.axe.join(', ')}`)
   if (r.overflow) flags.push(`horizontal overflow ${r.overflow}px`)
+  if (r.clipped?.length) flags.push(`text cut off: ${r.clipped.join('; ')}`)
+  if (r.deadCharts) flags.push(`${r.deadCharts} chart${r.deadCharts === 1 ? '' : 's'} drawn from all-zero data — a flat line implying a trend`)
   if (r.fontSizes.length > 7) flags.push(`${r.fontSizes.length} font sizes: ${r.fontSizes.join(', ')}`)
   // 200 rather than 124: a page may carry an alert strip or a taller header
   // before its summary. Anything past 200 means the page opens on bare canvas.

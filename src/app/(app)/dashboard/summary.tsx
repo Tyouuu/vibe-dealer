@@ -109,7 +109,14 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
             >
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-semibold leading-snug text-paper">{n.title}</span>
-                <span className="block truncate text-[12px] text-paper-dim">{n.subtitle}</span>
+                {/* Two lines on a phone, one on a wide screen. The subtitle is
+                    the half that says what to do — "Enter the Vibe statement
+                    and mark it reconciled" was arriving as "Enter the Vibe
+                    statement and …", which cuts the instruction in half on the
+                    device most likely to be read on. */}
+                <span className="block text-[12px] leading-snug text-paper-dim [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden sm:truncate">
+                  {n.subtitle}
+                </span>
               </span>
               <span className="shrink-0 text-[12px] font-semibold text-primary group-hover:underline">{n.actionLabel} &rarr;</span>
             </Link>

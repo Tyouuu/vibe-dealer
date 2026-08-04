@@ -93,7 +93,11 @@ export function NotificationsList({ notifications }: { notifications: BuiltNotif
                       be needed instead. */}
                   <div className="min-w-0">
                     <div className="truncate text-[13px] font-semibold text-paper">{n.title}</div>
-                    <div className="mt-0.5 truncate text-[12px] text-paper-dim">{n.subtitle}</div>
+                    {/* Two lines on a phone, one on a wide screen — same reason as the
+                        dashboard's alert rows. "0 pts left — log a Credit Purchase
+                        before it blocks a sale" was arriving without the half that
+                        says what happens if you ignore it. */}
+                    <div className="mt-0.5 text-[12px] leading-snug text-paper-dim [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden sm:truncate">{n.subtitle}</div>
                   </div>
                 </div>
                 <a href={n.href} className="btn-ghost shrink-0 self-start py-1.5 text-xs sm:self-auto">

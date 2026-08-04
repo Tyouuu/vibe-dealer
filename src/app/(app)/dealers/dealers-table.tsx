@@ -91,7 +91,17 @@ export function DealersTable({
                 ~3.9x the median column, measured — which put a long empty
                 run between the company name and the figures on every row,
                 while the fixed columns stayed cramped. Same bug fixed on
-                /audit. */}
+                /audit.
+
+                Widening Company to 34% to stop it truncating on a phone was
+                tried and reverted: below ~1140px the table sits at its own
+                min-width so it helped there, but above it the same 34%
+                pooled slack again — 3.1x the median column at 1440, the
+                exact bug this colgroup exists to fix. Eight columns do not
+                fit a phone at any split; the answer was not a better split
+                but title attributes on the three cells that clip, so the
+                full value is a hover or a long-press away. Abbreviated is
+                fine. Unrecoverable is not. */}
             <colgroup>
               {showRanking && <col className="w-[6%]" />}
               <col className="w-[26%]" />
@@ -155,6 +165,7 @@ export function DealersTable({
                         <div className="flex min-w-0 items-center gap-2">
                           <Link
                             href={`/dealers/${d.id}`}
+                            title={d.company_name}
                             className="truncate font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
                           >
                             {d.company_name}
@@ -172,9 +183,15 @@ export function DealersTable({
                       </div>
                     </div>
                   </td>
-                  <td className="td truncate text-paper-dim">{d.region ?? '—'}</td>
+                  {/* title on every cell that can truncate. Eight columns do
+                      not fit a phone, and something has to clip — but clipped
+                      with no way to see the rest is information gone, not
+                      information abbreviated. "Tanjong Piandang" was arriving
+                      as "Tanjong Pian…" and "AZLINA BINTI BAHARUDDIN" lost
+                      half its length, with nothing to recover it. */}
+                  <td className="td truncate text-paper-dim" title={d.region ?? undefined}>{d.region ?? '—'}</td>
                   <td className="td figure text-paper-dim">{d.phone ?? '—'}</td>
-                  <td className="td truncate text-paper-dim">{d.contact_person ?? '—'}</td>
+                  <td className="td truncate text-paper-dim" title={d.contact_person ?? undefined}>{d.contact_person ?? '—'}</td>
                   <td className="td">
                     {d.package ? (
                       <span className={`pill ${PACKAGE_PILL_CLASS[d.package]}`}>{d.package}</span>

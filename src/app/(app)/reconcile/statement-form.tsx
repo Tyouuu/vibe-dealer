@@ -62,7 +62,11 @@ export function StatementForm({
       <input type="hidden" name="month" value={month} />
       <label className="upload-box">
         <IconUpload />
-        <span className="truncate">
+        {/* A chosen filename truncates — it is a name, and the middle of it
+            is rarely the part you need. The instruction wraps: on a phone it
+            was arriving as "Drag Vibe's statement here, or click to uploa…",
+            which cuts off the half that says what happens next. */}
+        <span className={fileName || extracting ? 'truncate' : 'min-w-0 text-left'}>
           {extracting ? 'Reading statement…' : (fileName ?? "Drag Vibe's statement here, or click to upload — we'll fill in the numbers below")}
         </span>
         <input

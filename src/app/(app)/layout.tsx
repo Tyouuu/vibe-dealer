@@ -33,6 +33,9 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   // Log SIM Stock under SIM Card Stock.
   { href: '/purchases/new', label: 'Log Purchase', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Finance' },
+  // Master only, and in its own group rather than under Finance: this is the
+  // one screen that decides who gets to touch any of the others.
+  { href: '/staff', label: 'Staff', roles: ['master'], group: 'Admin' },
 ]
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

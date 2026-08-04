@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export type Role = 'master' | 'accountant' | 'cs'
 
-const ROLES: Role[] = ['master', 'accountant', 'cs']
+export const ROLES: Role[] = ['master', 'accountant', 'cs']
 
 // Cookie a real master account can set to preview the app as another role —
 // for demoing, never a real permission change. Only ever honored when the
@@ -40,13 +40,15 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role')
+    .select('name, role, active')
     .eq('id', user.id)
     .single()
 
-  // Authenticated with Supabase Auth but no profiles row (e.g. not yet
-  // provisioned by master) — treat as unauthenticated for this app.
-  if (!profile) return null
+  // Authenticated with Supabase Auth but not a user of this app: either no
+  // profiles row at all (not yet provisioned by master) or one switched off
+  // because the person has left (0036). One check, so every page, action and
+  // API route in the app inherits it without knowing it exists.
+  if (!profile || profile.active === false) return null
 
   const actualRole = profile.role as Role
 

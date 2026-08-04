@@ -21,13 +21,24 @@ export function avatarHex(name: string): string {
 }
 
 // First letter of the first two words — "Jaya Telecom Sdn Bhd" -> "JT".
+//
+// Words that don't start with a letter or digit are skipped rather than
+// counted: "CK & WYNN GADGET" was rendering "C&" and "EXCLUSIVE - STATION 18"
+// was rendering "E-". Two of 291 dealers, which is exactly the sort of thing
+// that survives because nobody scrolls to it — found by running this over the
+// real names rather than by reading the function.
 export function avatarInitials(name: string): string {
   return (
     name
       .split(/\s+/)
+      // Leading punctuation is stripped rather than the word dropped, so a
+      // parenthesised word still contributes its letter: "CS (test)" gives
+      // "CT", while "CK & WYNN GADGET" gives "CW" because "&" strips to
+      // nothing and falls out below.
+      .map((w) => w.replace(/^[^\p{L}\p{N}]+/u, ''))
       .filter(Boolean)
       .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase())
+      .map((w) => w[0].toUpperCase())
       .join('') || '?'
   )
 }

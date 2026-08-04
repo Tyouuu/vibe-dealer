@@ -47,6 +47,34 @@ export async function updateSession(request: NextRequest) {
   // /reset-password is in PUBLIC_ROUTES above. An open prefix defended by a
   // file that isn't there is worth removing before it becomes true.
 
+  // Signed in with Supabase, but not a user of this app — either no profiles
+  // row (created in the dashboard and never provisioned) or one switched off
+  // because the person has left (0036).
+  //
+  // This has to be resolved here, holding a response that can write cookies,
+  // because otherwise it is an infinite redirect. getCurrentUser returns null,
+  // the page redirects to /login, and the rule below sees a valid session on a
+  // public route and sends it straight back — round and round, ERR_TOO_MANY_
+  // REDIRECTS, no login screen ever reached. The session is the thing keeping
+  // the loop alive, so end it: sign out, then send them to /login with a line
+  // explaining why they are there. Reproduced by switching a live account off
+  // while it still held a session.
+  if (user && !isCronRoute) {
+    const { data: profile } = await supabase.from('profiles').select('active').eq('id', user.id).maybeSingle()
+    if (!profile || profile.active === false) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.search = '?ended=1'
+      const redirectResponse = NextResponse.redirect(url)
+      // signOut's cookie clearing landed on supabaseResponse via setAll above;
+      // carry it onto the response actually being returned, or the browser
+      // keeps the session and walks straight back into the loop.
+      supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+      return redirectResponse
+    }
+  }
+
   if (!user && !isPublicRoute && !isCronRoute && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

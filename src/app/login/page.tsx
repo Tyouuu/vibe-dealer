@@ -7,11 +7,11 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ reset?: string }>
+  searchParams: Promise<{ reset?: string; ended?: string }>
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
-  const { reset } = await searchParams
+  const { reset, ended } = await searchParams
   return (
     // The form now sits in a card on the canvas, which is how every other
     // surface in this app is built and how Stripe, Linear and Mercury all
@@ -36,6 +36,15 @@ export default async function LoginPage({ searchParams }: PageProps) {
           <p className="mt-1.5 text-[13px] text-paper-dim">
             Enter the email and password your admin set up for you.
           </p>
+
+          {/* Someone whose account was switched off mid-session lands here.
+              Without a word they would assume the password stopped working
+              and try it again, and again. */}
+          {ended && (
+            <div className="alert alert-warn mt-4">
+              Your session has ended because your account is no longer active. Ask your admin if you think that is wrong.
+            </div>
+          )}
 
           <div className="mt-6">
             <LoginForm resetSuccess={reset === '1'} />

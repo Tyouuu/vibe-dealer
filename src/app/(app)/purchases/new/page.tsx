@@ -50,10 +50,10 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
     // one it is landing on — the same aggregate the sale hard-block uses.
     getAvailablePointsBalance(supabase),
     supabase.from('credit_purchases').select('id, purchase_date, money_rm, points, note, recorded_by').order('purchase_date', { ascending: false }),
-    supabase.from('profiles').select('id, name, email'),
+    supabase.from('staff_directory').select('id, display_name'),
   ])
 
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name ?? p.email ?? '—']))
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
   const rows = (purchaseRows ?? []) as PurchaseRow[]
   const totalPaid = rows.reduce((s, p) => s + Number(p.money_rm), 0)
   const totalPoints = rows.reduce((s, p) => s + Number(p.points), 0)

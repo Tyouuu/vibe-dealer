@@ -44,3 +44,6 @@ supabase/.temp
 *.tsbuildinfo
 next-env.d.ts
 backups/
+
+# QA drivers and screenshot dumps — deliberately untracked, never committed
+qa-*

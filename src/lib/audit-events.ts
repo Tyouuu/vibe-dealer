@@ -127,12 +127,12 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
   }
 
   const { data: profiles } = staffIds.size
-    ? await supabase.from('profiles').select('id, name, email').in('id', [...staffIds])
+    ? await supabase.from('staff_directory').select('id, display_name').in('id', [...staffIds])
     : { data: [] }
 
   const nameById = new Map<string, string>()
   for (const p of profiles ?? []) {
-    nameById.set(p.id, p.name ?? p.email ?? '—')
+    nameById.set(p.id, p.display_name ?? '—')
   }
   const displayName = (id: string | null) => (id ? (nameById.get(id) ?? '—') : '—')
 

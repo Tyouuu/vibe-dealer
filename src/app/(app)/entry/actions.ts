@@ -192,10 +192,10 @@ export async function findRecentDuplicate(dealerId: string, moneyRm: number): Pr
 
   if (!data) return null
 
-  const { data: profile } = await supabase.from('profiles').select('name, email').eq('id', data.recorded_by).maybeSingle()
+  const { data: profile } = await supabase.from('staff_directory').select('display_name').eq('id', data.recorded_by).maybeSingle()
 
   return {
-    recordedByName: profile?.name ?? profile?.email ?? 'someone',
+    recordedByName: profile?.display_name ?? 'someone',
     hoursAgo: Math.max(0, Math.round((Date.now() - new Date(data.created_at).getTime()) / 3600_000)),
     points: Number(data.points),
   }

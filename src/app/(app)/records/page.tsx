@@ -9,6 +9,7 @@ import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } fr
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { VerifyButton } from './verify-button'
 import { BulkVerifyBar, RowSelect } from './bulk-verify'
+import { AwaitingSecondCheck } from './awaiting-second-check'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
 import { IconPaperclip, IconSearch } from '../icons'
@@ -46,6 +47,16 @@ type TxRow = {
   flag_reason: string | null
   receipt_url: string | null
   recorded_by: string | null
+  dealers: { company_name: string } | { company_name: string }[] | null
+}
+
+type AwaitingRow = {
+  id: string
+  points: number
+  money_rm: number
+  note: string | null
+  recorded_by: string | null
+  created_at: string
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
@@ -135,14 +146,52 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     return q
   }
 
-  const [{ data: rows, count }, { count: pendingCount }, { count: verifiedCount }, { count: flaggedCount }] = await Promise.all([
+  const [
+    { data: rows, count },
+    { count: pendingCount },
+    { count: verifiedCount },
+    { count: flaggedCount },
+    { data: awaitingRows },
+    { data: staffProfiles },
+  ] = await Promise.all([
     pagedQuery,
     statusCountQuery('pending'),
     statusCountQuery('verified'),
     statusCountQuery('flagged'),
+    // Deliberately outside every filter above — see AwaitingSecondCheck.
+    // Oldest first: the one that has been waiting longest is the one the
+    // ledger has been wrong about longest.
+    supabase
+      .from('transactions')
+      .select('id, points, money_rm, note, recorded_by, created_at, dealers(company_name)')
+      .eq('status', 'pending')
+      .eq('type', 'adjustment')
+      .order('created_at', { ascending: true }),
+    // staff_directory, not profiles: profiles' RLS is own-row-only for
+    // anyone who is not the master, so joining it here rendered every
+    // colleague's name as a dash for the accountant. See migration 0035.
+    supabase.from('staff_directory').select('id, display_name'),
   ])
   const pageRows = (rows as unknown as TxRow[] | null) ?? []
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
+
+  const staffNameById = new Map((staffProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
+  const awaitingSecondCheck = ((awaitingRows ?? []) as unknown as AwaitingRow[]).map((r) => {
+    const rel = Array.isArray(r.dealers) ? r.dealers[0] : r.dealers
+    return {
+      id: r.id,
+      dealerName: rel?.company_name ?? '—',
+      points: Number(r.points),
+      moneyRm: Number(r.money_rm),
+      note: r.note,
+      postedByName: r.recorded_by ? (staffNameById.get(r.recorded_by) ?? '—') : '—',
+      // daysSince, not Date.now() arithmetic in the render body — same reason
+      // as /reconcile: it counts in the Malaysia calendar like every other
+      // "N days ago" here, and keeps the clock read out of render.
+      daysWaiting: daysSince(String(r.created_at).slice(0, 10)),
+      canVerify: r.recorded_by !== user.id,
+    }
+  })
 
   const totalCount = count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -265,6 +314,13 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           {bulkLocked && ` Rows dated in ${bulkLocked.split(',').map((m) => formatMonthLabel(m)).join(', ')} were skipped — that month is reconciled.`}
         </div>
       )}
+
+      {/* Above the ledger, not inside it. A correction stuck at pending is the
+          most consequential thing this page can be carrying — it means a
+          figure in the reports is knowingly wrong — and it must not be
+          something you have to filter your way to. Renders nothing when there
+          are none. */}
+      <AwaitingSecondCheck items={awaitingSecondCheck} />
 
       {/* The ledger is the page — no card. Same two-row toolbar as /dealers,
           so the two biggest lists in the app are operated identically: view

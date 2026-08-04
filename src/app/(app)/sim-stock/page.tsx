@@ -84,7 +84,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           .from('sim_orders_directory')
           .select('id, dealer_id, order_date, sim_type, quantity, unit_price_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, recorded_by, delivered_by')
           .order('order_date', { ascending: false }),
-    supabase.from('profiles').select('id, name, email'),
+    supabase.from('staff_directory').select('id, display_name'),
   ])
 
   const balanceByType = new Map((balanceRows as BalanceRow[] | null ?? []).map((b) => [b.sim_type, b]))
@@ -94,7 +94,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
   const dealerList = (dealers ?? []) as { id: string; company_name: string; address: string | null }[]
   const dealerNameById = new Map(dealerList.map((d) => [d.id, d.company_name]))
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name ?? p.email ?? '—']))
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
   const orders = (orderRows as unknown as OrderRow[] | null) ?? []
 
   let intakes: IntakeRow[] = []

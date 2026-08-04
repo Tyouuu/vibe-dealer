@@ -73,11 +73,11 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       .neq('status', 'flagged')
       .order('tx_date', { ascending: false })
       .limit(LEDGER_LIMIT),
-    supabase.from('profiles').select('id, name, email'),
+    supabase.from('staff_directory').select('id, display_name'),
     getAvailablePointsBalance(supabase),
   ])
 
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name ?? p.email ?? '—']))
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
 
   // ---- the figures --------------------------------------------------------
   // Balance, bought and sold all come from the same aggregate the New
@@ -115,14 +115,24 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
       const dealer = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
       const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Adjustment' : 'Top-up'
+      // A correction carries a delta, and a downward one is negative: it hands
+      // points back to the pool rather than drawing from it. Treated as an
+      // outflow of a negative number, the Out column rendered "−-80" — two
+      // minus signs, in the column whose entire job is to say which way the
+      // credit went. Classified by the sign instead, so it lands in the In
+      // column as +80, which is what actually happened to the balance.
+      //
+      // withRunningBalance is unaffected: an 'out' of -80 and an 'in' of 80
+      // move the running total by the same amount in the same direction.
+      const pts = Number(t.points)
       return {
         key: `t-${t.id}`,
         date: t.tx_date as string,
         createdAt: (t.created_at as string) ?? (t.tx_date as string),
         what: `${label} · ${dealer}`,
         detail: t.status === 'pending' ? 'pending review — already committed' : null,
-        points: Number(t.points),
-        kind: 'out' as const,
+        points: Math.abs(pts),
+        kind: (pts < 0 ? 'in' : 'out') as 'in' | 'out',
       }
     }),
     // Same day, newest first — purchase_date and tx_date carry no time, so

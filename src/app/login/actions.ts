@@ -77,6 +77,25 @@ export async function signIn(email: string, password: string, rememberMe: boolea
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data.user) {
+    // Not every failure here is a wrong password, and saying it is sends
+    // someone off to retype a password that was right all along — then to
+    // retry, which is the one thing that keeps a rate limit closed and the
+    // one thing that cannot fix an outage.
+    //
+    // Supabase Auth applies its own per-IP ceiling on the token endpoint on
+    // top of the app-layer counter above; that arrives as 429. A 5xx or a
+    // thrown fetch (no status at all) means Auth could not be reached — the
+    // project is paused, or the network is down.
+    //
+    // Deliberately narrow: every other 4xx still gets the credential message,
+    // because those genuinely are the request being refused on its merits and
+    // guessing at them would just trade one wrong sentence for another.
+    if (error?.status === 429) {
+      return { error: 'Too many sign-in attempts from this network. Please wait a few minutes and try again.' }
+    }
+    if (error && (error.status == null || error.status >= 500)) {
+      return { error: 'Could not reach the sign-in service. Please try again in a moment.' }
+    }
     return { error: 'Sign in failed. Please check your email / password.' }
   }
 

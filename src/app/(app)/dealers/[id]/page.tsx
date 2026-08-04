@@ -221,11 +221,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   let onboardedByName: string | null = null
   if (typedDealer.onboarded_by) {
     const { data: onboardedByProfile } = await supabase
-      .from('profiles')
-      .select('name, email')
+      .from('staff_directory')
+      .select('display_name')
       .eq('id', typedDealer.onboarded_by)
       .maybeSingle()
-    onboardedByName = onboardedByProfile?.name ?? onboardedByProfile?.email ?? null
+    onboardedByName = onboardedByProfile?.display_name ?? null
   }
   const activity = (await getDealerActivityMap(supabase)).get(id)
   // Same RLS boundary as the transactions query below — cs has no SELECT on
@@ -269,10 +269,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
       if (row.changed_by) changedByIds.add(row.changed_by)
     }
     const { data: rateProfiles } = changedByIds.size
-      ? await supabase.from('profiles').select('id, name, email').in('id', [...changedByIds])
+      ? await supabase.from('staff_directory').select('id, display_name').in('id', [...changedByIds])
       : { data: [] }
     for (const p of rateProfiles ?? []) {
-      rateHistoryNameById.set(p.id, p.name ?? p.email ?? '—')
+      rateHistoryNameById.set(p.id, p.display_name ?? '—')
     }
   } else {
     const { data } = await supabase

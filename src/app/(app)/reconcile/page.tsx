@@ -74,11 +74,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     // Every month still open, not just the one on screen — an unanswered
     // variance is outstanding work wherever you happen to be standing.
     supabase.from('statement_variances').select('id, month, gap_points, reason, opened_by, created_at').is('resolved_at', null).order('month', { ascending: false }),
-    supabase.from('profiles').select('id, name, email'),
+    supabase.from('staff_directory').select('id, display_name'),
   ])
 
   const breakdownRows = (verifiedTx as BreakdownRow[] | null) ?? []
-  const varianceNameById = new Map((varianceProfiles ?? []).map((p) => [p.id, p.name ?? p.email ?? '—']))
+  const varianceNameById = new Map((varianceProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
   const openVariances = ((openVarianceRows ?? []) as { id: string; month: string; gap_points: number; reason: string; opened_by: string; created_at: string }[]).map((v) => ({
     id: v.id,
     month: v.month,

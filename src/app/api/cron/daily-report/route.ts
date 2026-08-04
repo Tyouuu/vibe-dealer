@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/service'
-import { getYesterdaySummary } from '@/lib/reports/daily-summary'
+import { getReportSummary } from '@/lib/reports/daily-summary'
+import { resolveReportPeriod, type ReportFrequency } from '@/lib/reports/report-period'
+import { todayInMalaysia } from '@/lib/month'
 
 // Both failure paths below return a response instead of throwing, which means
 // Next's onRequestError never sees them and Sentry would otherwise hear
@@ -61,14 +63,14 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 }
 
-function reportHtml(summary: Awaited<ReturnType<typeof getYesterdaySummary>>) {
+function reportHtml(summary: Awaited<ReturnType<typeof getReportSummary>>, title: string) {
   return `
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-      <h2 style="margin-bottom: 4px;">Vibe456 — Daily Report</h2>
+      <h2 style="margin-bottom: 4px;">Vibe456 — ${title}</h2>
       <p style="color: #666; margin-top: 0;">${summary.date}</p>
       <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
         <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #eee;">Total Top-up</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee;">Total Top-up${summary.days > 1 ? ` over ${summary.days} days` : ''}</td>
           <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${summary.points.toLocaleString()} pts</td>
         </tr>
         <tr>
@@ -95,90 +97,118 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient()
 
-  const [{ data: masters }, summary] = await Promise.all([
-    // Ordered — with 2+ masters, whichever row Postgres happened to return
-    // first silently won the "from" name on the shared email before this,
-    // with no ordering guarantee (so not even stable day to day). Oldest
-    // master account wins now — deterministic, if still somewhat arbitrary
-    // with multiple masters.
-    supabase.from('profiles').select('id, email, report_sender_name').eq('role', 'master').order('created_at'),
-    getYesterdaySummary(supabase),
-  ])
+  // Every master, with the frequency each of them chose (0037).
+  //
+  // Ordered — with 2+ masters, whichever row Postgres happened to return
+  // first silently won the "from" name on the shared email before this,
+  // with no ordering guarantee (so not even stable day to day). Oldest
+  // master account wins now — deterministic, if still somewhat arbitrary
+  // with multiple masters.
+  const { data: masters } = await supabase
+    .from('profiles')
+    .select('id, email, report_sender_name, report_frequency')
+    .eq('role', 'master')
+    .eq('active', true)
+    .order('created_at')
 
-  const recipients = await resolveMasterEmails(supabase, masters ?? [])
+  const today = todayInMalaysia()
 
-  if (!recipients.length) {
-    // Previously a bare 200 "skipped", which Vercel records as a healthy run —
-    // the report silently going nowhere looked identical to it being
-    // delivered. It means every master row has lost its email, so it's a
-    // misconfiguration to fix, not an error the code can recover from.
-    await reportToSentry(() =>
-      Sentry.captureMessage('Daily report skipped: no master recipients', {
-        level: 'warning',
-        tags: { cron: 'daily-report' },
-        extra: { masterRows: masters?.length ?? 0 },
-      })
-    )
-    return NextResponse.json({ status: 'skipped', reason: 'no master recipients' })
+  // One cron, four preferences. Vercel schedules live in vercel.json and are
+  // fixed at build time, so the schedule cannot be a user setting — but which
+  // days it actually sends on can be, and that is the part people care about.
+  // Grouped by frequency so people on the same schedule still share one email
+  // rather than getting one each.
+  const groups = new Map<ReportFrequency, { id: string; email: string | null; report_sender_name: string | null }[]>()
+  for (const m of masters ?? []) {
+    const freq = (m.report_frequency ?? 'daily') as ReportFrequency
+    if (!groups.has(freq)) groups.set(freq, [])
+    groups.get(freq)!.push(m)
   }
 
-  // The report goes to every master in one email, so there's only room for
-  // one "from" name — the first master who's set one wins. Falls back to a
-  // fixed default when nobody has customized it.
-  const senderName = masters?.find((m) => m.report_sender_name)?.report_sender_name ?? 'Vibe456 Daily Report'
-
-  // The address the report is sent from, once a real domain is verified in
-  // Resend. It stays configurable rather than hardcoded because the value is
-  // deployment-specific, not code: a preview deploy and production can point
-  // at different senders without a commit.
-  //
-  // The fallback is Resend's shared sandbox domain, which only delivers to the
-  // Resend account owner's own address. That is fine for one master trying it
-  // out and silently wrong the moment a second recipient exists — so it warns
-  // rather than failing, and the Sentry report below names it explicitly when
-  // a send does fail.
   const fromEmail = process.env.REPORT_FROM_EMAIL?.trim() || 'onboarding@resend.dev'
   const usingSandboxSender = fromEmail.endsWith('@resend.dev')
-  if (usingSandboxSender && recipients.length > 1) {
-    await reportToSentry(() =>
-      Sentry.captureMessage(
-        `Daily report is still sending from ${fromEmail} (Resend's shared sandbox) to ${recipients.length} recipients — all but the Resend account owner will be refused. Verify a domain and set REPORT_FROM_EMAIL.`,
-        { level: 'warning', tags: { cron: 'daily-report' } }
+  const sent: { frequency: string; recipients: string[]; period: string }[] = []
+  const skipped: { frequency: string; reason: string }[] = []
+
+  for (const [frequency, members] of groups) {
+    const period = resolveReportPeriod(frequency, today)
+    if (!period) {
+      skipped.push({ frequency, reason: frequency === 'off' ? 'turned off' : 'not a send day' })
+      continue
+    }
+
+    const recipients = await resolveMasterEmails(supabase, members)
+    if (!recipients.length) {
+      // Previously a bare 200 "skipped", which Vercel records as a healthy run —
+      // the report silently going nowhere looked identical to it being
+      // delivered. It means every master row has lost its email, so it's a
+      // misconfiguration to fix, not an error the code can recover from.
+      await reportToSentry(() =>
+        Sentry.captureMessage('Report skipped: no recipients with an email', {
+          level: 'warning',
+          tags: { cron: 'daily-report' },
+          extra: { frequency, masterRows: members.length },
+        })
       )
-    )
+      skipped.push({ frequency, reason: 'no recipients with an email' })
+      continue
+    }
+
+    // The report goes to everyone on this schedule in one email, so there's
+    // only room for one "from" name — the first who's set one wins.
+    const senderName = members.find((m) => m.report_sender_name)?.report_sender_name ?? 'Vibe456 Report'
+
+    // The fallback is Resend's shared sandbox domain, which only delivers to
+    // the Resend account owner's own address. Fine for one master trying it
+    // out and silently wrong the moment a second recipient exists.
+    if (usingSandboxSender && recipients.length > 1) {
+      await reportToSentry(() =>
+        Sentry.captureMessage(
+          `Report is still sending from ${fromEmail} (Resend's shared sandbox) to ${recipients.length} recipients — all but the Resend account owner will be refused. Verify a domain and set REPORT_FROM_EMAIL.`,
+          { level: 'warning', tags: { cron: 'daily-report' } }
+        )
+      )
+    }
+
+    const title = frequency === 'daily' ? 'Daily Report' : frequency === 'weekly' ? 'Weekly Report' : 'Monthly Report'
+    const summary = await getReportSummary(supabase, period)
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${senderName} <${fromEmail}>`,
+        to: recipients,
+        subject: `Vibe456 ${title} — ${summary.date}`,
+        html: reportHtml(summary, title),
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.text()
+      // The most likely real-world trigger isn't an outage: an unverified
+      // sender domain. The sender in use is included so the report says which
+      // case this is.
+      await reportToSentry(() =>
+        Sentry.captureException(new Error(`Report email failed: Resend returned ${res.status}`), {
+          tags: { cron: 'daily-report' },
+          extra: { frequency, status: res.status, from: fromEmail, usingSandboxSender, recipients, resendResponse: body.slice(0, 500) },
+        })
+      )
+      // Carry on to the other groups: one schedule failing must not silently
+      // cancel the others.
+      skipped.push({ frequency, reason: `Resend returned ${res.status}` })
+      continue
+    }
+
+    sent.push({ frequency, recipients, period: summary.date })
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `${senderName} <${fromEmail}>`,
-      to: recipients,
-      subject: `Vibe456 Daily Report — ${summary.date}`,
-      html: reportHtml(summary),
-    }),
-  })
-
-  if (!res.ok) {
-    const body = await res.text()
-    // The most likely real-world trigger isn't an outage: an unverified
-    // sender domain. Resend's shared sandbox address only delivers to the
-    // Resend account owner, so adding a second master — or moving the existing
-    // one to a company address — starts failing here. The sender in use is
-    // included below so the report says which case this is.
-    await reportToSentry(() =>
-      Sentry.captureException(new Error(`Daily report email failed: Resend returned ${res.status}`), {
-        tags: { cron: 'daily-report' },
-        // Recipients are the point of the alert (which address was refused),
-        // and no report content is included.
-        extra: { status: res.status, from: fromEmail, usingSandboxSender, recipients, resendResponse: body.slice(0, 500) },
-      })
-    )
-    return NextResponse.json({ error: 'Resend request failed', detail: body }, { status: 502 })
-  }
-
-  return NextResponse.json({ status: 'sent', recipients, summary })
+  // A day on which nobody is due is a normal, healthy outcome — six days in
+  // seven for a weekly subscriber — so it is reported as such rather than as
+  // an error.
+  return NextResponse.json({ status: sent.length ? 'sent' : 'nothing due', sent, skipped })
 }

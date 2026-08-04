@@ -6,8 +6,10 @@ import { parseUserAgent } from '@/lib/auth/login-events'
 import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
 import { ReportSenderNameForm } from './report-sender-name-form'
+import { ReportFrequencyForm } from './report-frequency-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
 
+import type { ReportFrequency } from '@/lib/reports/report-period'
 import { ROLE_LABEL } from '../types'
 import { PageHeader } from '../page-header'
 
@@ -33,7 +35,7 @@ export default async function AccountPage() {
 
   const [prefs, { data: profileRow }, { data: loginRows }] = await Promise.all([
     getNotificationPrefs(supabase, user.id),
-    user.role === 'master' ? supabase.from('profiles').select('report_sender_name').eq('id', user.id).single() : Promise.resolve({ data: null }),
+    user.role === 'master' ? supabase.from('profiles').select('report_sender_name, report_frequency').eq('id', user.id).single() : Promise.resolve({ data: null }),
     supabase.from('login_events').select('id, created_at, user_agent').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
   ])
 
@@ -93,6 +95,20 @@ export default async function AccountPage() {
           </div>
         )}
       </section>
+
+      {/* Its own section, not a field under Profile. How often you are emailed
+          is a decision about your working week; the sender name is a string on
+          an email. They were sitting together only because both concern the
+          report. */}
+      {user.role === 'master' && (
+        <section className="app-card">
+          <h2 className="form-block-title">Emailed report</h2>
+          <p className="form-block-desc">
+            A summary of what was verified — top-up, your 2%, the busiest dealer, and what is still waiting on you.
+          </p>
+          <ReportFrequencyForm initialValue={(profileRow?.report_frequency ?? 'daily') as ReportFrequency} />
+        </section>
+      )}
 
       <section className="app-card">
         <h2 className="form-block-title">Notifications</h2>

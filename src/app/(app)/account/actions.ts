@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
+import { REPORT_FREQUENCIES } from '@/lib/reports/report-period'
 import { createClient } from '@/lib/supabase/server'
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
 
@@ -54,6 +55,19 @@ export async function updateReportSenderName(name: string) {
     .from('profiles')
     .update({ report_sender_name: cleaned || null })
     .eq('id', user.id)
+
+  revalidatePath('/account')
+}
+
+// Which days the emailed report arrives on, for the person changing it.
+// Validated against the same list the UI renders from, so a value the
+// database's own check constraint (0037) would reject never reaches it.
+export async function updateReportFrequency(frequency: string) {
+  const user = await requireUser()
+  if (!REPORT_FREQUENCIES.some((f) => f.key === frequency)) return
+
+  const supabase = await createClient()
+  await supabase.from('profiles').update({ report_frequency: frequency }).eq('id', user.id)
 
   revalidatePath('/account')
 }

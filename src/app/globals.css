@@ -271,6 +271,28 @@ body {
     @apply flex flex-wrap items-center gap-3 border-b border-ink-800 pb-4 pt-3;
   }
 
+  /* Same band, stacked, for a filter bar that has a second tier. The row of
+     controls keeps the horizontal rhythm above; the disclosure sits under it
+     rather than wrapping into the middle of it. */
+  .index-filterbar-stacked {
+    @apply flex flex-col items-stretch gap-3 border-b border-ink-800 pb-4 pt-3;
+  }
+
+  /* A <details> disclosure, not a dropdown panel. The controls inside stay in
+     the DOM while collapsed, so whatever is set still submits with the form —
+     a panel that unmounts its inputs would silently drop the filter the
+     moment it closed. Native <details> also gets keyboard and screen-reader
+     behaviour right without a line of JS. */
+  .filter-disclosure {
+    @apply inline-flex w-fit cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold text-paper-dim transition-colors hover:text-paper;
+  }
+  .filter-disclosure::-webkit-details-marker {
+    display: none;
+  }
+  details[open] > .filter-disclosure svg {
+    transform: rotate(180deg);
+  }
+
   /* Inside a card the sticky column header hides rows behind the card's own
      white; on the open canvas it needs the canvas colour instead, or rows
      show through it as they pass underneath. */

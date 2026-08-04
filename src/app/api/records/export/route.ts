@@ -21,8 +21,12 @@ type TxRow = {
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
-// Mirrors /records' own filters (status/month/q/dealer/sort) so "Export" downloads
-// exactly what's currently on screen, not the unfiltered full table.
+// Mirrors /records' own filters (status/type/month/date range/amount range/
+// recorded-by/q/dealer/sort) so "Export" downloads exactly what's currently on
+// screen, not the unfiltered full table. Every filter added to the page has to
+// be added here in the same commit: an Export that quietly ignores one hands
+// someone a file that disagrees with the screen they exported it from, and
+// that file is what ends up in a dispute.
 export async function GET(request: NextRequest) {
   const user = await requireUser()
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -35,6 +39,15 @@ export async function GET(request: NextRequest) {
   const q = params.get('q') ?? ''
   const dealerId = params.get('dealer') ?? ''
   const sortAscending = params.get('sort') === 'asc'
+  const txType = ['package', 'topup', 'adjustment'].includes(params.get('type') ?? '') ? params.get('type')! : ''
+  const rawMin = params.get('min') ?? ''
+  const rawMax = params.get('max') ?? ''
+  const minRm = rawMin.trim() !== '' && Number.isFinite(Number(rawMin)) ? Number(rawMin) : null
+  const maxRm = rawMax.trim() !== '' && Number.isFinite(Number(rawMax)) ? Number(rawMax) : null
+  const isDate = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '')
+  const dateFrom = isDate(params.get('from'))
+  const dateTo = isDate(params.get('to'))
+  const recordedBy = /^[0-9a-f-]{36}$/i.test(params.get('by') ?? '') ? params.get('by')! : ''
 
   const supabase = await createClient()
   let query = supabase
@@ -45,10 +58,16 @@ export async function GET(request: NextRequest) {
     .limit(2000)
 
   if (status !== 'all') query = query.eq('status', status)
+  if (txType) query = query.eq('type', txType)
   if (month) {
     const { start, end } = monthRange(month)
     query = query.gte('tx_date', start).lte('tx_date', end)
   }
+  if (dateFrom) query = query.gte('tx_date', dateFrom)
+  if (dateTo) query = query.lte('tx_date', dateTo)
+  if (minRm != null) query = query.gte('money_rm', minRm)
+  if (maxRm != null) query = query.lte('money_rm', maxRm)
+  if (recordedBy) query = query.eq('recorded_by', recordedBy)
   if (dealerId) query = query.eq('dealer_id', dealerId)
   const safeQ = sanitizeSearchTerm(q)
   if (safeQ) {

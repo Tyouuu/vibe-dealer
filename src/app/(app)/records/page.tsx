@@ -12,7 +12,9 @@ import { BulkVerifyBar, RowSelect } from './bulk-verify'
 import { AwaitingSecondCheck } from './awaiting-second-check'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
-import { IconPaperclip, IconSearch } from '../icons'
+import { IconPaperclip, IconSearch, IconChevronDown } from '../icons'
+import { DatePicker } from '../date-picker'
+import { FilterForm } from './filter-form'
 import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { Listbox } from '../listbox'
@@ -29,6 +31,14 @@ export const metadata: Metadata = {
 }
 
 const PAGE_SIZE = 50
+
+const TX_TYPES = ['all', 'package', 'topup', 'adjustment'] as const
+type TxType = (typeof TX_TYPES)[number]
+const TX_TYPE_LABEL: Record<Exclude<TxType, 'all'>, string> = {
+  package: 'Package',
+  topup: 'Top-up',
+  adjustment: 'Correction',
+}
 
 type TxRow = {
   id: string
@@ -74,14 +84,49 @@ type PageProps = {
     sort?: string
     dealer?: string
     page?: string
+    type?: string
+    min?: string
+    max?: string
+    from?: string
+    to?: string
+    by?: string
   }>
 }
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId, page, verified: bulkVerified, own_adjustments: bulkOwnAdj, locked: bulkLocked } = await searchParams
+  const {
+    status = 'all',
+    submitted,
+    adjusted,
+    error,
+    month,
+    q = '',
+    sort = 'desc',
+    dealer: dealerId,
+    page,
+    verified: bulkVerified,
+    own_adjustments: bulkOwnAdj,
+    locked: bulkLocked,
+    type: typeParam = 'all',
+    min: minParam = '',
+    max: maxParam = '',
+    from: fromParam = '',
+    to: toParam = '',
+    by: byParam = '',
+  } = await searchParams
   const sortAscending = sort === 'asc'
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
+
+  // Read defensively — these arrive straight off the URL, so anything that
+  // isn't a value the ledger can actually be narrowed by is treated as absent
+  // rather than passed down to Postgres.
+  const txType = TX_TYPES.includes(typeParam as TxType) ? (typeParam as TxType) : 'all'
+  const minRm = Number.isFinite(Number(minParam)) && minParam.trim() !== '' ? Number(minParam) : null
+  const maxRm = Number.isFinite(Number(maxParam)) && maxParam.trim() !== '' ? Number(maxParam) : null
+  const dateFrom = /^\d{4}-\d{2}-\d{2}$/.test(fromParam) ? fromParam : ''
+  const dateTo = /^\d{4}-\d{2}-\d{2}$/.test(toParam) ? toParam : ''
+  const recordedBy = /^[0-9a-f-]{36}$/i.test(byParam) ? byParam : ''
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view transactions" />
@@ -96,11 +141,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   }
 
   // Resolved once, up front, so both the main page query and the 3 status-
-  // breakdown count queries below apply the exact same month/dealer/search
-  // scope without re-querying dealers 3 extra times or risking the two
-  // drifting apart. Plain values (a date range + an .or() string), not a
-  // shared query-builder function — Supabase's builder type doesn't narrow
-  // cleanly through a generic helper without reaching for `any`.
+  // breakdown count queries below apply the exact same scope without
+  // re-querying dealers 3 extra times or risking the two drifting apart.
+  //
+  // A list of [operator, column, value] rather than a generic helper that
+  // takes a query builder: Supabase's builder type doesn't narrow cleanly
+  // through one without reaching for `any`, and with seven filters now
+  // instead of two, writing the same chain twice by hand is how the header's
+  // "1,204 verified" ends up disagreeing with the table under it. The search
+  // term stays out of this — it's an .or(), not a column comparison.
   const monthWindow = month ? monthRange(month) : null
   const safeQ = sanitizeSearchTerm(q)
   let searchOrFilter: string | null = null
@@ -117,14 +166,36 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     searchOrFilter = orParts.join(',')
   }
 
+  const scope: Array<['eq' | 'gte' | 'lte', string, string | number]> = []
+  if (monthWindow) {
+    scope.push(['gte', 'tx_date', monthWindow.start], ['lte', 'tx_date', monthWindow.end])
+  }
+  // Month and an explicit date range compose rather than override. Setting
+  // both to periods that don't overlap returns nothing, which looks like a
+  // bug until you notice it isn't — so both appear as their own chip above
+  // the table, and either can be lifted on its own.
+  if (dateFrom) scope.push(['gte', 'tx_date', dateFrom])
+  if (dateTo) scope.push(['lte', 'tx_date', dateTo])
+  if (dealerId) scope.push(['eq', 'dealer_id', dealerId])
+  if (txType !== 'all') scope.push(['eq', 'type', txType])
+  if (minRm != null) scope.push(['gte', 'money_rm', minRm])
+  if (maxRm != null) scope.push(['lte', 'money_rm', maxRm])
+  if (recordedBy) scope.push(['eq', 'recorded_by', recordedBy])
+
   let query = supabase
     .from('transactions')
     .select(
       'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
-  if (monthWindow) query = query.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
-  if (dealerId) query = query.eq('dealer_id', dealerId)
+  // Dispatched explicitly rather than as query[op](col, val): Supabase types
+  // eq/gte/lte as an overloaded union that isn't callable through an indexed
+  // access, which is the same wall the original two-filter version hit. The
+  // three-way ternary is mechanical and identical in both places; what must
+  // not be duplicated is the *list* above, and it isn't.
+  for (const [op, col, val] of scope) {
+    query = op === 'eq' ? query.eq(col, val) : op === 'gte' ? query.gte(col, val) : query.lte(col, val)
+  }
   if (searchOrFilter) query = query.or(searchOrFilter)
   if (status !== 'all') query = query.eq('status', status)
   const pagedQuery = query
@@ -140,8 +211,9 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   // and already says so.
   function statusCountQuery(statusValue: 'pending' | 'verified' | 'flagged') {
     let q = supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', statusValue)
-    if (monthWindow) q = q.gte('tx_date', monthWindow.start).lte('tx_date', monthWindow.end)
-    if (dealerId) q = q.eq('dealer_id', dealerId)
+    for (const [op, col, val] of scope) {
+      q = op === 'eq' ? q.eq(col, val) : op === 'gte' ? q.gte(col, val) : q.lte(col, val)
+    }
     if (searchOrFilter) q = q.or(searchOrFilter)
     return q
   }
@@ -198,59 +270,80 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const rangeStart = totalCount === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
   const rangeEnd = Math.min(pageNum * PAGE_SIZE, totalCount)
 
-  function buildHref(overrides: { sort?: string; page?: number }) {
+  // Every filter currently narrowing the ledger, described once.
+  //
+  // Sort links, pagination, the export link, each chip's remove link and
+  // clear-all all need to know which filters are on. They used to each list
+  // them by hand, which was survivable at three and is not at eight — the
+  // first one anybody forgets to update becomes a link that silently drops a
+  // filter, and a page that says "3 results" while showing a different three.
+  // Chip label and URL params come from the same entry, so a filter cannot be
+  // applied but invisible, or visible but unremovable.
+  const STATUS_LABEL: Record<string, string> = { pending: 'Pending', verified: 'Verified', flagged: 'Flagged' }
+  const amountLabel =
+    minRm != null && maxRm != null
+      ? `${formatMYR(minRm)}–${formatMYR(maxRm)}`
+      : minRm != null
+        ? `from ${formatMYR(minRm)}`
+        : `up to ${formatMYR(maxRm ?? 0)}`
+  const dateLabel =
+    dateFrom && dateTo
+      ? `${formatDateLabel(dateFrom)} – ${formatDateLabel(dateTo)}`
+      : dateFrom
+        ? `from ${formatDateLabel(dateFrom)}`
+        : `up to ${formatDateLabel(dateTo)}`
+
+  type FilterKey = 'status' | 'month' | 'q' | 'dealer' | 'type' | 'amount' | 'date' | 'by'
+  const activeFilters: { key: FilterKey; params: [string, string][]; label: string; value: string }[] = [
+    ...(status !== 'all' ? [{ key: 'status' as const, params: [['status', status] as [string, string]], label: 'Status', value: STATUS_LABEL[status] ?? status }] : []),
+    ...(txType !== 'all' ? [{ key: 'type' as const, params: [['type', txType] as [string, string]], label: 'Type', value: TX_TYPE_LABEL[txType] }] : []),
+    ...(month ? [{ key: 'month' as const, params: [['month', month] as [string, string]], label: 'Month', value: formatMonthLabel(month) }] : []),
+    ...(dateFrom || dateTo
+      ? [{
+          key: 'date' as const,
+          params: [...(dateFrom ? [['from', dateFrom] as [string, string]] : []), ...(dateTo ? [['to', dateTo] as [string, string]] : [])],
+          label: 'Date',
+          value: dateLabel,
+        }]
+      : []),
+    ...(minRm != null || maxRm != null
+      ? [{
+          key: 'amount' as const,
+          params: [...(minRm != null ? [['min', String(minRm)] as [string, string]] : []), ...(maxRm != null ? [['max', String(maxRm)] as [string, string]] : [])],
+          label: 'Amount',
+          value: amountLabel,
+        }]
+      : []),
+    ...(recordedBy ? [{ key: 'by' as const, params: [['by', recordedBy] as [string, string]], label: 'Recorded by', value: staffNameById.get(recordedBy) ?? '—' }] : []),
+    ...(q ? [{ key: 'q' as const, params: [['q', q] as [string, string]], label: 'Search', value: q }] : []),
+    ...(dealerId ? [{ key: 'dealer' as const, params: [['dealer', dealerId] as [string, string]], label: 'Dealer', value: dealerFilterName ?? 'Unknown dealer' }] : []),
+  ]
+
+  function hrefWith(opts: { base?: string; drop?: FilterKey; only?: FilterKey[]; sort?: string; page?: number } = {}) {
     const params = new URLSearchParams()
-    if (status !== 'all') params.set('status', status)
-    if (month) params.set('month', month)
-    if (q) params.set('q', q)
-    if (dealerId) params.set('dealer', dealerId)
-    const nextSort = overrides.sort ?? sort
+    for (const f of activeFilters) {
+      if (opts.drop === f.key) continue
+      if (opts.only && !opts.only.includes(f.key)) continue
+      for (const [n, v] of f.params) params.set(n, v)
+    }
+    const nextSort = opts.sort ?? sort
     if (nextSort !== 'desc') params.set('sort', nextSort)
     // Changing sort/filters always drops back to page 1 unless a page
     // override is explicitly given (Prev/Next) — staying on "page 3" after
     // the result set changes underneath it would just be confusing.
-    if (overrides.page && overrides.page > 1) params.set('page', String(overrides.page))
+    if (opts.page && opts.page > 1) params.set('page', String(opts.page))
     const qs = params.toString()
-    return `/records${qs ? `?${qs}` : ''}`
+    return `${opts.base ?? '/records'}${qs ? `?${qs}` : ''}`
   }
 
-  const exportParams = new URLSearchParams()
-  if (status !== 'all') exportParams.set('status', status)
-  if (month) exportParams.set('month', month)
-  if (q) exportParams.set('q', q)
-  if (dealerId) exportParams.set('dealer', dealerId)
-  if (sort !== 'desc') exportParams.set('sort', sort)
-  const exportHref = `/api/records/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`
-
-  const hasFilter = status !== 'all' || !!month || !!q
-  const clearFiltersParams = new URLSearchParams()
-  if (dealerId) clearFiltersParams.set('dealer', dealerId)
-  if (sort !== 'desc') clearFiltersParams.set('sort', sort)
-  const clearFiltersHref = `/records${clearFiltersParams.toString() ? `?${clearFiltersParams.toString()}` : ''}`
-
-  // One chip per active filter, each linking to the same URL minus itself.
-  // The dealer filter previously had its own bespoke pill with a ✕ glyph; it
-  // is now the same component as the rest, so there is one way to see and
-  // remove a filter rather than two.
-  function withoutFilter(drop: 'status' | 'month' | 'q' | 'dealer') {
-    const params = new URLSearchParams()
-    if (status !== 'all' && drop !== 'status') params.set('status', status)
-    if (month && drop !== 'month') params.set('month', month)
-    if (q && drop !== 'q') params.set('q', q)
-    if (dealerId && drop !== 'dealer') params.set('dealer', dealerId)
-    if (sort !== 'desc') params.set('sort', sort)
-    const qs = params.toString()
-    return `/records${qs ? `?${qs}` : ''}`
-  }
-
-  const STATUS_LABEL: Record<string, string> = { pending: 'Pending', verified: 'Verified', flagged: 'Flagged' }
-  const filterChips = [
-    ...(status !== 'all' ? [{ label: 'Status', value: STATUS_LABEL[status] ?? status, removeHref: withoutFilter('status') }] : []),
-    ...(month ? [{ label: 'Month', value: formatMonthLabel(month), removeHref: withoutFilter('month') }] : []),
-    ...(q ? [{ label: 'Search', value: q, removeHref: withoutFilter('q') }] : []),
-    ...(dealerId ? [{ label: 'Dealer', value: dealerFilterName ?? 'Unknown dealer', removeHref: withoutFilter('dealer') }] : []),
-  ]
-  const clearAllHref = sort !== 'desc' ? `/records?sort=${sort}` : '/records'
+  const buildHref = (overrides: { sort?: string; page?: number }) => hrefWith(overrides)
+  const exportHref = hrefWith({ base: '/api/records/export' })
+  // Dealer is not counted: arriving from a dealer's page is context, not a
+  // filter the operator set, and "clear filters" should not throw it away.
+  const hasFilter = activeFilters.some((f) => f.key !== 'dealer')
+  const clearFiltersHref = hrefWith({ only: ['dealer'] })
+  const filterChips = activeFilters.map((f) => ({ label: f.label, value: f.value, removeHref: hrefWith({ drop: f.key }) }))
+  const clearAllHref = hrefWith({ only: [] })
 
   return (
     <>
@@ -353,40 +446,127 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </a>
       </div>
 
-      <form className="index-filterbar" action="/records" method="GET">
-        <label className="mini-search w-64 max-w-full">
-          <IconSearch className="h-4 w-4 shrink-0 text-paper-dim" />
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder="Search dealer, note, or flag reason"
-            className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
-          />
-        </label>
-        <div className="w-44">
-          <Listbox
-            name="status"
-            defaultValue={status}
-            options={[
-              { value: 'all', label: 'All Statuses' },
-              { value: 'pending', label: 'Pending', dotColor: 'var(--color-brass-bright)' },
-              { value: 'verified', label: 'Verified', dotColor: 'var(--color-jade-bright)' },
-              { value: 'flagged', label: 'Flagged', dotColor: 'var(--color-clay-bright)' },
-            ]}
-          />
+      <FilterForm className="index-filterbar-stacked">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="mini-search w-64 max-w-full">
+            <IconSearch className="h-4 w-4 shrink-0 text-paper-dim" />
+            <input
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder="Search dealer, note, or flag reason"
+              className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
+            />
+          </label>
+          <div className="w-44">
+            <Listbox
+              name="status"
+              defaultValue={status}
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'pending', label: 'Pending', dotColor: 'var(--color-brass-bright)' },
+                { value: 'verified', label: 'Verified', dotColor: 'var(--color-jade-bright)' },
+                { value: 'flagged', label: 'Flagged', dotColor: 'var(--color-clay-bright)' },
+              ]}
+            />
+          </div>
+          {/* Beside Status because it is the same kind of question and gets
+              asked as often. "Show me every correction" had no answer on this
+              page at all: a correction is the one entry type that changes a
+              figure already on record, so being unable to list them was the
+              largest blind spot in the ledger. */}
+          <div className="w-44">
+            <Listbox
+              name="type"
+              defaultValue={txType}
+              options={[
+                { value: 'all', label: 'All Types' },
+                { value: 'package', label: 'Package' },
+                { value: 'topup', label: 'Top-up' },
+                { value: 'adjustment', label: 'Correction' },
+              ]}
+            />
+          </div>
+          <div className="w-44">
+            <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
+          </div>
+          {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
+          <input type="hidden" name="sort" value={sort} />
+          {/* Secondary, like the same control on Audit Log and Dealers. Applying a
+              filter is reversible; Export writes a file that leaves the system. */}
+          <button type="submit" className="btn-ghost">
+            Filter
+          </button>
         </div>
-        <div className="w-44">
-          <MonthPicker name="month" defaultValue={month ?? ''} placeholder="All months" allowClear today={todayInMalaysia().slice(0, 7)} />
-        </div>
-        {dealerId && <input type="hidden" name="dealer" value={dealerId} />}
-        <input type="hidden" name="sort" value={sort} />
-        {/* Secondary, like the same control on Audit Log and Dealers. Applying a
-            filter is reversible; Export writes a file that leaves the system. */}
-        <button type="submit" className="btn-ghost">
-          Filter
-        </button>
-      </form>
+
+        {/* Open when any of them is set, so a filtered view never hides the
+            thing doing the filtering — arriving on a shared URL with an amount
+            range applied would otherwise show a narrowed table and a closed
+            panel. The chips above say so too; this puts the control itself
+            within reach rather than only the news that it exists. */}
+        <details open={minRm != null || maxRm != null || !!dateFrom || !!dateTo || !!recordedBy}>
+          <summary className="filter-disclosure">
+            <IconChevronDown className="h-3.5 w-3.5 transition-transform" />
+            Amount, date range and who recorded it
+          </summary>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            {/* Amount, because a dealer disputing a transaction says "I paid
+                RM 1,128" — not "it was in July". Both ends optional: one on
+                its own is the more common question ("anything over RM5,000"). */}
+            <div className="min-w-0 max-w-full">
+              <span className="field-label">Amount collected (RM)</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="number" step="0.01" name="min" defaultValue={minParam} placeholder="Min" className="field-input w-28" aria-label="Minimum amount in RM" />
+                <span className="text-[12px] text-paper-dim">to</span>
+                <input type="number" step="0.01" name="max" defaultValue={maxParam} placeholder="Max" className="field-input w-28" aria-label="Maximum amount in RM" />
+              </div>
+            </div>
+
+            {/* A range, not just a month: "last Tuesday" does not line up with
+                a month boundary, and paging 50 at a time to find it is not a
+                search. DatePicker rather than a bare input[type=date] so these
+                read in the app's own date format like every other date on
+                screen. */}
+            {/* flex-wrap on the inner row, not just the outer one: two 160px
+                pickers plus the word between them come to ~356px, which
+                overflowed a 320px viewport by 43px with the panel open. The
+                outer wrap could not help — the pair was one unbreakable child.
+                Caught by re-running the audit after a stale stylesheet was
+                fixed; the run before that reported clean against CSS the
+                browser never had. */}
+            <div className="min-w-0 max-w-full">
+              <span className="field-label">Date range</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="w-40 max-w-full">
+                  <DatePicker name="from" defaultValue={dateFrom} placeholder="From" allowClear todayIso={todayInMalaysia()} />
+                </div>
+                <span className="text-[12px] text-paper-dim">to</span>
+                <div className="w-40 max-w-full">
+                  <DatePicker name="to" defaultValue={dateTo} placeholder="To" allowClear todayIso={todayInMalaysia()} />
+                </div>
+              </div>
+            </div>
+
+            {/* Who keyed it in. The maker-checker rule only means anything if
+                someone can actually look at one person's work — "what did CS
+                enter yesterday" was a question the ledger could not answer. */}
+            <div className="min-w-0 max-w-full">
+              <span className="field-label">Recorded by</span>
+              <div className="w-48 max-w-full">
+                <Listbox
+                  name="by"
+                  defaultValue={recordedBy}
+                  options={[{ value: '', label: 'Anyone' }, ...(staffProfiles ?? []).map((p) => ({ value: p.id, label: p.display_name ?? '—' }))]}
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="btn-ghost">
+              Filter
+            </button>
+          </div>
+        </details>
+      </FilterForm>
 
       {/* Pending / verified / flagged used to repeat here, a few hundred pixels
           below the header that already states all three. Only the page-scoped

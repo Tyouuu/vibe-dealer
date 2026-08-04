@@ -5,7 +5,7 @@ import { Field } from '../field'
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
-import { createTransaction } from './actions'
+import { createTransaction, findRecentDuplicate, type RecentMatch } from './actions'
 import { IconCoin, IconUpload, IconChevronDown, IconUsers } from '../icons'
 import { Avatar } from '../avatar'
 import { Combobox } from '../combobox'
@@ -76,6 +76,8 @@ export function EntryForm({
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  // Filled just before the confirm dialog opens — see handleSubmit.
+  const [recentMatch, setRecentMatch] = useState<RecentMatch | null>(null)
 
   const dealer = dealers.find((d) => d.id === dealerId)
 
@@ -157,8 +159,18 @@ export function EntryForm({
     // Validation passed — confirm the summary before actually committing a
     // financial record, rather than posting straight from the form. doSubmit
     // runs the real upload + createTransaction once the modal is confirmed.
-    setPendingFormData(new FormData(e.currentTarget))
+    const fd = new FormData(e.currentTarget)
+    setPendingFormData(fd)
     setConfirmOpen(true)
+    // Asked as the dialog opens rather than on every keystroke: this is the
+    // one moment the answer matters, and it is one query instead of dozens.
+    // The dialog does not wait for it — if the lookup is slow or fails the
+    // confirmation still works, it just has nothing extra to say.
+    setRecentMatch(null)
+    const money = Number(fd.get('money_rm'))
+    findRecentDuplicate(String(fd.get('dealer_id') ?? ''), money)
+      .then(setRecentMatch)
+      .catch(() => {})
   }
 
   async function doSubmit() {
@@ -533,6 +545,18 @@ export function EntryForm({
             <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
             <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
+          </div>
+        )}
+        {/* A warning, not a block. A dealer really can top up twice in a day
+            for the same amount — so this states what already exists and lets
+            the person in front of it decide. The idempotency key cannot see
+            this case: two people filling the form separately produce two
+            keys. */}
+        {recentMatch && (
+          <div className="alert alert-warn mt-3 text-[13px]">
+            <strong>{recentMatch.recordedByName}</strong> already recorded {formatMYR(preview?.money ?? 0)} for this dealer{' '}
+            {recentMatch.hoursAgo === 0 ? 'less than an hour ago' : `${recentMatch.hoursAgo} hour${recentMatch.hoursAgo === 1 ? '' : 's'} ago`} (
+            {recentMatch.points.toLocaleString()} pts). Record this one as well only if it is a separate sale.
           </div>
         )}
         <p className="mt-3 text-[12px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>

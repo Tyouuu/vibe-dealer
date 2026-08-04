@@ -166,3 +166,70 @@ export async function adjustTransaction(formData: FormData) {
   revalidatePath('/purchases')
   redirect('/records?adjusted=1')
 }
+
+// Verify a selection in one go.
+//
+// A month with 242 dealers trading produces enough pending rows that verifying
+// them one at a time is the bulk of an accountant's day: click Verify, answer
+// the confirm, repeat. The app already has bulk selection on SIM Delivery, so
+// the pattern exists — it just wasn't where the volume is.
+//
+// The maker-checker rule survives the batch intact, which is the whole reason
+// this is not a loop over verifyTransaction. Corrections you posted yourself
+// are refused here exactly as they are one at a time: they are the one entry
+// type with no receipt or formula behind them, so a second person has to sign
+// them off. Rows in a reconciled month are refused for the same reason a new
+// entry there is. Both are counted and named rather than silently dropped —
+// "18 verified" with no mention of the 2 that were not is how a batch action
+// quietly loses work.
+export async function verifyTransactions(formData: FormData) {
+  const user = await requireUser()
+  if (user.role !== 'accountant' && user.role !== 'master') fail('You do not have permission to verify transactions.')
+
+  const ids = formData.getAll('ids').map(String).filter(Boolean)
+  if (!ids.length) fail('Nothing was selected.')
+
+  const supabase = await createClient()
+  const { data: rows } = await supabase.from('transactions').select('id, type, status, recorded_by, tx_date').in('id', ids)
+
+  const pending = (rows ?? []).filter((r) => r.status === 'pending')
+  const ownAdjustments = pending.filter((r) => r.type === 'adjustment' && r.recorded_by === user.id)
+
+  // One lookup per distinct month rather than per row — a batch of 200 rows
+  // spans two or three months at most.
+  const months = [...new Set(pending.map((r) => String(r.tx_date).slice(0, 7)))]
+  const lockedMonths = new Set<string>()
+  for (const m of months) {
+    if (await isPeriodLocked(supabase, `${m}-01`)) lockedMonths.add(m)
+  }
+
+  const blockedIds = new Set([
+    ...ownAdjustments.map((r) => r.id),
+    ...pending.filter((r) => lockedMonths.has(String(r.tx_date).slice(0, 7))).map((r) => r.id),
+  ])
+  const toVerify = pending.filter((r) => !blockedIds.has(r.id)).map((r) => r.id)
+
+  let verified = 0
+  if (toVerify.length) {
+    // .eq('status','pending') as well as the id list: someone else may have
+    // verified one of these between the read above and this write.
+    const { data: updated, error } = await supabase
+      .from('transactions')
+      .update({ status: 'verified', verified_by: user.id })
+      .in('id', toVerify)
+      .eq('status', 'pending')
+      .select('id')
+
+    if (error) fail(friendlyDbError(error.message))
+    verified = updated?.length ?? 0
+  }
+
+  revalidatePath('/records')
+  revalidatePath('/reports')
+  revalidatePath('/dashboard')
+  redirect(
+    `/records?verified=${verified}` +
+      (ownAdjustments.length ? `&own_adjustments=${ownAdjustments.length}` : '') +
+      (lockedMonths.size ? `&locked=${[...lockedMonths].join(',')}` : '')
+  )
+}

@@ -106,6 +106,20 @@ export async function markReconciled(formData: FormData) {
 
   if (error) fail(month, friendlyDbError(error.message))
 
+  // A month closed over a gap is a dispute with Vibe, whether or not anyone
+  // called it that. The reason used to land only in the revisions log as
+  // prose, which answered "who closed it" but never "is this still open, how
+  // much is it, and did they ever reply". It now also opens a variance record
+  // that stays open until somebody settles it — see 0033.
+  if (diff !== 0) {
+    await supabase.from('statement_variances').insert({
+      month: monthDate,
+      gap_points: diff,
+      reason: overrideReason,
+      opened_by: user.id,
+    })
+  }
+
   // Reconciliation itself is a real change of record — log it in the same
   // append-only history saveStatement uses, so audit shows who formally
   // closed the month, not just who last edited the numbers. When there's a
@@ -169,4 +183,33 @@ export async function reopenMonth(formData: FormData) {
   revalidatePath('/audit')
   revalidatePath('/records')
   redirect(`/reconcile?month=${month}&reopened=1`)
+}
+
+// Settling a variance: what Vibe came back with, or what we found. Update
+// rather than delete — 0033 grants no delete policy, so the record that a
+// month closed short cannot be made to disappear, only answered.
+export async function resolveVariance(formData: FormData) {
+  const user = await requireUser()
+  const month = String(formData.get('month') ?? '')
+  if (user.role !== 'accountant' && user.role !== 'master') fail(month, 'Not authorized.')
+
+  const id = String(formData.get('id') ?? '')
+  const resolution = String(formData.get('resolution') ?? '').trim()
+  if (!id) fail(month, 'Missing variance id.')
+  // Same rule the override itself follows: a record of a dispute is only
+  // worth keeping if it says what happened.
+  if (!resolution) fail(month, 'Say what the outcome was — a variance with no answer is the thing this is meant to prevent.')
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('statement_variances')
+    .update({ resolution, resolved_at: new Date().toISOString(), resolved_by: user.id })
+    .eq('id', id)
+    .is('resolved_at', null)
+
+  if (error) fail(month, friendlyDbError(error.message))
+
+  revalidatePath('/reconcile')
+  revalidatePath('/reports')
+  redirect(`/reconcile?month=${month}&resolved=1`)
 }

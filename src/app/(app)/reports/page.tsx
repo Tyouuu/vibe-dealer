@@ -67,6 +67,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     { data: simOrdersAll },
     { data: intakeRows },
     { data: statement },
+    { data: openVarianceRows },
     { data: ledgerPurchases },
     { data: ledgerCommitted },
     creditBalance,
@@ -84,6 +85,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     supabase.from('sim_orders').select('order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', prevStart).lte('order_date', end),
     supabase.from('sim_stock_intakes').select('quantity, cost_per_unit_rm').gte('intake_date', start).lte('intake_date', end),
     supabase.from('company_statements').select('reconciled, company_total_points, company_profit_rm').eq('month', `${month}-01`).maybeSingle(),
+    // A month can be closed and still have an unanswered gap. "Matched" and
+    // "closed" both being true would otherwise read as settled.
+    supabase.from('statement_variances').select('gap_points').eq('month', `${month}-01`).is('resolved_at', null),
     // From the start of the month before through today: what balanceSeries
     // needs to walk the balance backwards from where it stands now.
     supabase.from('credit_purchases').select('purchase_date, money_rm, points').gte('purchase_date', prevStart),
@@ -153,6 +157,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const companyPoints = statement?.company_total_points != null ? Number(statement.company_total_points) : null
   const variance = companyPoints != null ? Math.round((totalPoints - companyPoints) * 100) / 100 : null
   const isClosed = Boolean(statement?.reconciled)
+  const openVariances = (openVarianceRows ?? []) as { gap_points: number }[]
+  const openVarianceTotal = openVariances.reduce((sum, v) => sum + Math.abs(Number(v.gap_points)), 0)
 
   // ---- the points ledger --------------------------------------------------
   // Opening balance, what moved, closing balance — the shape a distributor
@@ -424,6 +430,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   You recorded {totalPoints.toLocaleString()} pts; Vibe&apos;s statement says {companyPoints.toLocaleString()} pts.
                 </p>
               </>
+            )}
+            {/* Closed is not the same as settled. A month can be marked
+                reconciled over a gap, with a reason, and that gap stays open
+                until Vibe answers — saying so here stops the report reading
+                as agreed when it is not. */}
+            {openVariances.length > 0 && (
+              <p className="mt-1 text-[12px] font-semibold" style={{ color: 'var(--color-brass-bright)' }}>
+                {openVariances.length} unresolved {openVariances.length === 1 ? 'variance' : 'variances'} on this month,{' '}
+                {openVarianceTotal.toLocaleString()} pts — closed, but not yet agreed.
+              </p>
             )}
             <Link href={`/reconcile?month=${month}`} className="mt-1.5 inline-block text-[12px] font-semibold text-primary hover:underline">
               Open Reconciliation →

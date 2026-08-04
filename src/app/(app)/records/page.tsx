@@ -8,6 +8,7 @@ import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { VerifyButton } from './verify-button'
+import { BulkVerifyBar, RowSelect } from './bulk-verify'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
 import { IconPaperclip, IconSearch } from '../icons'
@@ -52,6 +53,9 @@ type PageProps = {
   searchParams: Promise<{
     status?: string
     submitted?: string
+    verified?: string
+    own_adjustments?: string
+    locked?: string
     adjusted?: string
     error?: string
     month?: string
@@ -64,7 +68,7 @@ type PageProps = {
 
 export default async function RecordsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId, page } = await searchParams
+  const { status = 'all', submitted, adjusted, error, month, q = '', sort = 'desc', dealer: dealerId, page, verified: bulkVerified, own_adjustments: bulkOwnAdj, locked: bulkLocked } = await searchParams
   const sortAscending = sort === 'asc'
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
@@ -252,6 +256,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         <div className="alert alert-ok">Correction posted as a new pending transaction — the original is untouched. Verify it to apply.</div>
       )}
       {error && <div className="alert alert-bad">{error}</div>}
+      {/* Names what it did *and* what it left. A batch that reports only its
+          successes is how work quietly goes missing. */}
+      {bulkVerified != null && (
+        <div className={`alert ${Number(bulkVerified) > 0 ? 'alert-ok' : 'alert-warn'}`}>
+          {Number(bulkVerified).toLocaleString()} transaction{Number(bulkVerified) === 1 ? '' : 's'} verified.
+          {bulkOwnAdj && ` ${bulkOwnAdj} correction${Number(bulkOwnAdj) === 1 ? '' : 's'} you posted yourself were left for someone else to check.`}
+          {bulkLocked && ` Rows dated in ${bulkLocked.split(',').map((m) => formatMonthLabel(m)).join(', ')} were skipped — that month is reconciled.`}
+        </div>
+      )}
 
       {/* The ledger is the page — no card. Same two-row toolbar as /dealers,
           so the two biggest lists in the app are operated identically: view
@@ -329,7 +342,13 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </span>
       </div>
 
+      {/* One form around the whole table so the row checkboxes post as a single
+          selection. It wraps the ScrollFade rather than the table so the
+          selection bar sits outside the horizontal scroller and stays reachable
+          however far the table has been scrolled. */}
       {pageRows.length ? (
+        <>
+        <BulkVerifyBar />
         <ScrollFade label="Transactions">
           {/* table-fixed with percentage widths. This table had no colgroup
               at all, so auto layout sized every column from whatever its
@@ -337,7 +356,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               and the dealer name wrapped to two and three lines, which is
               what gave the table three different row heights (61/59/74,
               measured). Ten columns, percentages summing to 100. */}
-          <table className="w-full min-w-[1040px] table-fixed border-collapse text-sm">
+          <table className="w-full min-w-[1100px] table-fixed border-collapse text-sm">
             {/* Dealer 19% -> 24%. At 1440 the company name was truncating
                 mid-word ("ZZZ TEST - Kampar De…") while Rate, which has been
                 6% on every row since migration 0010 flattened the package
@@ -348,19 +367,21 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 by. Date keeps 9%: "28 Jul 2026" needs more room than the ISO
                 string it replaced. */}
             <colgroup>
-              <col className="w-[9%]" />
+              <col className="w-[3%]" />
+              <col className="w-[8%]" />
               <col className="w-[24%]" />
-              <col className="w-[11%]" />
+              <col className="w-[10%]" />
               <col className="w-[11%]" />
               <col className="w-[8%]" />
               <col className="w-[4%]" />
               <col className="w-[9%]" />
               <col className="w-[7%]" />
               <col className="w-[9%]" />
-              <col className="w-[8%]" />
+              <col className="w-[7%]" />
             </colgroup>
             <thead>
               <tr>
+                <th className="th"><span className="sr-only">Select</span></th>
                 <th className="th">Date</th>
                 <th className="th">Dealer</th>
                 <th className="th">Type</th>
@@ -387,6 +408,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
                   <tr key={tx.id} className="tr-row relative h-16">
+                    <td className="td">{tx.status === 'pending' && <RowSelect id={tx.id} />}</td>
                     <td className="td whitespace-nowrap text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                     <td className="td">
                       <div className="flex min-w-0 items-center gap-2.5">
@@ -475,6 +497,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             </tbody>
           </table>
         </ScrollFade>
+        </>
       ) : hasFilter ? (
         <EmptyState
           variant="filtered"

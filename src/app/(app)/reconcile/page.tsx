@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { resolveReportMonth } from '@/lib/reporting-month'
+import { daysSince } from '@/lib/dealer-activity'
 import { monthRange, currentMonth, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
 import { IconCheckCircle, IconChevronDown } from '../icons'
 import { Avatar } from '../avatar'
@@ -11,6 +12,7 @@ import { StatusDot } from '../status-dot'
 import { StatementForm } from './statement-form'
 import { MarkReconciledForm } from './mark-reconciled-form'
 import { ReopenMonthForm } from './reopen-month-form'
+import { OpenVariances } from './open-variances'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
@@ -33,12 +35,12 @@ type BreakdownRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; error?: string; saved?: string; reopened?: string; page?: string }>
+  searchParams: Promise<{ month?: string; error?: string; saved?: string; reopened?: string; resolved?: string; page?: string }>
 }
 
 export default async function ReconcilePage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month: monthParam, error, saved, reopened, page } = await searchParams
+  const { month: monthParam, error, saved, reopened, resolved, page } = await searchParams
   const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -53,7 +55,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   const { start, end } = monthRange(month)
 
-  const [{ data: verifiedTx }, { data: statement }] = await Promise.all([
+  const [{ data: verifiedTx }, { data: statement }, { data: openVarianceRows }, { data: varianceProfiles }] = await Promise.all([
     // No .limit() — systemPoints below is a real sum over every verified row
     // this month, and Your 2% Due is computed from it. A cap here would
     // silently under-count both once the month passes that many rows (this
@@ -69,9 +71,28 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
       .lte('tx_date', end)
       .order('tx_date', { ascending: false }),
     supabase.from('company_statements').select('*').eq('month', `${month}-01`).maybeSingle(),
+    // Every month still open, not just the one on screen — an unanswered
+    // variance is outstanding work wherever you happen to be standing.
+    supabase.from('statement_variances').select('id, month, gap_points, reason, opened_by, created_at').is('resolved_at', null).order('month', { ascending: false }),
+    supabase.from('profiles').select('id, name, email'),
   ])
 
   const breakdownRows = (verifiedTx as BreakdownRow[] | null) ?? []
+  const varianceNameById = new Map((varianceProfiles ?? []).map((p) => [p.id, p.name ?? p.email ?? '—']))
+  const openVariances = ((openVarianceRows ?? []) as { id: string; month: string; gap_points: number; reason: string; opened_by: string; created_at: string }[]).map((v) => ({
+    id: v.id,
+    month: v.month,
+    gap_points: Number(v.gap_points),
+    reason: v.reason,
+    openedByName: varianceNameById.get(v.opened_by) ?? '—',
+    createdAt: v.created_at,
+    // daysSince, not Date.now() arithmetic: it counts in the Malaysia
+    // calendar the way every other "N days ago" in this app does, and keeping
+    // the clock read out of the render body is what the compiler's purity rule
+    // is asking for.
+    daysOpen: daysSince(v.created_at.slice(0, 10)),
+  }))
+
   const systemPoints = breakdownRows.reduce((s, t) => s + Number(t.points), 0)
   // Sums each row's own commission_rm rather than recomputing points*rate —
   // matches how Reports/Dashboard/dealer-detail all compute "Your 2%", and
@@ -155,6 +176,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
       {error && <div className="alert alert-bad">{error}</div>}
       {saved && <div className="alert alert-ok">Statement saved.</div>}
+      {resolved && <div className="alert alert-ok">Variance resolved.</div>}
       {reopened && <div className="alert alert-ok">{formatMonthLabel(month)} reopened. Make the correction, then close it again.</div>}
 
       {!hasStatement ? (
@@ -244,6 +266,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           </div>
         </div>
       )}
+
+      {/* Directly under the summary. An unanswered gap against Vibe is the
+          most consequential thing this page can be carrying, so it sits above
+          the forms rather than below them. Renders nothing when there are
+          none. */}
+      <OpenVariances items={openVariances} month={month} />
 
       {/* The entry form, once the summary above has said where you stand.
           A band, not a card: this page's one card is the summary, and the

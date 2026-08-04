@@ -152,3 +152,51 @@ export async function createTransaction(formData: FormData) {
   revalidatePath('/dealers')
   redirect('/records?submitted=1')
 }
+
+// Has this sale already been recorded in the last few hours?
+//
+// The form already carries an idempotency_key, but that only defends against
+// one form instance being submitted twice — a slow network, a double click.
+// It cannot see the case that actually happens in an office with three people
+// on one ledger: the accountant records Ipoh Demo RM 1,128 in the morning and
+// CS, not knowing, records it again after lunch. Two form instances, two keys,
+// two rows, and the dealer is credited twice.
+//
+// A warning, not a block. A dealer genuinely can top up twice in a day for the
+// same amount, so the only honest thing to do is say what already exists and
+// let the person deciding decide.
+export type RecentMatch = { recordedByName: string; hoursAgo: number; points: number }
+
+const DUPLICATE_WINDOW_HOURS = 12
+
+export async function findRecentDuplicate(dealerId: string, moneyRm: number): Promise<RecentMatch | null> {
+  const user = await requireUser()
+  if (user.role !== 'accountant' && user.role !== 'master') return null
+  if (!dealerId || !Number.isFinite(moneyRm) || moneyRm <= 0) return null
+
+  const supabase = await createClient()
+  const since = new Date(Date.now() - DUPLICATE_WINDOW_HOURS * 3600_000).toISOString()
+
+  // Flagged rows are excluded: one that has already been marked wrong is not
+  // evidence that this one is a duplicate — it may well be the correction.
+  const { data } = await supabase
+    .from('transactions')
+    .select('points, created_at, recorded_by')
+    .eq('dealer_id', dealerId)
+    .eq('money_rm', moneyRm)
+    .neq('status', 'flagged')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!data) return null
+
+  const { data: profile } = await supabase.from('profiles').select('name, email').eq('id', data.recorded_by).maybeSingle()
+
+  return {
+    recordedByName: profile?.name ?? profile?.email ?? 'someone',
+    hoursAgo: Math.max(0, Math.round((Date.now() - new Date(data.created_at).getTime()) / 3600_000)),
+    points: Number(data.points),
+  }
+}

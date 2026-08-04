@@ -132,6 +132,12 @@ for (const p of paths) {
     //    as finished, SIM Card Stock was 35% and did not. What predicts it is
     //    whether the page opens with something to land on.
     const main = document.querySelector('main')
+    // No <main> means the app never rendered — a 404, a redirect to /login, or
+    // a server error. Reporting that is useful; a TypeError on a null
+    // getBoundingClientRect four frames deep is not. This bit once: Git Bash
+    // rewrites a leading-slash argument into a Windows path, so `/reconcile`
+    // arrived as `/C:/Program Files/Git/reconcile` and 404'd.
+    if (!main) return { notRendered: true, url: location.pathname }
     const mb = main.getBoundingClientRect()
     const painted = [...main.querySelectorAll('*')]
       .filter((el) => {
@@ -149,6 +155,14 @@ for (const p of paths) {
     out.height = document.querySelector('main')?.scrollHeight ?? 0
     return out
   })
+
+  if (r.notRendered) {
+    console.log(`
+${p}  (${width}px, ${role})`)
+    console.log(`  ✗ the app never rendered here — landed on ${r.url}. Wrong path, a redirect to /login, or a server error.`)
+    problems++
+    continue
+  }
 
   const flags = []
   for (const t of r.tables) {

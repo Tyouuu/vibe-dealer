@@ -33,7 +33,7 @@ export type OrderItem = {
 // the full width of the band there is room to show Margin and Shipping
 // outright — hiding them now only leaves a hole on the right of every row.
 // What stays behind the chevron is what genuinely cannot be a column: the
-// invoice link / eSIM codes, and the Mark as Sent action.
+// invoice link / eSIM codes, and the Mark as sent action.
 // isFinance and canMarkSent are two different splits and both are needed here.
 // isFinance decides whether the margin column exists; canMarkSent mirrors who
 // markSimOrderSent will actually accept (cs/master), which is not the same
@@ -166,7 +166,7 @@ export function DealerOrdersTable({
                       <form action={markSimOrderSent} className="mt-4" onClick={(e) => e.stopPropagation()}>
                         <input type="hidden" name="id" value={o.id} />
                         <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this order as shipped? This cannot be undone.">
-                          Mark as Sent
+                          Mark as sent
                         </ConfirmSubmitButton>
                       </form>
                     )}

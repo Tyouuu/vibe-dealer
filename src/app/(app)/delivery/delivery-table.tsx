@@ -176,7 +176,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                     <form action={markDelivered}>
                       <input type="hidden" name="id" value={row.id} />
                       <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
-                        Mark as Sent
+                        Mark as sent
                       </ConfirmSubmitButton>
                     </form>
                   ) : (

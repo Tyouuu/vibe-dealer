@@ -77,7 +77,7 @@ export function VerifyButton({
             }}
             className="btn-jade"
           >
-            Verify Anyway
+            Verify anyway
           </button>
         </div>
       </Modal>

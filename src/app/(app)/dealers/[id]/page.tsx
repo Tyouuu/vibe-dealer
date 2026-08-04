@@ -345,7 +345,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                       className="btn-clay py-1.5 text-xs"
                       confirmMessage={`Delete ${typedDealer.company_name}? This dealer has no transactions, so this can't affect any financial record — but the deletion itself cannot be undone.`}
                     >
-                      Delete Dealer
+                      Delete dealer
                     </ConfirmSubmitButton>
                   </form>
                 ) : (
@@ -359,7 +359,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                     className="btn-clay cursor-not-allowed py-1.5 text-xs opacity-40"
                     title="Only a dealer with zero transactions can be deleted — this one has real history, so deleting it isn't offered."
                   >
-                    Delete Dealer
+                    Delete dealer
                   </button>
                 ))}
             </div>
@@ -565,7 +565,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                             <form action={markDelivered}>
                               <input type="hidden" name="id" value={row.id} />
                               <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this SIM as sent? This cannot be undone.">
-                                Mark as Sent
+                                Mark as sent
                               </ConfirmSubmitButton>
                             </form>
                           ) : (

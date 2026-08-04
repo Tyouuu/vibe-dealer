@@ -223,9 +223,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Monthly Report"
         subtitle={
-          monthAuto
-            ? `Showing ${monthLabel} — nothing verified in ${formatMonthLabel(currentMonth())} yet. Generated ${formatDateLabel(todayInMalaysia())}.`
-            : `${monthLabel} · generated ${formatDateLabel(todayInMalaysia())}`
+          /* The "showing an earlier month" notice used to lead this line.
+             It explains a figure rather than the page, so it now sits under
+             the figure — and it kept the subtitle to one line, which is what
+             stops the month picker wrapping and pushing the card down on a
+             phone. Same treatment as Reconciliation. */
+          `${monthLabel} · generated ${formatDateLabel(todayInMalaysia())}`
         }
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -265,6 +268,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <p className="mt-2 text-[13px] text-paper-dim">
           {prevEarned > 0 ? `vs ${formatMYR(prevEarned)} in ${formatMonthLabel(prevMonth)}` : `Nothing earned in ${formatMonthLabel(prevMonth)} to compare against`}
         </p>
+        {monthAuto && (
+          <p className="mt-1.5 text-[13px] text-brass-bright">
+            Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {monthLabel}.
+          </p>
+        )}
 
         {/* Two revenue lines, then what changed hands. The 2% and the SIM
             margin are separate businesses sharing one month, and the report

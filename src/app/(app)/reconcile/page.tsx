@@ -135,10 +135,13 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             Reconciliation
             <span className={`pill ${isClosed ? 'pill-jade' : 'pill-neutral'}`}>{isClosed ? 'Closed' : 'Open'}</span>
           </h1>
-          <p className="page-subtitle">
-            {monthAuto && `Showing ${formatMonthLabel(month)} — nothing verified in ${formatMonthLabel(currentMonth())} yet. `}
-            Compare your verified total against Vibe&apos;s own statement, then close the month.
-          </p>
+          {/* Only what the page is for. The "showing an earlier month" notice
+              used to lead this line, which read as a two-sentence paragraph and
+              wrapped to three lines at 390px — enough to push the month picker
+              onto its own row and the first card past 200px. It also belonged
+              somewhere else: it explains a figure, so it now sits beside the
+              figure it explains. */}
+          <p className="page-subtitle">Compare your verified total against Vibe&apos;s own statement, then close the month.</p>
         </div>
         <form action="/reconcile" method="GET" className="flex items-center gap-2">
           <div className="w-44">
@@ -171,6 +174,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} in {formatMonthLabel(month)}. Nothing can be
             compared until Vibe&apos;s own figures are in.
           </div>
+          {monthAuto && (
+            <div className="mt-1.5 text-[13px] text-brass-bright">
+              Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
+            </div>
+          )}
           <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-ink-800 pt-4 sm:grid-cols-3">
             <div>
               <div className="text-[12px] font-medium text-paper-dim">Your system</div>
@@ -211,6 +219,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                     ? `Your system records ${Math.abs(gap).toLocaleString()} pts more than Vibe’s statement.`
                     : `Vibe’s statement is ${Math.abs(gap).toLocaleString()} pts higher than your system.`}
               </div>
+              {monthAuto && (
+                <div className="mt-1.5 text-[13px] text-brass-bright">
+                  Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
+                </div>
+              )}
             </div>
             <span className={`pill ${gap === 0 ? 'pill-jade' : 'pill-clay'}`}>{gap === 0 ? 'Matched' : 'Mismatch'}</span>
           </div>

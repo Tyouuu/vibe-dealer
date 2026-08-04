@@ -28,6 +28,29 @@ const cspHeader = `
   .trim();
 
 const nextConfig: NextConfig = {
+  // One address, not two.
+  //
+  // Both cwc456.com and www.cwc456.com point at this deployment, and without
+  // this they each served the app in full. That is not just untidy: the
+  // Supabase session cookie is scoped to the host that set it, so signing in
+  // at www and later opening the bare domain would present a signed-out app
+  // and ask for the password again. Anyone who typed the other form would
+  // quietly have a second, separate session.
+  //
+  // 308 (permanent: true) rather than 302, because this is the permanent
+  // shape of the site and the method must survive the redirect — a 301/302
+  // is allowed to turn a POST into a GET, which would silently drop a form
+  // submission that happened to arrive on the www host.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.cwc456.com" }],
+        destination: "https://cwc456.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

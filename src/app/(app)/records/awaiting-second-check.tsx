@@ -80,10 +80,22 @@ export function AwaitingSecondCheck({ items }: { items: AwaitingItem[] }) {
                       their own ("overcharged RM47 — refunded by transfer"),
                       which made the attribution read as a third clause of the
                       sentence rather than a separate fact about it. */}
-                  <p className="truncate text-[12px] text-paper-dim" title={item.note ?? undefined}>
-                    {item.note ?? 'No reason recorded'} · {item.postedByName},{' '}
-                    {item.daysWaiting === 0 ? 'today' : `${item.daysWaiting} day${item.daysWaiting === 1 ? '' : 's'} ago`}
-                  </p>
+                  {/* One string, used for both the line and its title. They
+                      were built separately and the title carried only the
+                      reason, so on a phone the attribution was cut off and
+                      hovering could not bring it back — 63% of this line lost
+                      at 390px, measured against a correction whose reason runs
+                      to a real sentence rather than a test fixture's two words. */}
+                  {(() => {
+                    const line = `${item.note ?? 'No reason recorded'} · ${item.postedByName}, ${
+                      item.daysWaiting === 0 ? 'today' : `${item.daysWaiting} day${item.daysWaiting === 1 ? '' : 's'} ago`
+                    }`
+                    return (
+                      <p className="truncate text-[12px] text-paper-dim" title={line}>
+                        {line}
+                      </p>
+                    )
+                  })()}
                 </div>
               </div>
 

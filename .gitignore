@@ -47,3 +47,7 @@ backups/
 
 # QA drivers and screenshot dumps — deliberately untracked, never committed
 qa-*
+
+# Demo instance credentials — never committed
+.demo-project.json
+.env.demo

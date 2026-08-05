@@ -41,7 +41,17 @@ grant execute on function current_role_name() to authenticated, service_role;
 --    RLS on newly created tables" safety net, wired up outside our migrations)
 --    — it only ever runs via the event trigger machinery, never a direct call,
 --    so it needs no EXECUTE grant to any client-facing role at all.
-revoke execute on function rls_auto_enable() from public, anon, authenticated, service_role;
+-- Guarded, because the function is not ours: it is wired up outside these
+-- migrations, so it exists on the project this was written against and on no
+-- project built from this repo. An unguarded revoke made 0008 the one file that
+-- could never run on a fresh database — found when standing up the demo
+-- instance. Revoking nothing on a project that never had it is correct.
+do $$
+begin
+  if exists (select 1 from pg_proc where proname = 'rls_auto_enable') then
+    execute 'revoke execute on function rls_auto_enable() from public, anon, authenticated, service_role';
+  end if;
+end $$;
 
 -- 4) profiles_select_own_or_master re-evaluated auth.uid() for every row.
 --    Wrapping it in a scalar subquery lets Postgres hoist it into a one-time

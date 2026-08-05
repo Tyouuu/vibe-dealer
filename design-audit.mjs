@@ -44,9 +44,13 @@ const paths = rest.map((p) => (p.startsWith('/') ? p : `/${p}`))
 // them switched back on first:
 //
 //   node scripts/qa-accounts.mjs on   ->  audit  ->  node scripts/qa-accounts.mjs off
+// Overridable so the same audit can be pointed at the demo instance, which has
+// its own accounts and a database with a month of trading in it. Auditing an
+// empty system measures almost nothing: the rules that matter — row heights,
+// pooled slack, clipped text, dead charts — all need rows to look at.
 const ACCOUNTS = {
-  accountant: { email: 'accountant@dealerhub.test', password: env.QA_PASSWORD },
-  cs: { email: 'cs@dealerhub.test', password: env.QA_PASSWORD },
+  accountant: { email: process.env.QA_ACCOUNTANT_EMAIL || 'accountant@dealerhub.test', password: process.env.QA_PASSWORD || env.QA_PASSWORD },
+  cs: { email: process.env.QA_CS_EMAIL || 'cs@dealerhub.test', password: process.env.QA_PASSWORD || env.QA_PASSWORD },
 }
 const acct = ACCOUNTS[role]
 if (!acct) throw new Error(`unknown role ${role}`)

@@ -34,12 +34,23 @@ const [, , role = 'accountant', widthArg = '1440', ...rest] = process.argv
 const width = Number(widthArg)
 const paths = rest.map((p) => (p.startsWith('/') ? p : `/${p}`))
 
+// The password lives in .env.local, not here. It used to be a literal in this
+// file, which is tracked — so it was in the repo's history, in every qa driver,
+// and in any chat log that quoted them. It has since been rotated; this reads
+// the new one rather than reintroducing the same problem.
+//
+// Both accounts are switched off (profiles.active = false) and, since 0038,
+// that revokes their data access at the RLS layer too — so an audit run needs
+// them switched back on first:
+//
+//   node scripts/qa-accounts.mjs on   ->  audit  ->  node scripts/qa-accounts.mjs off
 const ACCOUNTS = {
-  accountant: { email: 'accountant@dealerhub.test', password: 'QaTemp!2026' },
-  cs: { email: 'cs@dealerhub.test', password: 'QaTemp!2026' },
+  accountant: { email: 'accountant@dealerhub.test', password: env.QA_PASSWORD },
+  cs: { email: 'cs@dealerhub.test', password: env.QA_PASSWORD },
 }
 const acct = ACCOUNTS[role]
 if (!acct) throw new Error(`unknown role ${role}`)
+if (!acct.password) throw new Error('QA_PASSWORD is not set in .env.local — the audit cannot sign in')
 
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 await admin.from('rate_limit_hits').delete().eq('key', `login:${acct.email}`)

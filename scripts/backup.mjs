@@ -17,11 +17,25 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 
-const env = Object.fromEntries(
-  fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)
-    .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
-    .map((l) => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()] }),
-)
+// On a developer machine the credentials come from .env.local. In GitHub
+// Actions there is no such file — they arrive as repository secrets in the
+// environment — so the environment wins and the file is only a fallback.
+// Reading the file unconditionally would crash the scheduled run.
+const fromFile = fs.existsSync('.env.local')
+  ? Object.fromEntries(
+      fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)
+        .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
+        .map((l) => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()] }),
+    )
+  : {}
+const env = new Proxy({}, { get: (_, k) => process.env[k] ?? fromFile[k] })
+
+for (const required of ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+  if (!env[required]) {
+    console.error(`${required} is not set. Locally it comes from .env.local; in CI it is a repository secret.`)
+    process.exit(1)
+  }
+}
 
 // Every base table in `public`, in dependency order: a restore has to insert
 // profiles before anything referencing recorded_by, and dealers before any
@@ -106,9 +120,34 @@ for (const table of TABLES) {
   console.log(`  ${table.padEnd(30)} ${String(rows.length).padStart(6)} rows`)
 }
 
+// Login accounts live in the auth schema, which PostgREST does not expose, so
+// the table loop above cannot reach them. Without this the snapshot restores a
+// profiles row for every member of staff and nobody who can sign in — and
+// because profiles.id is the auth user's id, the rows would have nothing to
+// point at.
+//
+// Password hashes are deliberately not returned by the admin API, so a restore
+// recreates the accounts and everyone sets a new password. That is a recovery
+// step, not a data loss.
+const authUsers = []
+for (let page = 1; ; page++) {
+  const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+  if (error) { console.log(`  ${'auth.users'.padEnd(30)} FAILED — ${error.message}`); failed++; break }
+  authUsers.push(...data.users.map((u) => ({
+    id: u.id, email: u.email, phone: u.phone, role: u.role,
+    created_at: u.created_at, last_sign_in_at: u.last_sign_in_at,
+    email_confirmed_at: u.email_confirmed_at, app_metadata: u.app_metadata, user_metadata: u.user_metadata,
+  })))
+  if (data.users.length < 1000) break
+}
+fs.writeFileSync(path.join(root, 'auth_users.json'), JSON.stringify(authUsers, null, 2))
+manifest.authUsers = authUsers.length
+console.log(`  ${'auth.users'.padEnd(30)} ${String(authUsers.length).padStart(6)} accounts`)
+
 // Storage objects are not in the database — the tables only hold their paths.
-// Listing them means a restore can tell whether a receipt referenced by a
-// transaction is actually still in the bucket.
+// Downloading them, rather than only listing them, is what makes a receipt
+// recoverable: a manifest of filenames tells you exactly what you lost, which
+// is not the same as having it back.
 const buckets = ['receipts', 'sim-shipping-invoices']
 manifest.storage = {}
 for (const bucket of buckets) {
@@ -119,8 +158,22 @@ for (const bucket of buckets) {
     const { data: inner } = await supabase.storage.from(bucket).list(d.name, { limit: 1000 })
     for (const f of inner ?? []) paths.push(`${d.name}/${f.name}`)
   }
-  manifest.storage[bucket] = paths
-  console.log(`  storage:${bucket.padEnd(22)} ${String(paths.length).padStart(6)} objects`)
+
+  let saved = 0
+  let bytes = 0
+  for (const p of paths) {
+    const { data: blob, error } = await supabase.storage.from(bucket).download(p)
+    if (error) { console.log(`  storage:${bucket}/${p} FAILED — ${error.message}`); failed++; continue }
+    const dest = path.join(root, 'storage', bucket, p)
+    fs.mkdirSync(path.dirname(dest), { recursive: true })
+    const buf = Buffer.from(await blob.arrayBuffer())
+    fs.writeFileSync(dest, buf)
+    saved++
+    bytes += buf.length
+  }
+  manifest.storage[bucket] = { objects: paths, downloaded: saved, bytes }
+  const mb = (bytes / 1024 / 1024).toFixed(1)
+  console.log(`  storage:${bucket.padEnd(22)} ${String(saved).padStart(6)} files  ${mb} MB`)
 }
 
 fs.writeFileSync(path.join(root, '_manifest.json'), JSON.stringify(manifest, null, 2))

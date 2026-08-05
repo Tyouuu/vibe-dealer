@@ -310,8 +310,21 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               </div>
             </div>
             <div className="flex items-center gap-2.5">
+              {/* pill-neutral, never pill-brass. A rank is a position, not a
+                  state — and pill-brass draws the amber that means "pending"
+                  on every other page, so a top-three dealer read as a
+                  transaction waiting to be verified. It also made this the one
+                  chip among eight StatusDots, which is the mixed-status-
+                  treatment the audit flags: measured here as "2 status
+                  treatments: chip + dot" at both 1440px and 390px.
+                  The dealer list already reached this conclusion and fixed its
+                  own RankBadge the same way; this page was missed. Top three
+                  are still distinguished, by weight. */}
               {isFinance && (
-                <span className={`pill ${ranking ? (ranking.rank <= 3 ? 'pill-brass' : 'pill-neutral') : 'pill-neutral'}`}>
+                <span
+                  className={`pill pill-neutral ${ranking && ranking.rank <= 3 ? 'font-semibold text-paper' : ''}`}
+                  title={ranking ? `#${ranking.rank} by cumulative top-up` : undefined}
+                >
                   {ranking ? `#${ranking.rank} by top-up` : 'No top-up yet'}
                 </span>
               )}

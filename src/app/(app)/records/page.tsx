@@ -685,8 +685,21 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                       <span className="whitespace-nowrap">
                         {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                       </span>
+                      {/* title, not wrapping. Measured with real data: 31% of
+                          "RM 50.00 as coupon (5×)" was cut at 1440px and 34%
+                          at 390px, with no way to see the rest — and how many
+                          coupons went out is exactly the sort of figure a
+                          dealer queries later. Letting it wrap instead would
+                          make the rows carrying a coupon taller than the rest
+                          of this h-16 table, which is the uneven-row-heights
+                          complaint this project already fixed once. Same
+                          answer the dealer table reached: abbreviated is fine,
+                          unrecoverable is not. */}
                       {tx.type === 'topup' && tx.coupon_rm > 0 && (
-                        <div className="truncate text-[12px] text-paper-dim">
+                        <div
+                          className="truncate text-[12px] text-paper-dim"
+                          title={`${formatMYR(tx.coupon_rm)} as coupon (${tx.coupon_rm / COUPON_DENOMINATION_RM}×)`}
+                        >
                           {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)
                         </div>
                       )}

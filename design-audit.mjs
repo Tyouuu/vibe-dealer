@@ -96,6 +96,26 @@ for (const p of paths) {
       if (kids.length < 2) continue
       const tops = new Set(kids.map((k) => Math.round(k.getBoundingClientRect().top)))
       if (tops.size !== 1) continue // not actually a row
+
+      // A main column beside a fixed-width sidebar is not two panels that
+      // failed to line up — it is the one layout where they are *supposed* to
+      // differ, and stretching them would leave hundreds of pixels of dead
+      // space in whichever is shorter. This rule flagged /dealers/[id]
+      // (`grid-cols-[minmax(0,1fr)_296px] items-start`) at 151px for the
+      // accountant and 383px for cs, and the larger cs number was the proof
+      // rather than the alarm: cs sees less in the main column, so it shrank
+      // while the 296px sidebar stayed put.
+      //
+      // Two signals together, because either alone is too broad. `items-start`
+      // is the author saying in the markup that these are not meant to match,
+      // and unequal widths are what separates a sidebar from a peer. Equal-
+      // width panels still get judged even if someone sets items-start, which
+      // is the case this rule was written for.
+      const alignStart = /^(start|flex-start)$/.test(getComputedStyle(g).alignItems)
+      const ws = kids.map((k) => k.getBoundingClientRect().width)
+      const lopsided = Math.min(...ws) < Math.max(...ws) * 0.8
+      if (alignStart && lopsided) continue
+
       const hs = kids.map((k) => Math.round(k.getBoundingClientRect().height))
       const diff = Math.max(...hs) - Math.min(...hs)
       if (diff > 120) out.unevenRows.push({ heights: hs, diff })

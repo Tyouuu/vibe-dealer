@@ -1,0 +1,100 @@
+# A nightly off-site snapshot of the ledger.
+#
+# Supabase does not back up Free Plan projects. There is nothing on the
+# platform to restore from — a mistaken delete, a bad migration or a disk
+# failure takes 284 dealers' accounts with it and leaves nothing to go back to.
+# scripts/backup.mjs was written as the stopgap, but a backup that depends on
+# somebody remembering to run it is not a backup. This runs it on a schedule,
+# on GitHub's machine, whether or not anyone's laptop is open.
+#
+# It is a stopgap, not the answer. Supabase Pro's daily backups and
+# point-in-time restore are the answer; this exists until the maintenance fee
+# pays for that.
+#
+# What a restore gets you: every row of every table, the auth accounts (minus
+# password hashes, which the admin API does not expose — everyone sets a new
+# password), and the receipt and invoice files themselves.
+#
+# Secrets this needs, in Settings > Secrets and variables > Actions:
+#   NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY   — full read access, treat like the database password
+#   BACKUP_PASSPHRASE           — symmetric key for the archive
+#
+# LOSING BACKUP_PASSPHRASE MEANS LOSING EVERY BACKUP TAKEN WITH IT. Keep a copy
+# somewhere that is not GitHub and not this machine.
+
+name: Nightly backup
+
+on:
+  schedule:
+    # 18:00 UTC = 02:00 Malaysia. Deliberately not 00:00 UTC, which is when the
+    # daily report cron fires (vercel.json).
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Take the snapshot
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup.mjs backups
+
+      # A job that goes green having written nothing is the failure mode that
+      # matters here — you find out on the day you need it. There are 284
+      # dealers; a snapshot that found none did not work, whatever its exit code
+      # said.
+      - name: Refuse to keep an empty snapshot
+        run: |
+          set -euo pipefail
+          dir=$(find backups -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          test -n "$dir" || { echo "no snapshot directory was written"; exit 1; }
+          echo "snapshot: $dir"
+          node -e '
+            const fs = require("fs")
+            const m = JSON.parse(fs.readFileSync(process.argv[1] + "/_manifest.json", "utf8"))
+            const dealers = m.tables.dealers ?? 0
+            const rows = Object.values(m.tables).reduce((a, b) => a + b, 0)
+            console.log(`dealers=${dealers} totalRows=${rows} authUsers=${m.authUsers}`)
+            if (dealers < 1) { console.error("dealers is 0 — this snapshot is not usable"); process.exit(1) }
+            if (!m.authUsers) { console.error("no auth accounts captured — a restore would have no logins"); process.exit(1) }
+          ' "$dir"
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "${BACKUP_PASSPHRASE:-}" || { echo "BACKUP_PASSPHRASE is not set"; exit 1; }
+          dir=$(find backups -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          tar -czf snapshot.tar.gz -C "$(dirname "$dir")" "$(basename "$dir")"
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "snapshot-$(basename "$dir").tar.gz.gpg" snapshot.tar.gz
+          rm -f snapshot.tar.gz
+          # Never let the plaintext copy reach the artifact.
+          rm -rf backups
+          ls -lh snapshot-*.tar.gz.gpg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ledger-snapshot-${{ github.run_id }}
+          path: snapshot-*.tar.gz.gpg
+          retention-days: 90
+          if-no-files-found: error

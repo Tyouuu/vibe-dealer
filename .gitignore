@@ -51,3 +51,5 @@ qa-*
 # Demo instance credentials — never committed
 .demo-project.json
 .env.demo
+
+.env.demo.test

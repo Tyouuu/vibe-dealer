@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { IDLE_LIMIT_MS, LAST_SEEN_COOKIE } from '@/lib/idle'
 
 // /reset-password is public because the recovery session it needs is only
 // established client-side, after the initial (necessarily anonymous) server
@@ -73,6 +74,40 @@ export async function updateSession(request: NextRequest) {
       supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
       return redirectResponse
     }
+  }
+
+  // Idle sign-out. Enforced here rather than in the browser because a timer in
+  // a tab is a courtesy, not a control: close devtools' eyes for a second and
+  // it is gone. The server decides, on every request, whether this session has
+  // been left alone too long.
+  //
+  // Same shape as the switched-off branch above, and for the same reason: the
+  // sign-out has to happen while holding a response that can write cookies, or
+  // the browser keeps a session the server has already given up on.
+  if (user && !isCronRoute) {
+    const seen = Number(request.cookies.get(LAST_SEEN_COOKIE)?.value)
+    const now = Date.now()
+
+    if (seen && now - seen > IDLE_LIMIT_MS) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.search = '?idle=1'
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+      redirectResponse.cookies.delete(LAST_SEEN_COOKIE)
+      return redirectResponse
+    }
+
+    // No maxAge on purpose. This cookie must not outlive the browser session
+    // when "remember me" was left unchecked — giving it a lifetime of its own
+    // would leave a stale timestamp behind for the next person to sign in.
+    supabaseResponse.cookies.set(LAST_SEEN_COOKIE, String(now), {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+    })
   }
 
   if (!user && !isPublicRoute && !isCronRoute && pathname !== '/') {

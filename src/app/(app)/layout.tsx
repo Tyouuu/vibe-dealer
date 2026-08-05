@@ -10,6 +10,7 @@ import { MobileNav } from './mobile-nav'
 import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
 import { RestoreScroll } from './restore-scroll'
+import { Keepalive } from './keepalive'
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
@@ -179,6 +180,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense fallback={null}>
               <RestoreScroll />
             </Suspense>
+            {/* Signed-in pages only. The login screen has no session to keep
+                alive, and pinging from it would be a request per visitor. */}
+            <Keepalive />
             <div className="mx-auto w-full py-6 sm:py-8">{children}</div>
           </main>
         </div>

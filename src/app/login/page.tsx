@@ -7,11 +7,11 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ reset?: string; ended?: string }>
+  searchParams: Promise<{ reset?: string; ended?: string; idle?: string }>
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
-  const { reset, ended } = await searchParams
+  const { reset, ended, idle } = await searchParams
   return (
     // The form now sits in a card on the canvas, which is how every other
     // surface in this app is built and how Stripe, Linear and Mercury all
@@ -43,6 +43,16 @@ export default async function LoginPage({ searchParams }: PageProps) {
           {ended && (
             <div className="alert alert-warn mt-4">
               Your session has ended because your account is no longer active. Ask your admin if you think that is wrong.
+            </div>
+          )}
+
+          {/* Says how long and why, because a screen that only says "sign in
+              again" reads as a fault. This one is the system working: the
+              machines here are shared, and a ledger left open on an empty desk
+              is the thing being prevented. */}
+          {idle && (
+            <div className="alert alert-warn mt-4">
+              Signed out after 15 minutes without activity, so the ledger is not left open on an unattended screen.
             </div>
           )}
 

@@ -45,6 +45,21 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
         />
       </label>
 
+      {/* An empty table still needs its 760px of columns, so on a phone the
+          one thing worth reading — why there is nothing here — was centred at
+          380px inside a 358px window and fell off the right edge. Measured at
+          390px: 760px of content in 358px, with "No transactions recorded yet."
+          past the edge. Nobody scrolls a table sideways to find out why it is
+          empty; they conclude the page is broken.
+
+          So when there is nothing to put in it, there is no table. The column
+          headers describe rows that do not exist, and cut in half they say
+          less than the sentence does. */}
+      {!filtered.length ? (
+        <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-paper-dim">
+          {rows.length ? 'No transactions match that dealer name.' : 'No transactions recorded yet.'}
+        </p>
+      ) : (
       <ScrollFade label="Recent transactions">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
@@ -96,16 +111,10 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                 <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
               </tr>
             ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-paper-dim">
-                  {rows.length ? 'No transactions match that dealer name.' : 'No transactions recorded yet.'}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </ScrollFade>
+      )}
     </div>
   )
 }

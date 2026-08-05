@@ -149,6 +149,20 @@ for (const p of paths) {
     // rewrites a leading-slash argument into a Windows path, so `/reconcile`
     // arrived as `/C:/Program Files/Git/reconcile` and 404'd.
     if (!main) return { notRendered: true, url: location.pathname }
+
+    // A page the signed-in role may not see still renders a <main>, so every
+    // rule below finds one tidy sentence and scores it clean. Measured: /audit
+    // and /delivery as accountant both reported "✓ clean" while showing "Your
+    // role (Accountant) does not have permission to view the audit log."
+    //
+    // That is worse than a failure. It means auditing with the wrong role
+    // quietly produces a page of green that measured nothing, and the pages
+    // you thought were covered never were.
+    const mainText = (main.innerText || '').trim()
+    if (/does not have permission/i.test(mainText) && mainText.length < 400) {
+      return { permissionDenied: mainText.split('\n')[0].slice(0, 120), url: location.pathname }
+    }
+
     const mb = main.getBoundingClientRect()
     const painted = [...main.querySelectorAll('*')]
       .filter((el) => {
@@ -219,6 +233,15 @@ for (const p of paths) {
     console.log(`
 ${p}  (${width}px, ${role})`)
     console.log(`  ✗ the app never rendered here — landed on ${r.url}. Wrong path, a redirect to /login, or a server error.`)
+    problems++
+    continue
+  }
+
+  if (r.permissionDenied) {
+    console.log(`
+${p}  (${width}px, ${role})`)
+    console.log(`  ✗ nothing was measured — ${role} cannot see this page: "${r.permissionDenied}"`)
+    console.log(`    Audit it as a role that can, or drop it from the list. A clean result here would have meant nothing.`)
     problems++
     continue
   }

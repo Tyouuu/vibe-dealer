@@ -46,9 +46,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
 
-      - run: npm ci
+      # Deliberately not `npm ci`. The lock file was generated on Windows and
+      # omits the Linux-only optional dependencies the image tooling pulls in,
+      # so a clean install fails on the runner (`Missing: @emnapi/runtime`) —
+      # measured, on the first run of this workflow.
+      #
+      # Fixing the lock file is worth doing, but not here: making tonight's
+      # backup depend on Next.js, Playwright and the whole dev tree resolving
+      # is a lot of ways for a backup to fail for reasons that have nothing to
+      # do with backing up. The script imports one package. Install that one,
+      # pinned to the version package.json already depends on.
+      - name: Install what the script actually imports
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').dependencies['@supabase/supabase-js']")
+          echo "@supabase/supabase-js $version"
+          npm install --no-save --no-audit --no-fund "@supabase/supabase-js@$version"
 
       - name: Take the snapshot
         env:

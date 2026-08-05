@@ -150,7 +150,15 @@ export async function createTransaction(formData: FormData) {
 
   revalidatePath('/records')
   revalidatePath('/dealers')
-  redirect('/records?submitted=1')
+  // Sales arrive in runs — one dealer settles several top-ups at once — and
+  // the form already knows how to open on a given dealer with their last
+  // amount filled in (`/entry?dealer=`). It just had no way of being told to,
+  // so every second entry in a run started from the full 284-name list again.
+  // Carrying the dealer through lets the success banner offer the next one.
+  // Not `dealer=`: that parameter already filters this page, so reusing it
+  // would silently narrow the list to one dealer right after saving and read
+  // as "where did everything else go".
+  redirect('/records?submitted=1&just=' + dealerId)
 }
 
 // Has this sale already been recorded in the last few hours?

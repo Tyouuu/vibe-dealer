@@ -278,3 +278,23 @@ export function IconLogout({ className = base }: IconProps) {
     </svg>
   )
 }
+
+// A pin, drawn as a star because that is what "mine, keep it near the top"
+// already means to everyone. `filled` is the on state — a pin has to read at a
+// glance across a 284-row list, and outline-vs-filled does that at 16px where
+// a colour change alone does not.
+export function IconStar({ className = th, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M10 2.5l2.32 4.7 5.18.76-3.75 3.65.885 5.16L10 14.33l-4.635 2.44.885-5.16L2.5 7.96l5.18-.76L10 2.5z" />
+    </svg>
+  )
+}

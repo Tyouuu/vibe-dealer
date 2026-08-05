@@ -74,6 +74,10 @@ type PageProps = {
   searchParams: Promise<{
     status?: string
     submitted?: string
+    // The dealer that was just recorded against. Separate from `dealer`, which
+    // filters this page — this one only decides who the success banner offers
+    // to record for next.
+    just?: string
     verified?: string
     own_adjustments?: string
     locked?: string
@@ -98,6 +102,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const {
     status = 'all',
     submitted,
+    just: justDealerId,
     adjusted,
     error,
     month,
@@ -225,6 +230,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     { count: flaggedCount },
     { data: awaitingRows },
     { data: staffProfiles },
+    { data: justDealerRow },
   ] = await Promise.all([
     pagedQuery,
     statusCountQuery('pending'),
@@ -243,7 +249,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     // anyone who is not the master, so joining it here rendered every
     // colleague's name as a dash for the accountant. See migration 0035.
     supabase.from('staff_directory').select('id, display_name'),
+    // Named from the database, not from the URL. The id arrives in a query
+    // string anyone can edit, so the banner shows a company the reader is
+    // allowed to see or no name at all — never the string that was handed to
+    // it. RLS applies, and an unknown id simply yields nothing.
+    justDealerId
+      ? supabase.from('dealers').select('id, company_name').eq('id', justDealerId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
+  const justDealer = (justDealerRow as { id: string; company_name: string } | null) ?? null
   const pageRows = (rows as unknown as TxRow[] | null) ?? []
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
@@ -392,7 +406,17 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       />
 
       {submitted && (
-        <div className="alert alert-ok">Recorded! Status = pending — counts toward reconciliation/reports once verified.</div>
+        <div className="alert alert-ok flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+          <span>Recorded! Status = pending — counts toward reconciliation/reports once verified.</span>
+          {/* Sales come in runs against one dealer. The form can already open
+              on a dealer with their last amount filled in; this is the only
+              thing that was missing — something to press. */}
+          {justDealer && (
+            <a href={`/entry?dealer=${justDealer.id}`} className="shrink-0 font-semibold underline underline-offset-2">
+              Record another for {justDealer.company_name} →
+            </a>
+          )}
+        </div>
       )}
       {adjusted && (
         <div className="alert alert-ok">Correction posted as a new pending transaction — the original is untouched. Verify it to apply.</div>

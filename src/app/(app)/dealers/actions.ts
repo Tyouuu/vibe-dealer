@@ -279,3 +279,43 @@ export async function importDealers(formData: FormData) {
   revalidatePath('/dealers')
   redirect(`/dealers?imported=${created}&skipped_dup=${duplicates}&skipped_invalid=${invalid}`)
 }
+
+// Pin or unpin a dealer for the signed-in person only.
+//
+// Everyone who uses /dealers works the same 284-row list and a different
+// twenty of them. Sorting by volume answers "who is biggest", never "who do I
+// deal with", so this lets each person answer the second question for
+// themselves. No role gate beyond being signed in: a pin grants nothing and
+// reveals nothing, it only reorders one person's own view. RLS (0039) is what
+// actually confines the write to that person's rows — this action cannot pin
+// on someone else's behalf even if the id were forged, because user_id is
+// taken from the session and never from the form.
+export async function toggleDealerPin(formData: FormData) {
+  const user = await requireUser()
+
+  const dealerId = String(formData.get('dealer_id') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(dealerId)) throw new Error('Not a dealer id.')
+
+  const supabase = await createClient()
+
+  // Read first rather than upsert-or-delete blind: the button has to be a
+  // toggle, and the client's idea of the current state can be stale if the
+  // same person has the page open twice.
+  const { data: existing } = await supabase
+    .from('dealer_pins')
+    .select('dealer_id')
+    .eq('user_id', user.id)
+    .eq('dealer_id', dealerId)
+    .maybeSingle()
+
+  const { error } = existing
+    ? await supabase.from('dealer_pins').delete().eq('user_id', user.id).eq('dealer_id', dealerId)
+    : await supabase.from('dealer_pins').insert({ user_id: user.id, dealer_id: dealerId })
+
+  if (error) throw new Error(friendlyDbError(error.message))
+
+  // No redirect. Pinning is a change of view, not a step in a task — sending
+  // the reader back to page 1 with their filters dropped would cost more than
+  // the pin saves. revalidatePath re-renders the list in the same response.
+  revalidatePath('/dealers')
+}

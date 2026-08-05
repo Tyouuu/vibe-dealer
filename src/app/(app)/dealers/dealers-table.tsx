@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 import { ScrollFade } from '../scroll-fade'
+import { toggleDealerPin } from './actions'
 
 export type DealerRow = {
   id: string
@@ -20,6 +21,35 @@ export type DealerRow = {
   isInactive: boolean
   isSeverelyInactive: boolean
   daysSinceLastActivity: number | null
+  isPinned: boolean
+}
+
+// The row is one big link — the company name carries `after:inset-0`, which
+// lays an invisible overlay across the whole <tr>. Anything meant to be
+// clickable in its own right has to be lifted above that overlay, or pressing
+// the star navigates to the dealer instead of pinning them.
+function PinButton({ dealer }: { dealer: DealerRow }) {
+  return (
+    <form action={toggleDealerPin} className="relative z-10 shrink-0">
+      <input type="hidden" name="dealer_id" value={dealer.id} />
+      <button
+        type="submit"
+        title={dealer.isPinned ? `Unpin ${dealer.company_name}` : `Pin ${dealer.company_name} to the top`}
+        aria-label={dealer.isPinned ? `Unpin ${dealer.company_name}` : `Pin ${dealer.company_name} to the top`}
+        aria-pressed={dealer.isPinned}
+        /* 32px, not the icon's 16 — a star small enough to look right in a
+           table row is too small to hit on a phone, so the target is padded
+           out around it. */
+        className={`grid h-8 w-8 place-items-center rounded-md transition-colors ${
+          dealer.isPinned
+            ? 'text-brass-bright hover:text-paper-dim'
+            : 'text-paper-dim/40 hover:bg-ink-900 hover:text-brass-bright'
+        }`}
+      >
+        <IconStar className="h-4 w-4" filled={dealer.isPinned} />
+      </button>
+    </form>
+  )
 }
 
 function RankBadge({ rank }: { rank: number | null }) {
@@ -160,6 +190,7 @@ export function DealersTable({
                   )}
                   <td className="td">
                     <div className="flex min-w-0 items-center gap-2.5">
+                      <PinButton dealer={d} />
                       <Avatar name={d.company_name} />
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">

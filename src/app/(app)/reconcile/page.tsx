@@ -449,6 +449,17 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                 <div className="mt-0.5 text-[12px] text-paper-dim">
                   Transactions dated in this month can no longer be added, edited or verified.
                 </div>
+                {/* Closing is not the end of the month's work, it is the
+                    permission to do the last of it: the figures cannot move
+                    now, so this is the moment the commission report is worth
+                    producing. The page said "closed" and stopped, leaving the
+                    one remaining step to be remembered rather than offered. */}
+                <a
+                  href={`/reports?month=${month}`}
+                  className="mt-1.5 inline-block py-1 text-[12px] font-semibold text-primary hover:underline"
+                >
+                  Now the figures are final — see the {formatMonthLabel(month)} report →
+                </a>
               </div>
             </div>
             {user.role === 'master' && <ReopenMonthForm month={month} />}

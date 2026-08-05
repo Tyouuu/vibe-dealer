@@ -95,12 +95,20 @@ export default async function DealersPage({ searchParams }: PageProps) {
     query = query.eq('region', region)
   }
 
-  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap] = await Promise.all([
-    query,
-    supabase.from('dealers_directory').select('region').not('region', 'is', null),
-    getDealerActivityMap(supabase),
-    showRanking ? getDealerRankingMap(supabase) : Promise.resolve(new Map<string, DealerRanking>()),
-  ])
+  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap, { data: pinRows }] =
+    await Promise.all([
+      query,
+      supabase.from('dealers_directory').select('region').not('region', 'is', null),
+      getDealerActivityMap(supabase),
+      showRanking ? getDealerRankingMap(supabase) : Promise.resolve(new Map<string, DealerRanking>()),
+      // Unfiltered by the query above: a pin has to survive the reader
+      // changing region or search, or "pinned first" would only hold on the
+      // unfiltered view and quietly stop meaning anything everywhere else.
+      // RLS (0039) already narrows this to the signed-in person's own rows.
+      supabase.from('dealer_pins').select('dealer_id'),
+    ])
+
+  const pinnedIds = new Set((pinRows ?? []).map((p) => p.dealer_id as string))
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
@@ -115,6 +123,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       isInactive: activity?.isInactive ?? false,
       isSeverelyInactive: activity?.isSeverelyInactive ?? false,
       daysSinceLastActivity: activity?.daysSinceLastActivity ?? null,
+      isPinned: pinnedIds.has(d.id),
     }
   })
 
@@ -122,10 +131,20 @@ export default async function DealersPage({ searchParams }: PageProps) {
     rows = rows.filter((r) => r.isInactive)
   }
 
-  // Dealers who've actually topped up rank to the top by volume; dealers
-  // with nothing recorded yet sink to the bottom, alphabetically among
-  // themselves — replaces the old manually-toggled Active/Inactive status.
-  rows.sort((a, b) => b.totalPoints - a.totalPoints || a.company_name.localeCompare(b.company_name))
+  // Pinned first, then the volume order below. A pin is the reader saying
+  // which dealers are theirs, and that has to outrank a global measure of who
+  // is biggest — otherwise pinning changes nothing for anyone whose dealers
+  // are not also the top sellers, which is most people.
+  //
+  // It also has to come before pagination rather than after: 284 dealers is
+  // several pages, and a pin that only reorders the page you are already on
+  // would leave your dealers wherever they were.
+  rows.sort(
+    (a, b) =>
+      Number(b.isPinned) - Number(a.isPinned) ||
+      b.totalPoints - a.totalPoints ||
+      a.company_name.localeCompare(b.company_name),
+  )
 
   // The header pill below shows `count` (the DB's pre-filter total) for
   // 'all'/'region', but the inactive view filters client-side afterward —

@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-
-type Status = 'checking' | 'ready' | 'invalid'
+import { readRecoveryLink, LINK_ABSENT, LINK_NOT_ACCEPTED, type LinkFailure } from '@/lib/recovery-link'
 
 // The reset link's session isn't visible to the server on first load, and
 // @supabase/ssr's browser client — unlike the plain supabase-js client —
@@ -17,9 +16,15 @@ type Status = 'checking' | 'ready' | 'invalid'
 // exchangeCodeForSession. Whichever it is, the token is single-use — a page
 // refresh after this runs would just find no fragment/code left and no
 // session at all.
+//
+// It can also arrive carrying nothing but an error, and for a long time this
+// page had one sentence for that and for everything else. Which failure it
+// was, and what to say about each, is in lib/recovery-link.ts with its tests.
 export function ResetPasswordForm() {
   const router = useRouter()
-  const [status, setStatus] = useState<Status>('checking')
+  // null while still checking; a LinkFailure once it has failed.
+  const [ready, setReady] = useState(false)
+  const [failure, setFailure] = useState<LinkFailure | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -28,31 +33,43 @@ export function ResetPasswordForm() {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    const settle = (f: LinkFailure | null) => {
+      if (cancelled) return
+      if (f) setFailure(f)
+      else setReady(true)
+    }
 
     async function establishSession() {
-      const hashParams = new URLSearchParams(window.location.hash.slice(1))
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
-      const code = new URLSearchParams(window.location.search).get('code')
+      const link = readRecoveryLink(window.location.hash, window.location.search)
 
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        if (!cancelled) setStatus(error ? 'invalid' : 'ready')
+      if (link.kind === 'failed') {
+        settle(link.failure)
         return
       }
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!cancelled) setStatus(error ? 'invalid' : 'ready')
+      if (link.kind === 'session') {
+        const { error } = await supabase.auth.setSession({
+          access_token: link.accessToken,
+          refresh_token: link.refreshToken,
+        })
+        settle(error ? LINK_NOT_ACCEPTED : null)
+        return
+      }
+
+      if (link.kind === 'code') {
+        const { error } = await supabase.auth.exchangeCodeForSession(link.code)
+        settle(error ? LINK_NOT_ACCEPTED : null)
         return
       }
 
       // No token in the URL at all — check for an existing session before
-      // giving up, in case this page was reached some other way.
+      // giving up, in case this page was reached some other way. Someone
+      // already signed in can set a password here, which is how a recovery
+      // link that landed on the wrong path still gets its owner home.
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!cancelled) setStatus(session ? 'ready' : 'invalid')
+      settle(session ? null : LINK_ABSENT)
     }
 
     establishSession()
@@ -95,19 +112,32 @@ export function ResetPasswordForm() {
     router.push('/login?reset=1')
   }
 
-  if (status === 'checking') {
-    return <p className="text-center text-sm text-paper-dim">Verifying your reset link…</p>
-  }
-
-  if (status === 'invalid') {
+  if (failure) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="alert alert-bad">That reset link is invalid or has expired.</div>
-        <Link href="/forgot-password" className="text-center text-[12px] text-primary-deep">
-          Request a new link
-        </Link>
+      <div className="flex flex-col gap-4" data-reset-failure={failure.code ?? 'none'}>
+        {/* The alert carries the one line that is true. The reason it happened
+            and what to do about it go below it, because an alert sized to hold
+            a paragraph stops reading as an alert. */}
+        <div className={`alert mb-0 ${failure.tone === 'bad' ? 'alert-bad' : 'alert-neutral'}`}>{failure.title}</div>
+        <p className="info-strip mb-0" data-reset-hint>
+          {failure.detail}
+        </p>
+        {failure.offerNewLink && (
+          <Link href="/forgot-password" className="text-center text-[12px] text-primary-deep">
+            Request a new link
+          </Link>
+        )}
+        {failure.code && (
+          <p className="text-center text-[12px] text-paper-dim">
+            If you need to ask about this, the code is <span className="font-mono">{failure.code}</span>.
+          </p>
+        )}
       </div>
     )
+  }
+
+  if (!ready) {
+    return <p className="text-center text-sm text-paper-dim">Verifying your reset link…</p>
   }
 
   return (

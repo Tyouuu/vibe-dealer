@@ -53,3 +53,8 @@ qa-*
 .env.demo
 
 .env.demo.test
+
+.env.rehearsal
+
+.env.newprod
+.env.newdemo

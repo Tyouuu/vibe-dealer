@@ -713,6 +713,13 @@ body {
   .alert-bad {
     @apply border border-clay/25 bg-clay/8 text-paper;
   }
+  /* No hue, for a message that is not about anything going wrong — reaching
+     the reset page with no link in the URL, say. Red there would announce a
+     failure that never happened, and red that does not mean failure is red
+     that stops meaning anything. */
+  .alert-neutral {
+    @apply border border-ink-800 bg-ink-850 text-paper;
+  }
 
   /* purple "info strip" — a step above alert-ok/warn/bad in tone, used for
      neutral explanatory notices (matches the reference's `.info-strip`). */

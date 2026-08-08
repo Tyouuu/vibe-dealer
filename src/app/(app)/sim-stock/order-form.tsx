@@ -19,9 +19,11 @@ type DealerOption = { id: string; company_name: string; address: string | null }
 export function OrderForm({
   dealers,
   availableByType,
+  today,
 }: {
   dealers: DealerOption[]
   availableByType: Record<SimStockType, number>
+  today: string
 }) {
   const [dealerId, setDealerId] = useState('')
   const [simType, setSimType] = useState<SimStockType>('physical')
@@ -113,7 +115,7 @@ export function OrderForm({
         </div>
         <div className="sm:col-span-3 lg:col-span-3">
           <label className="field-label">Order Date</label>
-          <DatePicker name="order_date" required />
+          <DatePicker name="order_date" max={today} todayIso={today} required />
         </div>
         <div className="sm:col-span-3 lg:col-span-3">
           <label htmlFor="so-qty" className="field-label">

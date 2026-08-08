@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../../permission-denied'
 import { createClient } from '@/lib/supabase/server'
+import { todayInMalaysia } from '@/lib/month'
 import { PageHeader } from '../../page-header'
 import { IntakeForm } from '../intake-form'
 import { OrderForm } from '../order-form'
@@ -86,7 +87,7 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
               A box of {SIM_BOX_SIZE} at {formatMYR(SIM_UNIT_COST_RM)} a card. It adds to whichever pool you pick — the three cannot borrow
               from each other.
             </p>
-            <IntakeForm />
+            <IntakeForm today={todayInMalaysia()} />
           </div>
         )}
 
@@ -98,6 +99,7 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
               the SIM Delivery queue; an eSIM order does not.
             </p>
             <OrderForm
+              today={todayInMalaysia()}
               dealers={dealerList.map((d) => ({ id: d.id, company_name: d.company_name, address: d.address }))}
               availableByType={availableByType}
             />

@@ -7,7 +7,7 @@ import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
 
-export function IntakeForm() {
+export function IntakeForm({ today }: { today: string }) {
   const [simType, setSimType] = useState<SimStockType>('physical')
   const [pending, startTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -56,7 +56,13 @@ export function IntakeForm() {
         </div>
         <div className="sm:col-span-3 lg:col-span-3">
           <label className="field-label">Intake Date</label>
-          <DatePicker name="intake_date" required />
+          {/* todayIso and max, like the other four pickers in the app. Without
+              them this calendar had no Today button and did not even mark
+              which day today was — on the one form where today is nearly
+              always the answer, because you book a box in as it arrives. It
+              also let a future date be chosen and left the server to refuse
+              it afterwards. */}
+          <DatePicker name="intake_date" max={today} todayIso={today} required />
         </div>
         <div className="sm:col-span-3 lg:col-span-2">
           <label htmlFor="si-qty" className="field-label">

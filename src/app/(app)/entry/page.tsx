@@ -4,7 +4,8 @@ import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
-import { EntryForm, type LastTxInfo } from './entry-form'
+import { EntryForm } from './entry-form'
+import { buildLastSales } from '@/lib/last-sale'
 import { PageHeader } from '../page-header'
 
 export const metadata: Metadata = {
@@ -26,22 +27,19 @@ export default async function EntryPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const [{ data: dealers }, { data: recentTxRows }, balance] = await Promise.all([
     supabase.from('dealers').select('id, company_name, package, rate').order('company_name', { ascending: true }),
-    supabase.from('transactions').select('dealer_id, type, package, points, money_rm').order('created_at', { ascending: false }).limit(500),
+    supabase.from('transactions').select('dealer_id, type, package, points, money_rm').neq('type', 'adjustment').order('created_at', { ascending: false }).limit(500),
     getAvailablePointsBalance(supabase),
   ])
 
   // Staff record for the same handful of dealers day to day — surface the
-  // ones they most recently transacted with (any accountant/master, not just
-  // this user) as one-click shortcuts instead of scrolling the full list.
+  // ones they most recently sold to (any accountant/master, not just this
+  // user) as one-click shortcuts instead of scrolling the full list.
+  //
+  // Sold to, not transacted with. This loop used to keep the first row of any
+  // type per dealer, which let a correction be remembered as the last sale —
+  // see lib/last-sale.ts for what that did to the form.
   const dealerNameById = new Map((dealers ?? []).map((d) => [d.id, d.company_name]))
-  const lastTxByDealer: Record<string, LastTxInfo> = {}
-  const recentDealerIds: string[] = []
-  for (const t of recentTxRows ?? []) {
-    if (!lastTxByDealer[t.dealer_id]) {
-      lastTxByDealer[t.dealer_id] = { type: t.type, package: t.package, points: Number(t.points), money_rm: Number(t.money_rm) }
-      recentDealerIds.push(t.dealer_id)
-    }
-  }
+  const { byDealer: lastTxByDealer, recentIds: recentDealerIds } = buildLastSales(recentTxRows ?? [])
   const recentDealers = recentDealerIds
     .slice(0, 6)
     .map((id) => ({ id, company_name: dealerNameById.get(id) ?? '—' }))

@@ -87,6 +87,12 @@ export function EntryForm({
     setDealerId(id)
     const last = lastTxByDealer[id]
     if (!last) return
+    // Second lock on the same door. lib/last-sale.ts already refuses to
+    // remember anything but a sale, but this state has exactly two legal
+    // values and the type that says so was believed once already — the row
+    // came from PostgREST untyped, 'adjustment' walked in, and the form
+    // offered a Type neither button could show.
+    if (last.type !== 'topup' && last.type !== 'package') return
     setType(last.type)
     if (last.type === 'topup') {
       setMoneyCollected(String(last.money_rm))

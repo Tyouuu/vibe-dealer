@@ -73,12 +73,20 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             <label htmlFor="cp-points" className="field-label">
               Points / credit received
             </label>
+            {/* Not required, because blank is the normal answer. This is an
+                override: handleSubmit sends suggestedPoints when it is empty,
+                the block below already shows the balance that will produce,
+                and the paragraph above promises the points "fill themselves
+                in". With `required` on it none of that could happen — native
+                validation refuses the form before onSubmit runs, so the only
+                way to log a purchase was to retype the number the field was
+                already showing in grey. The same field on the entry form has
+                never been required; this one was the odd one out. */}
             <input
               id="cp-points"
               type="number"
               step="0.01"
               min="0"
-              required
               value={pointsOverride}
               onChange={(e) => setPointsOverride(e.target.value)}
               placeholder={moneyRm ? String(suggestedPoints) : 'Auto-calculated'}

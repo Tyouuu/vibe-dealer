@@ -601,26 +601,21 @@ const DELIVERY_TABLE_LIMIT = 8
 
 // Same overall shape as master's dashboard, re-pointed at CS's actual job:
 // the pending-delivery queue (with the real Mark as Sent action, not a
-// read-only count) and the regional dealer-network map, instead of the
-// finance-facing trend chart.
+// read-only count) and the dealer roster, instead of the finance-facing
+// trend chart.
 async function CsDashboard({ supabase, userId, monthParam }: { supabase: SupabaseClient; userId: string; monthParam?: string }) {
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
   // monthParam is accepted and ignored on purpose. There is no period
   // switcher here because nothing on this dashboard is a monthly report — it
   // is a delivery queue and a dealer roster, both of which are "right now".
-  // Only the region block is month-scoped, and it ghosts last month rather
-  // than asking the reader to pick a period for one section.
   void monthParam
-  const prevMonthStart = `${new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7)}-01`
 
   const [
     { data: deliveryListRows, count: pendingDeliveryCount },
     { count: dealerCount },
     { count: dealerCountLastMonth },
     activityMap,
-    { data: monthTx },
-    { data: dealerRegionRows },
     alerts,
   ] = await Promise.all([
     supabase
@@ -632,14 +627,6 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }).lt('created_at', monthStart),
     getDealerActivityMap(supabase),
-    // dealer_id only, not an embedded dealers(region) join — cs has no SELECT
-    // on the dealers base table (0015), so that embed would silently come
-    // back null for every row. Region is joined in JS below instead, off
-    // dealers_directory, which cs can read.
-    // Two months, not one: the region block shows last month faint when this
-    // month has nothing in it yet, rather than one line of grey text.
-    supabase.from('transactions').select('dealer_id, tx_date, points').eq('status', 'verified').gte('tx_date', prevMonthStart).lte('tx_date', today),
-    supabase.from('dealers_directory').select('id, region, company_name'),
     getNotifications(userId, 'cs'),
   ])
 
@@ -661,22 +648,6 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
       urgent: days >= DELIVERY_STALLED_DAYS_THRESHOLD,
     }
   })
-
-  // cs can't join transactions->dealers (no SELECT on the base table), so the
-  // region AND dealer name both come from dealers_directory, keyed by id.
-  const dealerByIdForCs = new Map((dealerRegionRows ?? []).map((d) => [d.id, d]))
-  const withRegion = (rows: typeof monthTx) =>
-    (rows ?? []).map((t) => {
-      const d = dealerByIdForCs.get(t.dealer_id)
-      return { points: t.points, dealers: { region: d?.region ?? null, company_name: d?.company_name ?? null } }
-    })
-  const monthTxWithRegion = withRegion((monthTx ?? []).filter((t) => t.tx_date >= monthStart))
-  const prevTxWithRegion = withRegion((monthTx ?? []).filter((t) => t.tx_date < monthStart))
-  const totalPoints = monthTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
-  const prevPoints = prevTxWithRegion.reduce((sum, t) => sum + Number(t.points), 0)
-  const regionGrowth = buildRegionGrowth(monthTxWithRegion, totalPoints)
-  const ghostRegions = buildRegionGrowth(prevTxWithRegion, prevPoints)
-  const prevMonthLabel = formatMonthLabel(prevMonthStart.slice(0, 7))
 
   return (
     <div className="flex flex-col gap-8">
@@ -724,19 +695,20 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
         ]}
       />
 
-      <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Top-up by region</h3>
-        <p className="mb-4 text-[12px] text-paper-dim">This month, ranked. Every region that sold anything.</p>
-        {regionGrowth.length ? (
-          <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
-        ) : ghostRegions.length ? (
-          <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
-            <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
-          </GhostEmpty>
-        ) : (
-          <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
-        )}
-      </div>
+      {/* No "Top-up by region" here, though the other two dashboards have one.
+          It was here, and it could never have worked: it read the transactions
+          table directly, and transactions_select_finance grants SELECT to
+          accountant and master only. Every render fell through to "No verified
+          transactions on record yet" — on a database holding 218 of them.
+          Which is worse than a blank panel, because it is a specific claim,
+          and it is false.
+
+          Not fixed by widening what cs can read. Points are money, and the
+          note below says why cs does not get money. The activity cs does see —
+          which dealers have gone quiet — comes through
+          dealer_last_verified_activity, a view carrying dealer_id and a date
+          and no amount at all. That is the shape of what this role is allowed
+          to know, and a regional points ranking is not it. */}
 
       <div className="page-band">
           <div className="mb-3.5 flex items-center justify-between">

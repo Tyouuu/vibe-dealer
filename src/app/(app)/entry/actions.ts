@@ -49,11 +49,15 @@ export async function createTransaction(formData: FormData) {
 
   const { data: dealer, error: dealerError } = await supabase
     .from('dealers')
-    .select('id, rate, package')
+    .select('id, rate, package, status')
     .eq('id', dealerId)
     .single()
 
   if (dealerError || !dealer) fail('Dealer not found.')
+  // Checked here and not only in the picker: the picker is a list of options
+  // and this is the record being written. A dealer id can arrive from a
+  // bookmarked ?dealer= link, a stale tab, or anything that is not the list.
+  if (dealer.status !== 'active') fail('This dealer is switched off — switch them back on before recording anything against them.')
 
   let points: number
   let moneyRm: number

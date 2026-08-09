@@ -26,7 +26,13 @@ export default async function EntryPage({ searchParams }: PageProps) {
 
   const supabase = await createClient()
   const [{ data: dealers }, { data: recentTxRows }, balance] = await Promise.all([
-    supabase.from('dealers').select('id, company_name, package, rate').order('company_name', { ascending: true }),
+    // Active only. dealers.status has existed since the first migration with a
+    // check constraint allowing 'inactive', and nothing has ever honoured it:
+    // an inactive dealer was offered in this picker like any other, and the
+    // action behind it did not look either. The column read as a switch that
+    // turned nothing off — the same shape as the hole 0038 closed, waiting for
+    // the first shop to close.
+    supabase.from('dealers').select('id, company_name, package, rate').eq('status', 'active').order('company_name', { ascending: true }),
     supabase.from('transactions').select('dealer_id, type, package, points, money_rm').neq('type', 'adjustment').order('created_at', { ascending: false }).limit(500),
     getAvailablePointsBalance(supabase),
   ])

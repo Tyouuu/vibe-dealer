@@ -57,7 +57,9 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const [{ data: balanceRows }, { data: dealers }] = await Promise.all([
     supabase.from('sim_stock_balance').select('sim_type, available'),
-    supabase.from('dealers_directory').select('id, company_name, address').order('company_name', { ascending: true }),
+        // Active only, same as the entry form: shipping a box of SIMs to a dealer
+    // you have switched off is the same mistake as selling them credit.
+    supabase.from('dealers_directory').select('id, company_name, address').eq('status', 'active').order('company_name', { ascending: true }),
   ])
 
   const byType = new Map(((balanceRows as BalanceRow[] | null) ?? []).map((b) => [b.sim_type, b.available]))

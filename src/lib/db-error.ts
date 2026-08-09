@@ -37,6 +37,17 @@ const RULES: Rule[] = [
     message: () => 'A dealer with that name already exists.',
   },
   {
+    // 0016's unique index: one pending correction per transaction, so a second
+    // one cannot be stacked on top while the first is unresolved. Reaching the
+    // generic line was worse than saying nothing — it ended in "please try
+    // again", which fails identically every time, and it hid the only fact
+    // that gets the person unstuck: there is already a correction waiting,
+    // and it is theirs to verify or flag.
+    match: /duplicate key value.*idx_one_pending_adjustment_per_original/i,
+    message: () =>
+      'This transaction already has a correction waiting to be verified. Verify or flag that one first — a second correction cannot be posted on top of it.',
+  },
+  {
     match: /violates row-level security policy/i,
     message: () => 'You do not have permission to do that.',
   },

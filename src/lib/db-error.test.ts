@@ -45,6 +45,18 @@ describe('friendlyDbError', () => {
     expect(out).not.toContain('secret_internal_col')
   })
 
+
+  it('names the correction that is already waiting', () => {
+    // Postgres text, copied from the real 409 rather than written from the
+    // constraint name: a second correction posted while the first was still
+    // pending got "Something went wrong saving that ... please try again",
+    // and trying again does the same thing forever.
+    const out = friendlyDbError(
+      'duplicate key value violates unique constraint "idx_one_pending_adjustment_per_original"',
+    )
+    expect(out).toContain('already has a correction waiting')
+    expect(out).not.toContain('try again')
+  })
   it('survives null and undefined', () => {
     expect(friendlyDbError(null)).toContain('Something went wrong')
     expect(friendlyDbError(undefined)).toContain('Something went wrong')

@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 import { ScrollFade } from '../scroll-fade'
 import { toggleDealerPin } from './actions'
@@ -13,9 +14,11 @@ export type DealerRow = {
   company_no: string | null
   contact_person: string | null
   phone: string | null
+  whatsapp: string | null
   region: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
+  submitToken: string | null
   totalPoints: number
   rank: number | null
   isInactive: boolean
@@ -52,6 +55,66 @@ function PinButton({ dealer }: { dealer: DealerRow }) {
   )
 }
 
+// Send a dealer their own request link, from the list, without opening them.
+//
+// The link lived only on the dealer's own page, three cards down the rail —
+// which meant sending links to a morning's worth of dealers was 284 page
+// loads. This is the same URL SubmitLink shows, one tap from the row.
+//
+// Same z-10 escape hatch as PinButton: the row is one big link and anything
+// clickable has to be lifted above the overlay, or this navigates instead.
+function SendLinkButton({ dealer, origin }: { dealer: DealerRow; origin: string }) {
+  const [copied, setCopied] = useState(false)
+  if (!dealer.submitToken) return null
+
+  const url = `${origin}/r/${dealer.submitToken}`
+  // Malaysian numbers are stored as 012-3456789; wa.me wants 60123456789.
+  const number = (dealer.whatsapp ?? dealer.phone)?.replace(/\D/g, '').replace(/^0/, '60') || null
+  const message = `Hi ${dealer.company_name}, you can send us your top-up requests here: ${url}`
+
+  const shell =
+    'relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-md text-paper-dim/40 transition-colors hover:bg-ink-900 hover:text-jade-bright'
+
+  // With a number the button does the whole job in one tap. Without one there
+  // is nothing to open, so it copies instead — and says which it did, because
+  // a button that silently does one of two different things is worse than two
+  // buttons.
+  if (number) {
+    return (
+      <a
+        href={`https://wa.me/${number}?text=${encodeURIComponent(message)}`}
+        target="_blank"
+        rel="noreferrer"
+        title={`WhatsApp ${dealer.company_name} their request link`}
+        aria-label={`WhatsApp ${dealer.company_name} their request link`}
+        className={shell}
+      >
+        <IconSend className="h-4 w-4" />
+      </a>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      title={`No number saved — copy ${dealer.company_name}'s request link instead`}
+      aria-label={`Copy ${dealer.company_name}'s request link`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(url)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          setCopied(false)
+        }
+      }}
+      className={shell}
+    >
+      {copied ? <span className="text-[10px] font-semibold text-jade-bright">✓</span> : <IconSend className="h-4 w-4" />}
+    </button>
+  )
+}
+
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank == null) return <span className="text-paper-dim/50">—</span>
   // No status dot. #1 used to render as `pill pill-brass`, which now draws the
@@ -73,11 +136,14 @@ export function DealersTable({
   groupByRegion,
   showRate,
   showRanking,
+  origin,
 }: {
   dealers: DealerRow[]
   groupByRegion: boolean
   showRate: boolean
   showRanking: boolean
+  /** Where the app is served from, resolved server-side — see lib/site-url. */
+  origin: string
 }) {
   if (!dealers.length) {
     return null
@@ -212,6 +278,12 @@ export function DealersTable({
                         </div>
                         {d.company_no && <div className="text-[12px] text-paper-dim">{d.company_no}</div>}
                       </div>
+                      {/* Right edge of the widest column, ml-auto, so it lands
+                          in the same place on every row instead of trailing a
+                          company name of unpredictable length. */}
+                      <span className="ml-auto pl-1">
+                        <SendLinkButton dealer={d} origin={origin} />
+                      </span>
                     </div>
                   </td>
                   {/* title on every cell that can truncate. Eight columns do

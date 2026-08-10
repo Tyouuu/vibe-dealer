@@ -58,3 +58,4 @@ qa-*
 
 .env.newprod
 .env.newdemo
+.env.audit-demo

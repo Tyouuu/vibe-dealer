@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatMYR } from '@/lib/money'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { daysSince } from '@/lib/dealer-activity'
+import { formatDateLabel } from '@/lib/month'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { IconPaperclip, IconTag } from '../icons'
@@ -32,7 +33,23 @@ type RequestRow = {
   transaction_id: string | null
   decided_at: string | null
   created_at: string
-  dealers: { company_name: string } | null
+  transfer_date: string | null
+  paid_from: string | null
+  sim_type: 'physical' | 'esim' | null
+  dealers: { company_name: string; rate: number | null } | null
+}
+
+// One label/value pair from the request. Inline rather than stacked: three of
+// these have to fit a phone without pushing Accept below the fold.
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-baseline gap-1.5">
+      <dt className="shrink-0 text-paper-dim">{label}</dt>
+      <dd className="min-w-0 truncate font-semibold text-paper" title={value}>
+        {value}
+      </dd>
+    </div>
+  )
 }
 
 function whenInMalaysia(iso: string): string {
@@ -59,12 +76,12 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   const [{ data: pendingRows }, { data: decidedRows }] = await Promise.all([
     supabase
       .from('topup_requests')
-      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, dealers(company_name)')
+      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, dealers(company_name, rate)')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
     supabase
       .from('topup_requests')
-      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, dealers(company_name)')
+      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, dealers(company_name, rate)')
       .neq('status', 'pending')
       .order('decided_at', { ascending: false })
       .limit(10),
@@ -136,7 +153,33 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                   </div>
                 </div>
 
+                {/* What the dealer told us, laid out so accepting needs no
+                    further questions. Anything they left blank is left out
+                    rather than rendered as a dash — an empty row is a fact
+                    nobody has, and printing four of them buries the two that
+                    do. */}
+                <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[12px]">
+                  {r.transfer_date && <Fact label="Transferred" value={formatDateLabel(r.transfer_date)} />}
+                  {r.paid_from && <Fact label="From" value={r.paid_from} />}
+                  {r.sim_type && <Fact label="SIM" value={r.sim_type === 'esim' ? 'eSIM' : 'Physical cards'} />}
+                </dl>
+
                 {r.note && <p className="mt-3 rounded-lg bg-ink-850/60 px-3 py-2 text-[13px] leading-relaxed text-paper">{r.note}</p>}
+
+                {/* The one thing that stops this being a two-click accept. A
+                    top-up cannot be priced without a rate, and 233 dealers
+                    have none on file — so the link takes the request anyway
+                    (see r/[token]/actions.ts) and the work lands here, named,
+                    with the page that fixes it one tap away. */}
+                {r.type === 'topup' && r.dealers?.rate == null && (
+                  <div className="alert alert-warn mt-3 text-[13px]">
+                    This dealer has no package or rate on file, so their points cannot be worked out yet.{' '}
+                    <Link href={`/dealers/${r.dealer_id}`} className="font-semibold underline">
+                      Set their package first
+                    </Link>
+                    , then come back and accept this.
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-ink-800 pt-4">
                   {/* A link, not a button. Accepting means recording a
@@ -169,7 +212,11 @@ export default async function RequestsPage({ searchParams }: PageProps) {
             </span>
             <p className="text-sm text-paper-dim">No dealer requests waiting.</p>
             <p className="max-w-sm text-[13px] text-paper-dim">
-              Each dealer has their own link on their page — send it over WhatsApp and what they send lands here.
+              Every dealer has their own link. Send it from the arrow beside their name on{' '}
+              <Link href="/dealers" className="font-semibold text-paper hover:underline">
+                Dealers
+              </Link>
+              , or from the top of their own page, and what they send lands here.
             </p>
           </div>
         )}

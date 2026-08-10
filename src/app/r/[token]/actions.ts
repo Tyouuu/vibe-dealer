@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { ALLOWED_TYPES, MAX_BYTES } from '@/lib/vision-extract'
+import { todayInMalaysia } from '@/lib/month'
 
 // The one write path a dealer has, and the only place in this app where an
 // unauthenticated caller causes a row to exist.
@@ -22,6 +23,7 @@ import { ALLOWED_TYPES, MAX_BYTES } from '@/lib/vision-extract'
 // until a person opens /requests and puts it through /entry.
 
 const MAX_NOTE = 500
+const MAX_PAID_FROM = 120
 const RATE_LIMIT_PER_HOUR = 10
 
 function back(token: string, params: string): never {
@@ -65,17 +67,19 @@ export async function submitRequest(formData: FormData) {
 
   const type = String(formData.get('type') ?? '')
   const note = String(formData.get('note') ?? '').trim().slice(0, MAX_NOTE) || null
+  const paidFrom = String(formData.get('paid_from') ?? '').trim().slice(0, MAX_PAID_FROM) || null
 
   let moneyRm: number | null = null
   let pkg: PackageCode | null = null
+  let simType: 'physical' | 'esim' | null = null
 
   if (type === 'topup') {
-    // The same refusal /entry makes, made earlier and in the dealer's own
-    // words. Without a rate there is no way to price the points their money
-    // buys, so the request could not be accepted even if it were submitted.
-    if (dealer.rate == null) {
-      fail(token, 'Your account does not have a package yet, so a top-up cannot be requested. Please choose a package below.')
-    }
+    // A missing rate no longer refuses this. It used to, on the reasoning that
+    // points cannot be priced without one — true of a transaction, but this is
+    // not a transaction. 233 dealers have no package on file because nobody
+    // recorded what they bought, and telling a paying dealer their own link
+    // will not take their money is the wrong side of that gap to fail on.
+    // Whoever accepts the request sets the rate first; /requests says so.
     moneyRm = Number(formData.get('money_rm'))
     if (!Number.isFinite(moneyRm) || moneyRm <= 0) fail(token, 'Please enter how much you transferred.')
     if (moneyRm > 1_000_000) fail(token, 'That amount looks wrong — please check it.')
@@ -83,9 +87,22 @@ export async function submitRequest(formData: FormData) {
   } else if (type === 'package') {
     pkg = formData.get('package') as PackageCode
     if (!pkg || !(pkg in PACKAGES)) fail(token, 'Please choose a package.')
+    const rawSimType = String(formData.get('sim_type') ?? '')
+    if (rawSimType !== 'physical' && rawSimType !== 'esim') fail(token, 'Please choose physical cards or eSIM.')
+    simType = rawSimType
   } else {
     fail(token, 'Please choose what you would like to request.')
   }
+
+  // When the money moved. The form defaults it to today and caps it there;
+  // this is the backstop, and it matches how /entry treats tx_date — a bad or
+  // missing value falls back to today rather than throwing the whole
+  // submission away, because today is what every request meant before this
+  // field existed. A future date is the one thing rejected outright, since a
+  // transfer that has not happened yet cannot be checked against a statement.
+  const today = todayInMalaysia()
+  const rawDate = String(formData.get('transfer_date') ?? '')
+  const transferDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today
 
   // The payment slip, if they attached one. Optional on purpose: staff check
   // the bank regardless, so a missing slip must never be a reason a request
@@ -114,6 +131,9 @@ export async function submitRequest(formData: FormData) {
     type,
     money_rm: moneyRm,
     package: pkg,
+    sim_type: simType,
+    transfer_date: transferDate,
+    paid_from: paidFrom,
     note,
     slip_url: slipUrl,
   })

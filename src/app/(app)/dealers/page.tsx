@@ -13,6 +13,7 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
+import { siteOrigin } from '@/lib/site-url'
 
 export const metadata: Metadata = {
   title: 'Dealers — Vibe456',
@@ -24,9 +25,11 @@ type Dealer = {
   company_no: string | null
   contact_person: string | null
   phone: string | null
+  whatsapp: string | null
   region: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
+  submit_token: string | null
 }
 
 type View = 'all' | 'region' | 'inactive'
@@ -81,7 +84,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // instead, which has every column except rate.
   let query = supabase
     .from(showRate ? 'dealers' : 'dealers_directory')
-    .select(showRate ? 'id, company_name, company_no, contact_person, phone, region, package, rate' : 'id, company_name, company_no, contact_person, phone, region, package', { count: 'exact' })
+    // whatsapp and submit_token are here for the send-link button on each row.
+    // Both are in dealers_directory as well as the base table (0042), so cs —
+    // the role that fields "how do I send my order in" all day — gets it too.
+    .select(
+      showRate
+        ? 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, rate, submit_token'
+        : 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, submit_token',
+      { count: 'exact' }
+    )
 
   if (q) {
     // Strip characters with special meaning in PostgREST's .or() filter syntax
@@ -118,6 +129,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     return {
       ...d,
       rate: showRate ? (d.rate ?? null) : null,
+      submitToken: d.submit_token ?? null,
       totalPoints: ranking?.totalPoints ?? 0,
       rank: ranking?.rank ?? null,
       isInactive: activity?.isInactive ?? false,
@@ -342,7 +354,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
       {rows.length ? (
         <>
-          <DealersTable dealers={pageRows} groupByRegion={view === 'region'} showRate={showRate} showRanking={showRanking} />
+          <DealersTable
+            dealers={pageRows}
+            groupByRegion={view === 'region'}
+            showRate={showRate}
+            showRanking={showRanking}
+            origin={await siteOrigin()}
+          />
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
               <span className="text-[12px] text-paper-dim">

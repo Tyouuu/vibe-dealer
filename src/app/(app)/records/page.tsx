@@ -9,7 +9,7 @@ import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } fr
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { VerifyButton } from './verify-button'
 import { BulkVerifyBar, RowSelect } from './bulk-verify'
-import { AwaitingSecondCheck } from './awaiting-second-check'
+import { UnsignedCorrections } from './unsigned-corrections'
 import { FlagButton } from './flag-button'
 import { AdjustButton } from './adjust-button'
 import { IconPaperclip, IconSearch, IconChevronDown } from '../icons'
@@ -79,7 +79,6 @@ type PageProps = {
     // to record for next.
     just?: string
     verified?: string
-    own_adjustments?: string
     locked?: string
     adjusted?: string
     error?: string
@@ -111,7 +110,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     dealer: dealerId,
     page,
     verified: bulkVerified,
-    own_adjustments: bulkOwnAdj,
     locked: bulkLocked,
     type: typeParam = 'all',
     min: minParam = '',
@@ -236,7 +234,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     statusCountQuery('pending'),
     statusCountQuery('verified'),
     statusCountQuery('flagged'),
-    // Deliberately outside every filter above — see AwaitingSecondCheck.
+    // Deliberately outside every filter above — see UnsignedCorrections.
     // Oldest first: the one that has been waiting longest is the one the
     // ledger has been wrong about longest.
     supabase
@@ -262,7 +260,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
   const staffNameById = new Map((staffProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
-  const awaitingSecondCheck = ((awaitingRows ?? []) as unknown as AwaitingRow[]).map((r) => {
+  const unsignedCorrections = ((awaitingRows ?? []) as unknown as AwaitingRow[]).map((r) => {
     const rel = Array.isArray(r.dealers) ? r.dealers[0] : r.dealers
     return {
       id: r.id,
@@ -275,7 +273,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       // as /reconcile: it counts in the Malaysia calendar like every other
       // "N days ago" here, and keeps the clock read out of render.
       daysWaiting: daysSince(String(r.created_at).slice(0, 10)),
-      canVerify: r.recorded_by !== user.id,
+      postedByYou: r.recorded_by === user.id,
     }
   })
 
@@ -427,7 +425,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       {bulkVerified != null && (
         <div className={`alert ${Number(bulkVerified) > 0 ? 'alert-ok' : 'alert-warn'}`}>
           {Number(bulkVerified).toLocaleString()} transaction{Number(bulkVerified) === 1 ? '' : 's'} verified.
-          {bulkOwnAdj && ` ${bulkOwnAdj} correction${Number(bulkOwnAdj) === 1 ? '' : 's'} you posted yourself were left for someone else to check.`}
           {bulkLocked && ` Rows dated in ${bulkLocked.split(',').map((m) => formatMonthLabel(m)).join(', ')} were skipped — that month is reconciled.`}
         </div>
       )}
@@ -437,7 +434,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           figure in the reports is knowingly wrong — and it must not be
           something you have to filter your way to. Renders nothing when there
           are none. */}
-      <AwaitingSecondCheck items={awaitingSecondCheck} />
+      <UnsignedCorrections items={unsignedCorrections} />
 
       {/* The ledger is the page — no card. Same two-row toolbar as /dealers,
           so the two biggest lists in the app are operated identically: view
@@ -571,9 +568,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               </div>
             </div>
 
-            {/* Who keyed it in. The maker-checker rule only means anything if
-                someone can actually look at one person's work — "what did CS
-                enter yesterday" was a question the ledger could not answer. */}
+            {/* Who keyed it in. Since 0043 nobody is blocked from signing off
+                their own work, which makes reviewing it after the fact the
+                control that is left — "what did CS enter yesterday" was a
+                question the ledger could not answer. */}
             <div className="min-w-0 max-w-full">
               <span className="field-label">Recorded by</span>
               <div className="w-48 max-w-full">

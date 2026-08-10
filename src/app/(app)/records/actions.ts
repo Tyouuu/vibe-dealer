@@ -24,13 +24,10 @@ export async function verifyTransaction(formData: FormData) {
 
   const supabase = await createClient()
 
-  // Real gate, not just the VerifyButton UI state above it — a correction is
-  // the one entry type with no formula/receipt behind it, so the person who
-  // posted it can't also be the one who signs off on it.
+  // Corrections used to be refused here unless a second person signed them —
+  // see 0043 for why that rule is gone. Both recorded_by and verified_by are
+  // still written, so a row the same person posted and signed says so.
   const { data: tx } = await supabase.from('transactions').select('type, recorded_by, tx_date').eq('id', id).maybeSingle()
-  if (tx?.type === 'adjustment' && tx.recorded_by === user.id) {
-    fail('You posted this correction — a different accountant or master needs to verify it.')
-  }
 
   // Verifying a still-pending row inside a reconciled month moves that
   // month's verified total, which is exactly what the reconciliation signed
@@ -174,12 +171,8 @@ export async function adjustTransaction(formData: FormData) {
 // the confirm, repeat. The app already has bulk selection on SIM Delivery, so
 // the pattern exists — it just wasn't where the volume is.
 //
-// The maker-checker rule survives the batch intact, which is the whole reason
-// this is not a loop over verifyTransaction. Corrections you posted yourself
-// are refused here exactly as they are one at a time: they are the one entry
-// type with no receipt or formula behind them, so a second person has to sign
-// them off. Rows in a reconciled month are refused for the same reason a new
-// entry there is. Both are counted and named rather than silently dropped —
+// Rows in a reconciled month are refused here for the same reason a new entry
+// there is, and they are counted and named rather than silently dropped —
 // "18 verified" with no mention of the 2 that were not is how a batch action
 // quietly loses work.
 export async function verifyTransactions(formData: FormData) {
@@ -193,7 +186,6 @@ export async function verifyTransactions(formData: FormData) {
   const { data: rows } = await supabase.from('transactions').select('id, type, status, recorded_by, tx_date').in('id', ids)
 
   const pending = (rows ?? []).filter((r) => r.status === 'pending')
-  const ownAdjustments = pending.filter((r) => r.type === 'adjustment' && r.recorded_by === user.id)
 
   // One lookup per distinct month rather than per row — a batch of 200 rows
   // spans two or three months at most.
@@ -203,10 +195,7 @@ export async function verifyTransactions(formData: FormData) {
     if (await isPeriodLocked(supabase, `${m}-01`)) lockedMonths.add(m)
   }
 
-  const blockedIds = new Set([
-    ...ownAdjustments.map((r) => r.id),
-    ...pending.filter((r) => lockedMonths.has(String(r.tx_date).slice(0, 7))).map((r) => r.id),
-  ])
+  const blockedIds = new Set(pending.filter((r) => lockedMonths.has(String(r.tx_date).slice(0, 7))).map((r) => r.id))
   const toVerify = pending.filter((r) => !blockedIds.has(r.id)).map((r) => r.id)
 
   let verified = 0
@@ -227,9 +216,5 @@ export async function verifyTransactions(formData: FormData) {
   revalidatePath('/records')
   revalidatePath('/reports')
   revalidatePath('/dashboard')
-  redirect(
-    `/records?verified=${verified}` +
-      (ownAdjustments.length ? `&own_adjustments=${ownAdjustments.length}` : '') +
-      (lockedMonths.size ? `&locked=${[...lockedMonths].join(',')}` : '')
-  )
+  redirect(`/records?verified=${verified}` + (lockedMonths.size ? `&locked=${[...lockedMonths].join(',')}` : ''))
 }

@@ -127,7 +127,7 @@ export function AdjustButton({
           </label>
 
           <p className="text-[12px] text-paper-dim">
-            Still needs to be verified before it counts toward reports — by a different accountant or master, not you.
+            Still needs to be verified before it counts toward reports. Until then the old figure is what reports show.
           </p>
 
           <div className="flex items-center gap-2">

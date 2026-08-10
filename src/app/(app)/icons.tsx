@@ -213,6 +213,19 @@ export function IconPaperclip({ className = th }: IconProps) {
   )
 }
 
+// Sending a dealer their own request link. A paper plane rather than a chain
+// link: what the button does is send, and the thing being sent happening to be
+// a URL is a detail. Distinct from IconPaperclip, which already means "there
+// is a file attached to this".
+export function IconSend({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21.5 2.5 11 13" />
+      <path d="M21.5 2.5 15 21.5l-4-8.5-8.5-4z" />
+    </svg>
+  )
+}
+
 export function IconUpload({ className = th }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>

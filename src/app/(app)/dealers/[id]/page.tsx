@@ -679,6 +679,20 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         </div>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-5">
+          {/* First in the rail, above even the contact details. Sending a
+              dealer their link is the most common reason anyone opens this
+              page now, and it used to sit below the transaction history and
+              the SIM panel — far enough down that the owner could not find
+              it. */}
+          {typedDealer.submit_token && (
+            <SubmitLink
+              origin={await siteOrigin()}
+              token={typedDealer.submit_token}
+              companyName={typedDealer.company_name}
+              whatsapp={typedDealer.whatsapp ?? typedDealer.phone}
+            />
+          )}
+
           <div className="app-card">
             <h3 className="mb-1 text-sm font-semibold text-paper">Contact</h3>
             <div className="mt-2.5">
@@ -712,15 +726,6 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                 </p>
               )}
             </div>
-          )}
-
-          {typedDealer.submit_token && (
-            <SubmitLink
-              origin={await siteOrigin()}
-              token={typedDealer.submit_token}
-              companyName={typedDealer.company_name}
-              whatsapp={typedDealer.whatsapp ?? typedDealer.phone}
-            />
           )}
 
           {typedDealer.notes && (

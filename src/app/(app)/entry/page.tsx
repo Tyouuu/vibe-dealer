@@ -51,7 +51,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
     ? (
         await supabase
           .from('topup_requests')
-          .select('id, dealer_id, type, money_rm, package, note, created_at, dealers(company_name)')
+          .select('id, dealer_id, type, money_rm, package, note, created_at, transfer_date, paid_from, sim_type, slip_url, dealers(company_name)')
           .eq('id', request)
           .eq('status', 'pending')
           .maybeSingle()
@@ -66,6 +66,16 @@ export default async function EntryPage({ searchParams }: PageProps) {
         money_rm: pendingRequest.money_rm == null ? null : Number(pendingRequest.money_rm),
         package: pendingRequest.package as 'A' | 'B' | 'C' | null,
         note: (pendingRequest.note as string | null) ?? null,
+        // Everything the dealer filled in that the form would otherwise make
+        // someone re-type. transferDate becomes tx_date, simType picks the
+        // physical/eSIM toggle, paidFrom seeds the note, and slipUrl is
+        // already an object in the receipts bucket — the same bucket a staff
+        // upload lands in — so it can be the transaction's receipt as it is,
+        // with nothing re-uploaded.
+        transferDate: (pendingRequest.transfer_date as string | null) ?? null,
+        paidFrom: (pendingRequest.paid_from as string | null) ?? null,
+        simType: (pendingRequest.sim_type as 'physical' | 'esim' | null) ?? null,
+        slipUrl: (pendingRequest.slip_url as string | null) ?? null,
         submittedAt: new Date(pendingRequest.created_at as string).toLocaleString('en-GB', {
           timeZone: 'Asia/Kuala_Lumpur',
           day: 'numeric',

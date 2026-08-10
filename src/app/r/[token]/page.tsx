@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import { formatMYR } from '@/lib/money'
+import { todayInMalaysia } from '@/lib/month'
 import { LogoMark } from '../../(app)/icons'
 import { RequestForm } from './request-form'
 
@@ -90,7 +91,10 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
         )}
         {error && <div className="alert alert-bad mt-4">{error}</div>}
 
-        <RequestForm token={token} rate={dealer.rate == null ? null : Number(dealer.rate)} />
+        {/* today from the server, not the phone. The date field decides which
+            month a sale lands in, and a handset with the wrong clock would put
+            it in the wrong one silently. */}
+        <RequestForm token={token} rate={dealer.rate == null ? null : Number(dealer.rate)} today={todayInMalaysia()} />
 
         {recent && recent.length > 0 && (
           <div className="app-card mt-4 p-6">

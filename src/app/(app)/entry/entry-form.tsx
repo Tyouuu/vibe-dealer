@@ -66,6 +66,10 @@ export function EntryForm({
     package: PackageCode | null
     note: string | null
     submittedAt: string
+    transferDate: string | null
+    paidFrom: string | null
+    simType: 'physical' | 'esim' | null
+    slipUrl: string | null
   }
 }) {
   const formRef = useRef<HTMLFormElement>(null)
@@ -82,7 +86,10 @@ export function EntryForm({
   // sale that actually happened a day or few earlier (dealer paid via
   // WhatsApp/bank transfer, receipt only gets keyed in once someone's caught
   // up on the backlog).
-  const [txDate, setTxDate] = useState(today)
+  // A request carries the date the dealer says the money moved. That is the
+  // date the sale belongs to, and it beats today — which is only ever a guess
+  // at it.
+  const [txDate, setTxDate] = useState(fromRequest?.transferDate ?? today)
   const [type, setType] = useState<'topup' | 'package'>(fromRequest?.type ?? 'topup')
   const [pkg, setPkg] = useState<PackageCode>(fromRequest?.package ?? 'A')
   const [moneyCollected, setMoneyCollected] = useState(fromRequest?.money_rm != null ? String(fromRequest.money_rm) : '')
@@ -221,6 +228,11 @@ export function EntryForm({
         return
       }
       formData.set('receipt_url', path)
+    } else if (fromRequest?.slipUrl) {
+      // Already in the receipts bucket, uploaded by the dealer. Attaching the
+      // path is the whole job — re-uploading it would put a second copy of the
+      // same image in the same bucket under a staff-shaped name.
+      formData.set('receipt_url', fromRequest.slipUrl)
     }
 
     try {
@@ -258,6 +270,13 @@ export function EntryForm({
             <span className="font-normal text-paper-dim"> · {fromRequest.submittedAt}</span>
           </p>
           {fromRequest.note && <p className="mt-2 text-[13px] leading-relaxed text-paper-dim">&ldquo;{fromRequest.note}&rdquo;</p>}
+          {/* The details they filled in, and where each has already gone, so
+              nobody re-types a field that is already set below. */}
+          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-paper-dim">
+            {fromRequest.transferDate && <li>Transferred {fromRequest.transferDate} — set as the date below</li>}
+            {fromRequest.paidFrom && <li>From {fromRequest.paidFrom} — copied into the note</li>}
+            {fromRequest.slipUrl && <li>Payment slip attached — saved as the receipt</li>}
+          </ul>
           <p className="mt-2.5 text-[12px] text-paper-dim">
             Check the payment before you save. Nothing is recorded, and the dealer is told nothing, until you submit this form.
           </p>
@@ -395,7 +414,11 @@ export function EntryForm({
                 <label className="field-label">SIM type</label>
                 <Listbox
                   name="sim_type"
-                  defaultValue="esim"
+                  /* What the dealer asked for, when they asked. eSIM otherwise
+                     — it is the default because it needs no delivery, and
+                     defaulting to physical would queue a shipment nobody
+                     agreed to. */
+                  defaultValue={fromRequest?.simType ?? 'esim'}
                   options={[
                     { value: 'esim', label: 'eSIM (instant)' },
                     { value: 'physical', label: 'Physical SIM (needs delivery)' },
@@ -577,8 +600,23 @@ export function EntryForm({
                 />
               </label>
             </div>
+            {/* Seeded with the bank line off the request, because that is
+                the sentence someone reads six weeks later while matching a
+                statement, and re-typing it from the banner above is exactly
+                the work the link was meant to remove. Editable, and the
+                dealer's own note stays quoted in the banner rather than being
+                merged in — what they said and what we recorded have to stay
+                tellable apart. */}
             <Field label="Note (optional)">
-              {(id) => <textarea id={id} name="note" rows={2} className="field-input resize-none" />}
+              {(id) => (
+                <textarea
+                  id={id}
+                  name="note"
+                  rows={2}
+                  defaultValue={fromRequest?.paidFrom ?? ''}
+                  className="field-input resize-none"
+                />
+              )}
             </Field>
           </div>
           </details>

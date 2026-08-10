@@ -5,6 +5,7 @@ import { Field } from '../field'
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
+import { packageCardEconomics } from '@/lib/sim-stock'
 import { createTransaction, findRecentDuplicate, type RecentMatch } from './actions'
 import { IconCoin, IconUpload, IconChevronDown, IconUsers } from '../icons'
 import { Avatar } from '../avatar'
@@ -134,6 +135,11 @@ export function EntryForm({
     const pts = pointsOverride ? Number(pointsOverride) : suggestedPoints
     return { points: pts, rate, money: collected, commission: Math.round(pts * COMMISSION_RATE * 100) / 100 }
   }, [type, pkg, dealer, moneyCollected, pointsOverride])
+
+  // A package also puts SIM cards out of the box, and that margin — RM1.50 a
+  // card — is the part of a package sale the master dealer actually keeps.
+  // Only packages: a top-up ships nothing.
+  const cards = useMemo(() => (type === 'package' ? packageCardEconomics(pkg) : null), [type, pkg])
 
   const insufficientBalance = preview != null && preview.points > availableBalance
   // Checked live (not just on submit) — typing past the amount collected
@@ -484,6 +490,23 @@ export function EntryForm({
                   : `${formatMYR(preview.money)} in at ${preview.rate}% — you earn ${formatMYR(preview.commission)}. ${(availableBalance - preview.points).toLocaleString()} pts of credit left after this.`}
               </p>
 
+              {/* The other half of a package sale, and the half that had never
+                  appeared on this screen. The points are what the dealer is
+                  buying; the cards are where the money is made. Beside the
+                  points figure rather than folded into the breakdown below,
+                  because whoever records this also has to put the cards in a
+                  bag — it is an instruction, not a statistic. */}
+              {cards && (
+                <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-ink-800 pt-3">
+                  <span className="text-[14px] font-semibold text-paper">
+                    Send {cards.cards} SIM {cards.cards === 1 ? 'card' : 'cards'}
+                  </span>
+                  <span className="text-[13px] text-paper-dim">
+                    you make <strong className="font-semibold text-paper">{formatMYR(cards.marginRm)}</strong> on them
+                  </span>
+                </div>
+              )}
+
               <details className="group mt-3 border-t border-ink-800 pt-3">
                 <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold text-paper-dim hover:text-paper">
                   <IconChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
@@ -500,6 +523,12 @@ export function EntryForm({
                     />
                   )}
                   <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
+                  {cards && (
+                    <>
+                      <Row label="SIM cards to send" value={`${cards.cards} cards`} />
+                      <Row label="Your card margin" value={`${formatMYR(cards.marginRm)}`} unit="money" bold highlight />
+                    </>
+                  )}
                   <Row label="Credit balance" value={`${availableBalance.toLocaleString()} pts`} unit="points" warn={insufficientBalance} />
                 </div>
               </details>
@@ -588,6 +617,10 @@ export function EntryForm({
             <Row label="Type" value={type === 'package' ? `Buy Package ${pkg}` : 'Regular Top-up'} />
             <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
+            {/* On the confirmation too, because this is the last screen before
+                someone walks away from the desk, and the cards are the part
+                that has to physically leave the office. */}
+            {cards && <Row label="SIM Cards To Send" value={`${cards.cards} cards`} />}
             <Row label="Your 2%" value={`${formatMYR(preview.commission)}`} unit="money" bold highlight />
           </div>
         )}

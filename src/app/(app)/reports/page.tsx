@@ -10,6 +10,8 @@ import { PageHeader } from '../page-header'
 import { pctChange } from '../hero-card'
 import { resolveReportMonth } from '@/lib/reporting-month'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
+import { PACKAGE_SIM_CARDS } from '@/lib/sim-stock'
+import type { PackageCode } from '@/lib/packages'
 import { balanceSeries } from '@/lib/dashboard-period'
 import { formatMYR } from '@/lib/money'
 
@@ -127,6 +129,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const simShipping = simThis.reduce((s, o) => s + Number(o.shipping_fee_rm ?? 0), 0)
   const simCards = simThis.reduce((s, o) => s + o.quantity, 0)
   const simMargin = marginOf(simThis)
+  // Cards this period's package sales entitled dealers to — 20/40/100 by
+  // package. Not the same thing as cards shipped, and the gap between the two
+  // is the point.
+  const cardsFromPackages = rows.reduce(
+    (s, t) => s + (t.type === 'package' && t.package && t.package in PACKAGE_SIM_CARDS ? PACKAGE_SIM_CARDS[t.package as PackageCode] : 0),
+    0
+  )
 
   const totalPoints = rows.reduce((s, t) => s + Number(t.points), 0)
   const totalMoney = rows.reduce((s, t) => s + Number(t.money_rm), 0)
@@ -297,6 +306,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <div className="mt-1 text-[12px] text-paper-dim">
               {simCards.toLocaleString()} card{simCards === 1 ? '' : 's'} over {simThis.length} order{simThis.length === 1 ? '' : 's'}
             </div>
+            {/* The margin above counts cards that actually went out. This
+                counts cards this month's package sales promised. When the
+                second number is larger, the difference is stock a dealer has
+                paid for and not received — and until this line existed there
+                was nowhere the two figures were ever put side by side. */}
+            {cardsFromPackages > 0 && cardsFromPackages !== simCards && (
+              <div className="mt-1 text-[12px]" style={{ color: 'var(--color-brass-bright)' }}>
+                packages sold this period promised {cardsFromPackages.toLocaleString()}
+              </div>
+            )}
           </div>
           <div>
             <div className="text-[12px] text-paper-dim">Money collected</div>

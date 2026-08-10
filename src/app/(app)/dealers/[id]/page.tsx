@@ -19,6 +19,7 @@ import { formatMYR } from '@/lib/money'
 import { HeroCard } from '../../hero-card'
 import { formatDateLabel } from '@/lib/month'
 import { siteOrigin } from '@/lib/site-url'
+import { cardsOwedByDealer } from '@/lib/sim-stock'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — Vibe456',
@@ -295,6 +296,25 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const verifiedTx = txRows.filter((t) => t.status === 'verified')
   const lifetimePoints = verifiedTx.reduce((sum, t) => sum + Number(t.points), 0)
   const lifetimeCommission = verifiedTx.reduce((sum, t) => sum + Number(t.commission_rm), 0)
+
+  // Cards this dealer bought inside a package against cards they have been
+  // given. Every role sees it: a quantity is not a price, and the person most
+  // likely to be asked "where are the rest of my SIM cards" is cs.
+  const { data: simOrderRows } = await supabase
+    .from(isFinance ? 'sim_orders' : 'sim_orders_directory')
+    .select('dealer_id, quantity')
+    .eq('dealer_id', id)
+  //
+  // The package rows come from whichever source this role can actually read:
+  // finance has `transactions`, cs has only `delivery_queue` (0015). Reading
+  // the finance table for both would leave cs looking at a confident zero.
+  const packageRowsForCards = isFinance
+    ? txRows.filter((t) => t.type === 'package' && t.status !== 'flagged').map((t) => ({ dealer_id: id, package: t.package }))
+    : deliveryRows.filter((d) => d.package).map((d) => ({ dealer_id: id, package: d.package }))
+  const cards = cardsOwedByDealer(
+    packageRowsForCards,
+    (simOrderRows as { dealer_id: string; quantity: number }[] | null) ?? []
+  ).byDealer.get(id) ?? { entitled: 0, delivered: 0, owed: 0 }
 
   // Extracted so the same markup can be the hero's record header for
   // finance roles and a standalone card for cs, which never sees the
@@ -671,6 +691,28 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               <RailField label="Onboarded On" value={typedDealer.created_at ? formatDateTime(typedDealer.created_at) : '—'} last />
             </div>
           </div>
+
+          {/* Only once they have bought something that came with cards. A
+              dealer with no package has no entitlement, and an empty card
+              panel on 242 of 284 dealer pages is noise. */}
+          {cards.entitled > 0 && (
+            <div className="app-card">
+              <h3 className="mb-1 text-sm font-semibold text-paper">SIM cards</h3>
+              <p className="text-[12px] leading-relaxed text-paper-dim">
+                What their packages entitle them to, against what has actually gone out.
+              </p>
+              <div className="mt-2.5">
+                <RailField label="From packages" value={`${cards.entitled.toLocaleString()} cards`} />
+                <RailField label="Sent so far" value={`${cards.delivered.toLocaleString()} cards`} />
+                <RailField label="Still owed" value={cards.owed > 0 ? `${cards.owed.toLocaleString()} cards` : 'None'} last />
+              </div>
+              {cards.owed > 0 && (
+                <p className="mt-2.5 text-[12px]" style={{ color: 'var(--color-brass-bright)' }}>
+                  They have paid for {cards.owed.toLocaleString()} more cards than they have been given.
+                </p>
+              )}
+            </div>
+          )}
 
           {typedDealer.submit_token && (
             <SubmitLink

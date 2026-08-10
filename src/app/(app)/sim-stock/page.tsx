@@ -9,6 +9,7 @@ import {
   SIM_SELL_PRICE_RM,
   SIM_STOCK_TYPES,
   SIM_UNIT_COST_RM,
+  cardsOwedByDealer,
   type SimStockType,
 } from '@/lib/sim-stock'
 import { DealerOrdersTable } from './dealer-orders-table'
@@ -105,6 +106,17 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       .order('intake_date', { ascending: false })
     intakes = (data as IntakeRow[] | null) ?? []
   }
+
+  // Package sales carry a card entitlement (20/40/100 by package). Read only
+  // for finance — cs has no SELECT on `transactions` at all, so asking as cs
+  // would return an empty list and produce a confident "nothing owed".
+  let packageSales: { dealer_id: string; package: string | null }[] = []
+  if (isFinance) {
+    const { data } = await supabase.from('transactions').select('dealer_id, package').eq('type', 'package').neq('status', 'flagged')
+    packageSales = data ?? []
+  }
+  const cardsOwed = cardsOwedByDealer(packageSales, orders)
+  const owedDealerCount = [...cardsOwed.byDealer.values()].filter((r) => r.owed > 0).length
 
   const totalIntakeCost = intakes.reduce((s, r) => s + r.quantity * Number(r.cost_per_unit_rm), 0)
   const totalOrderRevenue = orders.reduce((s, o) => s + o.quantity * Number(o.unit_price_rm), 0)
@@ -247,6 +259,20 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                 {formatMYR(SIM_UNIT_COST_RM)} a card in, {formatMYR(SIM_SELL_PRICE_RM)} out — a flat {formatMYR(SIM_MARGIN_RM)} each ·{' '}
                 {formatMYR(totalIntakeCost)} spent on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
                 {formatMYR(totalOrderMargin)} after shipping
+              </p>
+            )}
+            {/* Cards a dealer has paid for inside a package and has not been
+                given yet. These two facts lived in two tables that had never
+                been asked to agree — packages in `transactions`, cards in
+                `sim_orders` — so a dealer could buy a hundred cards, walk out
+                with ten, and nothing anywhere would say the other ninety were
+                owed. Finance only: it needs `transactions`, which cs cannot
+                read, and a figure that silently reads zero for one role is
+                worse than one they never see. */}
+            {isFinance && cardsOwed.totalOwed > 0 && (
+              <p className="mt-2 text-[12px]" style={{ color: 'var(--color-brass-bright)' }}>
+                {cardsOwed.totalOwed.toLocaleString()} cards are owed to {owedDealerCount} dealer
+                {owedDealerCount === 1 ? '' : 's'} — bought inside a package, not yet handed over.
               </p>
             )}
           </div>

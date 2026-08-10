@@ -95,8 +95,16 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             />
           </div>
           <div className="sm:col-span-3 lg:col-span-3">
+            {/* Structured, so a payment can be matched to Vibe's invoice
+                without opening the invoice. */}
+            <label htmlFor="cp-ref" className="field-label">
+              Invoice / transfer ref <span className="font-normal text-paper-dim">(optional)</span>
+            </label>
+            <input id="cp-ref" name="reference" type="text" maxLength={80} placeholder="e.g. VM-2026-114" className="field-input" />
+          </div>
+          <div className="sm:col-span-3 lg:col-span-3">
             <label htmlFor="cp-note" className="field-label">
-              Note (optional)
+              Note <span className="font-normal text-paper-dim">(optional)</span>
             </label>
             <input id="cp-note" name="note" type="text" className="field-input" />
           </div>

@@ -61,7 +61,9 @@ export function AdjustButton({
 
   return (
     <>
-      <button type="button" className="btn-ghost" onClick={() => setOpen(true)}>
+      {/* w-full, so Adjust and Verify are the same rectangle in the same slot
+          — see row-actions.tsx. */}
+      <button type="button" className="btn-ghost w-full" onClick={() => setOpen(true)}>
         Adjust
       </button>
       <Modal open={open} onClose={close} className="max-w-md">

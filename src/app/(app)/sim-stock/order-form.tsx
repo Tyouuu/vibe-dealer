@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createSimOrder } from './actions'
 import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
-import { IconUpload } from '../icons'
 import { Combobox } from '../combobox'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
+import { ReceiptField } from '../receipt-field'
 
 // Mirrors the sim-shipping-invoices bucket limits (migration 0024).
 const INVOICE_MAX_BYTES = 10 * 1024 * 1024
@@ -133,30 +133,28 @@ export function OrderForm({
               <input name="shipping_fee_rm" type="number" step="0.01" min="0" placeholder="Leave blank if no shipping cost" className="field-input" />
             </div>
             <div className="sm:col-span-6 lg:col-span-6">
-              <label className="field-label">Shipping Invoice (optional)</label>
-              <label className="upload-box">
-                <IconUpload />
-                <span className="truncate">{invoiceFile ? invoiceFile.name : 'Click to upload invoice/receipt'}</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null
-                    if (file && !INVOICE_ALLOWED_TYPES.has(file.type)) {
-                      setError('Please upload a JPEG, PNG, WEBP, GIF, or PDF file.')
-                      e.target.value = ''
-                      return
-                    }
-                    if (file && file.size > INVOICE_MAX_BYTES) {
-                      setError('File is too large (max 10MB).')
-                      e.target.value = ''
-                      return
-                    }
-                    setInvoiceFile(file)
-                  }}
-                  className="hidden"
-                />
-              </label>
+              {/* The same component, the same width and the same words as the
+                  intake form above. This was a bespoke box reading "Click to
+                  upload invoice/receipt" at a different size — see
+                  receipt-field.tsx for why it is controlled rather than
+                  posted: this file uploads to its own bucket before calling
+                  the order RPC. */}
+              <ReceiptField
+                label="Shipping invoice"
+                hint="The courier's invoice for this shipment. Image or PDF."
+                onSelect={(file) => {
+                  if (file && !INVOICE_ALLOWED_TYPES.has(file.type)) {
+                    setError('Please upload a JPEG, PNG, WEBP, GIF, or PDF file.')
+                    return
+                  }
+                  if (file && file.size > INVOICE_MAX_BYTES) {
+                    setError('That file is too large (max 10MB).')
+                    return
+                  }
+                  setInvoiceFile(file)
+                }}
+                selectedName={invoiceFile?.name ?? null}
+              />
             </div>
           </>
         ) : (

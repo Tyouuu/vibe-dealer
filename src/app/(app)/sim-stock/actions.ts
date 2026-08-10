@@ -34,6 +34,7 @@ export async function recordSimIntake(formData: FormData) {
   const quantity = Number(formData.get('quantity') ?? 0)
   const costPerUnit = Number(formData.get('cost_per_unit_rm') ?? 0)
   const note = String(formData.get('note') ?? '').trim() || null
+  const reference = String(formData.get('reference') ?? '').trim().slice(0, 80) || null
 
   if (!isSimStockType(simType)) failOnLog('Invalid SIM type.')
   if (!Number.isFinite(quantity) || quantity <= 0) failOnLog('Quantity must be a positive number.')
@@ -49,6 +50,7 @@ export async function recordSimIntake(formData: FormData) {
     quantity,
     cost_per_unit_rm: costPerUnit,
     note,
+    reference,
     receipt_url: receipt.path,
     recorded_by: user.id,
   })

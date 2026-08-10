@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../../permission-denied'
 import { createClient } from '@/lib/supabase/server'
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 type BalanceRow = { sim_type: SimStockType; available: number }
 
 type PageProps = {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; tab?: string }>
 }
 
 // Both SIM movements on one page, in one card, built the way Onboard Dealer
@@ -45,7 +46,7 @@ type PageProps = {
 // the role that can actually submit it.
 export default async function LogSimStockPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error } = await searchParams
+  const { error, tab } = await searchParams
 
   const canLogIntake = user.role === 'accountant' || user.role === 'master'
   const canPlaceOrder = user.role === 'cs' || user.role === 'master'
@@ -75,14 +76,38 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
         ? 'A box arriving from Vibe Mobile. It lands on SIM Card Stock.'
         : 'An order going out to a dealer. It lands on SIM Card Stock.'
 
+  // One form at a time.
+  //
+  // Both were stacked in one card, which made the page a wall: two headings,
+  // two descriptions, eleven fields and two save buttons, most of it about a
+  // job the reader is not doing right now. "怎么可能那么长啦" — quite. They
+  // are still one page, because they are one idea seen from two directions,
+  // but only the direction you picked is on screen.
+  //
+  // A link and a query parameter rather than client state: the choice survives
+  // the redirect a failed save comes back on, and it can be linked to.
+  const showIntake = canLogIntake && (tab !== 'out' || !canPlaceOrder)
+  const bothTabs = canLogIntake && canPlaceOrder
+
   return (
     <div className="w-full">
       <PageHeader title="Log SIM Stock" subtitle={subtitle} />
 
       {error && <div className="alert alert-bad">{error}</div>}
 
-      <div className="app-card mt-6 flex flex-col gap-6">
-        {canLogIntake && (
+      {bothTabs && (
+        <div className="segmented mt-6" role="group" aria-label="Which movement to log">
+          <Link href="/sim-stock/log?tab=in" className={`segmented-btn ${showIntake ? 'active' : ''}`}>
+            Stock in
+          </Link>
+          <Link href="/sim-stock/log?tab=out" className={`segmented-btn ${showIntake ? '' : 'active'}`}>
+            Stock out
+          </Link>
+        </div>
+      )}
+
+      <div className="app-card mt-4 flex flex-col gap-6">
+        {canLogIntake && showIntake && (
           <div className="form-block">
             <h2 className="form-block-title">Stock in — bought from Vibe Mobile</h2>
             <p className="form-block-desc">
@@ -93,7 +118,7 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
           </div>
         )}
 
-        {canPlaceOrder && (
+        {canPlaceOrder && !showIntake && (
           <div className="form-block">
             <h2 className="form-block-title">Stock out — sold to a dealer</h2>
             <p className="form-block-desc">

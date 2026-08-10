@@ -33,6 +33,7 @@ export async function recordCreditPurchase(formData: FormData) {
   const moneyRm = Number(formData.get('money_rm'))
   const points = Number(formData.get('points'))
   const note = String(formData.get('note') ?? '').trim() || null
+  const reference = String(formData.get('reference') ?? '').trim().slice(0, 80) || null
 
   if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('Please enter a valid amount.')
   if (!Number.isFinite(points) || points <= 0) fail('Please enter a valid points amount.')
@@ -56,6 +57,7 @@ export async function recordCreditPurchase(formData: FormData) {
     money_rm: moneyRm,
     points,
     note,
+    reference,
     receipt_url: receipt.path,
     recorded_by: user.id,
   })

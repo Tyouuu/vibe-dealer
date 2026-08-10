@@ -1,6 +1,7 @@
 import { SIM_TYPE_LABEL, SIM_TYPE_PILL_CLASS, type SimStockType } from '@/lib/sim-stock'
 import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
+import { LOG_COL } from '@/lib/log-columns'
 
 export type IntakeItem = {
   id: string
@@ -30,7 +31,14 @@ export type IntakeItem = {
 export function StockIntakeTable({ intakes }: { intakes: IntakeItem[] }) {
   return (
     <ScrollFade label="SIM stock intake history">
-      <div className="grid grid-cols-[84px_max-content_60px_104px_132px_150px_minmax(120px,1fr)] gap-x-3 text-sm">
+      <div
+        className="log-grid grid gap-x-3 text-sm"
+        style={{
+          // Shared widths — see lib/log-columns.ts. Date, SIM Type, Qty and
+          // both money columns are the same size as the orders table below.
+          gridTemplateColumns: [LOG_COL.date, LOG_COL.sim, LOG_COL.qty, LOG_COL.money, LOG_COL.money, LOG_COL.person, 'minmax(120px,1fr)'].join(' '),
+        }}
+      >
         <div className="th">Date</div>
         <div className="th">SIM Type</div>
         <div className="th text-right">Qty</div>

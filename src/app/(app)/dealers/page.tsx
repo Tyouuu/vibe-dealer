@@ -9,7 +9,6 @@ import { sanitizeSearchTerm } from '@/lib/search'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
-import { Listbox } from '../listbox'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
@@ -120,6 +119,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
       query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
     }
   }
+  // The forty-item "All Regions" dropdown is gone: the search box above
+  // already matches on region, and the By Region view groups by it, so the
+  // list was a third way to do the same thing and the longest of the three.
+  // The parameter stays honoured — an export link, a bookmark and the
+  // removable filter chip all still work.
   if (region !== 'all') {
     query = query.eq('region', region)
   }
@@ -384,13 +388,10 @@ export default async function DealersPage({ searchParams }: PageProps) {
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="Search company, region, contact…"
+              placeholder="Search company, region or contact"
               className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
             />
           </label>
-          <div className="w-44">
-            <Listbox name="region" defaultValue={region} options={[{ value: 'all', label: 'All Regions' }, ...regions.map((r) => ({ value: r, label: r }))]} />
-          </div>
           {/* Secondary, not primary. Applying a filter is reversible and changes
               nothing; Export produces a file that leaves the system. As
               btn-primary this was the heaviest control on the page and outranked

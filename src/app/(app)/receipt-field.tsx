@@ -13,12 +13,27 @@ import { RECEIPT_ACCEPT } from '@/lib/receipt-upload'
 export function ReceiptField({
   label = 'Invoice or receipt',
   hint,
+  name = 'receipt',
+  onSelect,
+  selectedName,
 }: {
   label?: string
   /** Says which document this is, in the words of whoever will be attaching it. */
   hint: string
+  /** The field name in the posted form. */
+  name?: string
+  /**
+   * Set when the caller uploads the file itself rather than posting it — the
+   * SIM order form writes to its own bucket through an RPC. It then owns the
+   * filename too, via `selectedName`. Everything visible stays identical
+   * either way, which is the point: two upload boxes on one page that looked
+   * and read differently were half of what made that page feel unfinished.
+   */
+  onSelect?: (file: File | null) => void
+  selectedName?: string | null
 }) {
-  const [name, setName] = useState<string | null>(null)
+  const [ownName, setOwnName] = useState<string | null>(null)
+  const shownName = onSelect ? (selectedName ?? null) : ownName
 
   return (
     <div>
@@ -27,13 +42,17 @@ export function ReceiptField({
       </span>
       <label className="upload-box">
         <IconUpload />
-        <span className={name ? 'truncate' : 'min-w-0 text-left'}>{name ?? 'Attach a file or photo'}</span>
+        <span className={shownName ? 'truncate' : 'min-w-0 text-left'}>{shownName ?? 'Attach a file or photo'}</span>
         <input
           type="file"
-          name="receipt"
+          name={onSelect ? undefined : name}
           accept={RECEIPT_ACCEPT}
           className="hidden"
-          onChange={(e) => setName(e.target.files?.[0]?.name ?? null)}
+          onChange={(e) => {
+            const file = e.target.files?.[0] ?? null
+            if (onSelect) onSelect(file)
+            else setOwnName(file?.name ?? null)
+          }}
         />
       </label>
       <p className="mt-2 text-[12px] text-paper-dim">{hint}</p>

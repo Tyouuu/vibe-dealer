@@ -77,16 +77,30 @@ export function IntakeForm({ today }: { today: string }) {
           </label>
           <input id="si-cost" name="cost_per_unit_rm" type="number" step="0.01" min="0" defaultValue={SIM_UNIT_COST_RM} required className="field-input" />
         </div>
-        <div className="sm:col-span-3 lg:col-span-5">
-          <label className="field-label">Note (optional)</label>
-          <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
+        {/* Its own field, not a hint inside the note. This box has been
+            prompting for "invoice #1234" since day one with nowhere structured
+            to put it, so the one value worth searching by lived in free text
+            beside "4 boxes". Every receiving-form guide names it. */}
+        <div className="sm:col-span-3 lg:col-span-3">
+          <label htmlFor="si-ref" className="field-label">
+            Invoice no. <span className="font-normal text-paper-dim">(optional)</span>
+          </label>
+          <input id="si-ref" name="reference" type="text" maxLength={80} placeholder="e.g. VM-1234" className="field-input" />
         </div>
-      </div>
-      {/* The cost side of the only margin this business keeps. The note field
-          above has been inviting an invoice number since day one — "e.g. 4
-          boxes, invoice #1234" — with nowhere to put the invoice itself. */}
-      <div className="mt-4">
-        <ReceiptField hint="The invoice for this intake. Image or PDF." />
+        <div className="sm:col-span-3 lg:col-span-3">
+          <label className="field-label">
+            Note <span className="font-normal text-paper-dim">(optional)</span>
+          </label>
+          <input name="note" type="text" placeholder="e.g. 4 boxes from the Ipoh run" className="field-input" />
+        </div>
+        {/* Inside the grid and six columns wide, the same as the order form's
+            below. It sat outside the grid at full bleed, so the two forms on
+            this page had upload boxes of different widths, different labels
+            and different wording — which is most of why they did not read as
+            one page. */}
+        <div className="sm:col-span-6 lg:col-span-6">
+          <ReceiptField hint="The invoice for this intake. Image or PDF." />
+        </div>
       </div>
       {/* The footer shape Onboard Dealer uses: the action sits on the rule
           that closes its section, left-aligned, with one line of guidance

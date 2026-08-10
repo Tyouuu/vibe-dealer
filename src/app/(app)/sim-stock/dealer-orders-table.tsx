@@ -8,6 +8,7 @@ import { ScrollFade } from '../scroll-fade'
 import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
 import { formatDateLabel } from '@/lib/month'
+import { LOG_COL, LOG_COL_SPACER } from '@/lib/log-columns'
 
 export type OrderItem = {
   id: string
@@ -60,9 +61,23 @@ export function DealerOrdersTable({
           a data column: stretched across the band, one greedy column puts a
           300px hole in the middle of every row. */}
       <div
-        className="grid gap-x-3 text-sm"
+        className="log-grid grid gap-x-3 text-sm"
         style={{
-          gridTemplateColumns: `72px minmax(140px,260px) max-content 44px 96px ${isFinance ? '92px ' : ''}100px 76px 20px minmax(0,1fr)`,
+          // Shared widths — see lib/log-columns.ts. Date, SIM Type, Qty and
+          // every money column are the same size as the intake table above, so
+          // the two read as one page rather than two unrelated grids.
+          gridTemplateColumns: [
+            LOG_COL.date,
+            'minmax(140px,260px)',
+            LOG_COL.sim,
+            LOG_COL.qty,
+            LOG_COL.money,
+            ...(isFinance ? [LOG_COL.money] : []),
+            LOG_COL.money,
+            LOG_COL.status,
+            LOG_COL.chevron,
+            LOG_COL_SPACER,
+          ].join(' '),
         }}
       >
         <div className="th">Date</div>

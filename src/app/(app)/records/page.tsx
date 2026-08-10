@@ -8,11 +8,9 @@ import { monthRange, todayInMalaysia, formatMonthLabel, formatDateLabel } from '
 import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
-import { VerifyButton } from './verify-button'
+import { RowActions } from './row-actions'
 import { BulkVerifyBar, RowSelect } from './bulk-verify'
 import { UnsignedCorrections } from './unsigned-corrections'
-import { FlagButton } from './flag-button'
-import { AdjustButton } from './adjust-button'
 import { IconPaperclip, IconSearch, IconChevronDown } from '../icons'
 import { DatePicker } from '../date-picker'
 import { FilterForm } from './filter-form'
@@ -756,18 +754,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         cell used to need `relative z-10` for that; being
                         sticky now does the same job. */}
                     <td className="td pin-end">
-                      <div className="flex items-center justify-end gap-1">
-                        {tx.status === 'pending' ? (
-                          <>
-                            <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
-                            <FlagButton transactionId={tx.id} />
-                          </>
-                        ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
-                          <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
-                        ) : (
-                          <span className="text-paper-dim/50">—</span>
-                        )}
-                      </div>
+                      <RowActions
+                        transactionId={tx.id}
+                        status={tx.status}
+                        type={tx.type}
+                        isSelfRecorded={tx.recorded_by === user.id}
+                        points={tx.points}
+                        moneyRm={tx.money_rm}
+                        rate={tx.rate}
+                      />
                     </td>
                   </tr>
                 )

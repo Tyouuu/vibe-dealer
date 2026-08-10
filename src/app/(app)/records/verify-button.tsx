@@ -42,8 +42,12 @@ export function VerifyButton({
   return (
     <form>
       <input type="hidden" name="id" value={transactionId} />
-      <button type="submit" onClick={handleClick} disabled={pending} className="btn-jade disabled:opacity-60">
-        {pending ? 'Verifying…' : 'Verify ✓'}
+      {/* Full width of its slot, and no tick. Every row's primary action is
+          the same rectangle whether it says Verify or Adjust — a glyph on one
+          and not the other is the difference the eye catches when scanning a
+          column. */}
+      <button type="submit" onClick={handleClick} disabled={pending} className="btn-jade w-full disabled:opacity-60">
+        {pending ? 'Verifying…' : 'Verify'}
       </button>
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <p className="text-sm font-semibold text-paper">

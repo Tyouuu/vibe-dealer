@@ -25,28 +25,37 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
 
   return (
     <div className="relative inline-block" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
-      {/* Quiet, and no ✕.
-          It was a filled clay button reading "Flag ✕", which gave it the same
-          visual weight as Verify beside it — the routine action and the
-          irreversible one presented as two equal choices — and put a third
-          colour family in a cell that already had a status dot and a bordered
-          button. Flag is rare; it reads as rare now, and the clay only appears
-          on hover, once you are actually reaching for it.
+      {/* The overflow, not a second button.
+          It was a filled clay button reading "Flag ✕" sitting beside Verify,
+          which gave the irreversible action the same weight as the routine
+          one and made every pending row two buttons wide while a verified row
+          was one — the ragged column the owner called messy. Carbon's rule is
+          to keep actions inline below three and push the rest into an
+          overflow; there are two here and they are not equals.
 
-          Still always visible rather than revealed on hover: an action nobody
-          can find is worse than one that is merely quiet, and on a touch
-          screen there is no hover to reveal it with. */}
+          Still always rendered rather than revealed on hover: an action nobody
+          can find is worse than one that is quiet, and a touch screen has no
+          hover to reveal it with. */}
       <button
         ref={triggerRef}
         type="button"
-        className="btn-ghost text-paper-dim hover:border-clay/40 hover:text-clay-bright"
+        aria-label="More actions for this transaction"
+        aria-haspopup="true"
+        aria-expanded={open}
+        title="More actions"
+        className="grid h-7 w-7 place-items-center rounded-lg border border-transparent text-paper-dim transition-colors hover:border-ink-800 hover:bg-ink-850 hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
         onClick={() => setOpen((o) => !o)}
       >
-        Flag
+        <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+          <circle cx="4" cy="10" r="1.5" fill="currentColor" />
+          <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+          <circle cx="16" cy="10" r="1.5" fill="currentColor" />
+        </svg>
       </button>
       {open && (
         <div className="dropdown-panel w-72 p-3">
-          <p className="mb-2 text-xs font-semibold text-paper">Why are you flagging this transaction?</p>
+          <p className="mb-2 text-xs font-semibold text-paper">Flag this transaction</p>
+          <p className="mb-2 text-[12px] leading-relaxed text-paper-dim">Why? The audit log is only useful for tracing a dispute if it says.</p>
           <form
             onSubmit={(e) => {
               e.preventDefault()

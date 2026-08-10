@@ -9,6 +9,17 @@ import { IDLE_LIMIT_MS, LAST_SEEN_COOKIE } from '@/lib/idle'
 // gates on that session client-side (see reset-password-form.tsx).
 const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password']
 
+// /r/<token> is public in a different sense from the routes above, and the
+// difference matters. Those three are *pre-sign-in* pages: a signed-in user
+// landing on one is lost, so they get sent to the app. The dealer link is not
+// a stage of signing in — it is a page belonging to someone outside the
+// company, and staff must be able to open it to see exactly what a dealer
+// sees. Putting it in PUBLIC_ROUTES would have bounced every signed-in person
+// who tried, which is the one group who needs to check it.
+function isDealerLink(pathname: string): boolean {
+  return pathname === '/r' || pathname.startsWith('/r/')
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -110,7 +121,7 @@ export async function updateSession(request: NextRequest) {
     })
   }
 
-  if (!user && !isPublicRoute && !isCronRoute && pathname !== '/') {
+  if (!user && !isPublicRoute && !isCronRoute && !isDealerLink(pathname) && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

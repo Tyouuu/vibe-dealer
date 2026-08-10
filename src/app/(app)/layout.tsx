@@ -16,6 +16,10 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
   { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Dealers' },
   { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Dealers' },
+  // Above New Transaction, because it is where a transaction now often
+  // starts: the dealer has already said what they want, and the entry form is
+  // the second step rather than the first.
+  { href: '/requests', label: 'Dealer Requests', roles: ['accountant', 'master'], group: 'Transactions' },
   { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Transactions' },
   { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Transactions' },
   { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },

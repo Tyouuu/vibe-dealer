@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-
-const MAX_BYTES = 10 * 1024 * 1024
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+import { collectImages, describeFailure, isCollectFailure, isServiceUnavailable, readImages } from '@/lib/vision-extract'
 
 const EXTRACTION_SCHEMA = {
   type: 'object',
@@ -16,10 +13,18 @@ const EXTRACTION_SCHEMA = {
   additionalProperties: false,
 } as const
 
+type Extracted = { company_total_points: number | null; company_profit_rm: number | null }
+
 // Reads a photo/screenshot of Vibe's monthly statement and pulls out the two
 // numbers the reconcile form needs, so staff don't have to retype them by
 // hand. Best-effort — the caller still gets an editable number input either
 // way, this only pre-fills it.
+//
+// The shared parts — file validation, the constrained model call, and telling
+// a bad photograph apart from a dead service — live in lib/vision-extract.ts,
+// alongside the story of why that last distinction exists. What stays here is
+// what is specific to reconciliation: who may call it, what to look for, and
+// the sentences a person doing month-end should read.
 export async function POST(request: NextRequest) {
   const user = await requireUser()
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -43,67 +48,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Too many statement reads this hour — enter the numbers manually, or try again later.' }, { status: 429 })
   }
 
-  const formData = await request.formData()
-  const file = formData.get('file')
-  if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: 'Please choose an image file.' }, { status: 400 })
+  const images = await collectImages(await request.formData(), 1)
+  if (isCollectFailure(images)) {
+    return NextResponse.json({ error: images.error }, { status: images.status })
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: 'Image is too large (max 10MB).' }, { status: 400 })
-  }
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return NextResponse.json({ error: 'Please upload a JPEG, PNG, WEBP, or GIF image.' }, { status: 400 })
-  }
-
-  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
-  const client = new Anthropic()
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 512,
+    const parsed = await readImages<Extracted>({
+      images,
       system:
         "You read monthly reseller statements from a telecom company called Vibe Mobile. Find this month's total top-up/reload points figure and the profit/commission figure in RM. If a figure isn't visible in the image, return null for it rather than guessing.",
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: file.type as 'image/jpeg', data: base64 } },
-            { type: 'text', text: "Extract this month's total points and profit/commission figure from the statement." },
-          ],
-        },
-      ],
-      output_config: {
-        format: { type: 'json_schema', schema: EXTRACTION_SCHEMA },
-      },
+      prompt: "Extract this month's total points and profit/commission figure from the statement.",
+      schema: EXTRACTION_SCHEMA,
     })
-
-    const textBlock = message.content.find((b) => b.type === 'text')
-    if (!textBlock || textBlock.type !== 'text') {
-      return NextResponse.json({ error: "Couldn't read that image — enter the numbers manually." }, { status: 502 })
-    }
-
-    const parsed = JSON.parse(textBlock.text) as { company_total_points: number | null; company_profit_rm: number | null }
     return NextResponse.json(parsed)
   } catch (err) {
-    // This used to be a bare `catch {}`, which meant a feature that could not
-    // work at all — an unfunded API key, a revoked one, the service down —
-    // reported itself as "couldn't read that image". The operator is then
-    // told, in effect, that their photo is the problem, and retakes it. For
-    // ever. Found exactly that way: every call was failing on
-    // "Your credit balance is too low to access the Anthropic API" and the
-    // screen said the image was unreadable.
-    //
     // Two different sentences because they need two different actions: retake
-    // the photo, or go and fix the account. And the real reason goes to the
-    // server log either way, because a swallowed error is one nobody can ever
+    // the photo, or go and fix the account. The real reason goes to the server
+    // log either way, because a swallowed error is one nobody can ever
     // diagnose from the outside.
-    const status = (err as { status?: number })?.status
-    const detail = String((err as Error)?.message ?? err)
-    console.error('[reconcile/extract] statement read failed:', status ?? '-', detail.slice(0, 300))
+    console.error('[reconcile/extract] statement read failed:', describeFailure(err))
 
-    const unavailable = status === 401 || status === 403 || status === 429 || (status ?? 0) >= 500 || /credit balance|billing|quota|rate limit/i.test(detail)
-    if (unavailable) {
+    if (isServiceUnavailable(err)) {
       return NextResponse.json(
         { error: 'Statement reading is unavailable right now — type the numbers in below. (Nothing is wrong with your image; ask your admin to check the AI service.)' },
         { status: 503 }

@@ -108,7 +108,7 @@ export async function createTransaction(formData: FormData) {
   const simType = type === 'package' ? simTypeRaw || null : null
   const idempotencyKey = String(formData.get('idempotency_key') ?? '').trim() || null
 
-  const { error: txError } = await supabase.from('transactions').insert({
+  const { data: inserted, error: txError } = await supabase.from('transactions').insert({
     dealer_id: dealerId,
     type,
     package: pkg,
@@ -124,6 +124,11 @@ export async function createTransaction(formData: FormData) {
     tx_date: txDate,
     coupon_rm: couponRm,
   })
+    // Read back so a dealer's request can be linked to the row it became
+    // (0042). maybeSingle rather than single: the 23505 retry path below is a
+    // success, and it returns no row.
+    .select('id')
+    .maybeSingle()
 
   // 23505 = unique_violation. A retry (slow-network resubmit, double-click
   // before the form unmounts) sends the same idempotency_key as an already-
@@ -140,6 +145,35 @@ export async function createTransaction(formData: FormData) {
   // the period-lock case had been given a human sentence and this one hadn't.
   if (txError && isPeriodLockError(txError.message)) fail(periodLockedMessage(txDate))
   if (txError && txError.code !== '23505') fail(friendlyDbError(txError.message))
+
+  // The dealer's request becomes accepted by the transaction existing, not by
+  // a button somebody pressed on /requests. That ordering is the whole point:
+  // there is one way to record money, it ran above, and this only records
+  // which claim it settled.
+  //
+  // Guarded on status = 'pending' so a resubmitted or bookmarked ?request=
+  // cannot re-decide something already handled, and left un-fatal on failure —
+  // the money is recorded and correct; a request stuck showing "waiting" is a
+  // cosmetic problem that must not turn a saved transaction into an error
+  // page.
+  const requestId = String(formData.get('request_id') ?? '').trim()
+  if (requestId) {
+    // On the 23505 retry path the insert returned no row, so find the
+    // transaction the first attempt already created.
+    let transactionId = inserted?.id ?? null
+    if (!transactionId && idempotencyKey) {
+      const { data: existing } = await supabase.from('transactions').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+      transactionId = existing?.id ?? null
+    }
+
+    const { error: linkError } = await supabase
+      .from('topup_requests')
+      .update({ status: 'accepted', transaction_id: transactionId, decided_by: user.id, decided_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .eq('status', 'pending')
+    if (linkError) console.error('[entry] could not close dealer request', requestId, linkError.message)
+    revalidatePath('/requests')
+  }
 
   if (type === 'package' && pkg) {
     // Packages bought the same day count as one batch (e.g. dealer buys A + B + C

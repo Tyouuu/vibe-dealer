@@ -13,10 +13,12 @@ import { ConfirmSubmitButton } from '../../confirm-submit-button'
 import { Avatar } from '../../avatar'
 import { StatusDot } from '../../status-dot'
 import { EditDealerButton } from './edit-dealer-button'
+import { SubmitLink } from './submit-link'
 import { ScrollFade } from '../../scroll-fade'
 import { formatMYR } from '@/lib/money'
 import { HeroCard } from '../../hero-card'
 import { formatDateLabel } from '@/lib/month'
+import { siteOrigin } from '@/lib/site-url'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — Vibe456',
@@ -37,6 +39,7 @@ type Dealer = {
   rate: number | null
   onboarded_by: string | null
   created_at: string | null
+  submit_token: string | null
 }
 
 type TxRow = {
@@ -206,8 +209,8 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     .from(isFinance ? 'dealers' : 'dealers_directory')
     .select(
       isFinance
-        ? 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, rate, onboarded_by, created_at'
-        : 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, onboarded_by, created_at'
+        ? 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, rate, onboarded_by, created_at, submit_token'
+        : 'id, company_name, company_no, contact_person, phone, whatsapp, email, address, region, notes, package, onboarded_by, created_at, submit_token'
     )
     .eq('id', id)
     .single()
@@ -668,6 +671,15 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               <RailField label="Onboarded On" value={typedDealer.created_at ? formatDateTime(typedDealer.created_at) : '—'} last />
             </div>
           </div>
+
+          {typedDealer.submit_token && (
+            <SubmitLink
+              origin={await siteOrigin()}
+              token={typedDealer.submit_token}
+              companyName={typedDealer.company_name}
+              whatsapp={typedDealer.whatsapp ?? typedDealer.phone}
+            />
+          )}
 
           {typedDealer.notes && (
             <div className="app-card">

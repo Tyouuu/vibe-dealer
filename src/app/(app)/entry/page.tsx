@@ -13,12 +13,12 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ error?: string; dealer?: string }>
+  searchParams: Promise<{ error?: string; dealer?: string; request?: string }>
 }
 
 export default async function EntryPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error, dealer } = await searchParams
+  const { error, dealer, request } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="enter transactions" />
@@ -44,6 +44,38 @@ export default async function EntryPage({ searchParams }: PageProps) {
   // Sold to, not transacted with. This loop used to keep the first row of any
   // type per dealer, which let a correction be remembered as the last sale —
   // see lib/last-sale.ts for what that did to the form.
+  // Opened from /requests. Only a still-pending one is honoured: coming back
+  // to a bookmarked ?request= after it was accepted or turned down must not
+  // re-offer it, or the same claim gets recorded twice.
+  const pendingRequest = request
+    ? (
+        await supabase
+          .from('topup_requests')
+          .select('id, dealer_id, type, money_rm, package, note, created_at, dealers(company_name)')
+          .eq('id', request)
+          .eq('status', 'pending')
+          .maybeSingle()
+      ).data
+    : null
+
+  const fromRequest = pendingRequest
+    ? {
+        id: pendingRequest.id as string,
+        dealerName: (pendingRequest.dealers as unknown as { company_name: string } | null)?.company_name ?? 'This dealer',
+        type: pendingRequest.type as 'topup' | 'package',
+        money_rm: pendingRequest.money_rm == null ? null : Number(pendingRequest.money_rm),
+        package: pendingRequest.package as 'A' | 'B' | 'C' | null,
+        note: (pendingRequest.note as string | null) ?? null,
+        submittedAt: new Date(pendingRequest.created_at as string).toLocaleString('en-GB', {
+          timeZone: 'Asia/Kuala_Lumpur',
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      }
+    : undefined
+
   const dealerNameById = new Map((dealers ?? []).map((d) => [d.id, d.company_name]))
   const { byDealer: lastTxByDealer, recentIds: recentDealerIds } = buildLastSales(recentTxRows ?? [])
   const recentDealers = recentDealerIds
@@ -66,7 +98,8 @@ export default async function EntryPage({ searchParams }: PageProps) {
       {error && <div className="alert alert-bad">{error}</div>}
       <EntryForm
         dealers={dealers ?? []}
-        initialDealerId={dealer}
+        initialDealerId={fromRequest ? (pendingRequest?.dealer_id as string) : dealer}
+        fromRequest={fromRequest}
         recentDealers={recentDealers}
         lastTxByDealer={lastTxByDealer}
         availableBalance={balance.available}

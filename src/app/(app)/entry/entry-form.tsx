@@ -42,6 +42,7 @@ export function EntryForm({
   lastTxByDealer = {},
   availableBalance,
   today,
+  fromRequest,
 }: {
   dealers: DealerOption[]
   initialDealerId?: string
@@ -49,6 +50,22 @@ export function EntryForm({
   lastTxByDealer?: Record<string, LastTxInfo>
   availableBalance: number
   today: string
+  /**
+   * Set when this form was opened from a dealer's own submitted request
+   * (0042). It only supplies starting values — every check below still runs,
+   * the amount is still editable, and nothing is recorded until this form is
+   * submitted the same way it always is. What the dealer asked for is a
+   * claim, not an instruction.
+   */
+  fromRequest?: {
+    id: string
+    dealerName: string
+    type: 'topup' | 'package'
+    money_rm: number | null
+    package: PackageCode | null
+    note: string | null
+    submittedAt: string
+  }
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   // Generated once per form mount, sent with every submit attempt — a
@@ -65,9 +82,9 @@ export function EntryForm({
   // WhatsApp/bank transfer, receipt only gets keyed in once someone's caught
   // up on the backlog).
   const [txDate, setTxDate] = useState(today)
-  const [type, setType] = useState<'topup' | 'package'>('topup')
-  const [pkg, setPkg] = useState<PackageCode>('A')
-  const [moneyCollected, setMoneyCollected] = useState('')
+  const [type, setType] = useState<'topup' | 'package'>(fromRequest?.type ?? 'topup')
+  const [pkg, setPkg] = useState<PackageCode>(fromRequest?.package ?? 'A')
+  const [moneyCollected, setMoneyCollected] = useState(fromRequest?.money_rm != null ? String(fromRequest.money_rm) : '')
   const [pointsOverride, setPointsOverride] = useState('')
   const [couponRm, setCouponRm] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
@@ -221,12 +238,33 @@ export function EntryForm({
   // amount fields compute nothing and the totals have nothing to total.
   return (
     <div className="flex w-full flex-col gap-5">
+      {/* Above the card, not inside it: this is context for the whole form,
+          and it is the one thing on screen that did not come from the person
+          filling it in. Their words are quoted rather than merged into the
+          note field, because "what the dealer said" and "what we recorded"
+          have to stay tellable apart. */}
+      {fromRequest && (
+        <div className="app-card border-l-[3px] border-l-brass p-5">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-paper-dim">From the dealer&apos;s own link</p>
+          <p className="mt-1.5 text-[15px] font-semibold text-paper">
+            {fromRequest.dealerName} asked for{' '}
+            {fromRequest.type === 'topup' ? `a top-up of RM${fromRequest.money_rm?.toLocaleString()}` : `Package ${fromRequest.package}`}
+            <span className="font-normal text-paper-dim"> · {fromRequest.submittedAt}</span>
+          </p>
+          {fromRequest.note && <p className="mt-2 text-[13px] leading-relaxed text-paper-dim">&ldquo;{fromRequest.note}&rdquo;</p>}
+          <p className="mt-2.5 text-[12px] text-paper-dim">
+            Check the payment before you save. Nothing is recorded, and the dealer is told nothing, until you submit this form.
+          </p>
+        </div>
+      )}
+
       <div className="app-card">
 
         {error && <div className="alert alert-bad">{error}</div>}
 
         <form ref={formRef} id="entry-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
+          {fromRequest && <input type="hidden" name="request_id" value={fromRequest.id} />}
           {/* The Amount half of this form has always announced itself; the half
               above it did not, so the page opened on unlabelled fields and then
               acquired a section heading partway down. Onboard Dealer and Log SIM

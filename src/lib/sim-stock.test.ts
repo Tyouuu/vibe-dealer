@@ -2,9 +2,39 @@ import { describe, expect, it } from 'vitest'
 import {
   PACKAGE_SIM_CARDS,
   SIM_MARGIN_RM,
+  cardEarningsRm,
   cardsOwedByDealer,
   packageCardEconomics,
 } from './sim-stock'
+
+describe('cardEarningsRm', () => {
+  it('is RM1.50 a card — the figure the dealers list now shows per dealer', () => {
+    expect(cardEarningsRm(20)).toBe(30)
+    expect(cardEarningsRm(40)).toBe(60)
+    expect(cardEarningsRm(100)).toBe(150)
+  })
+
+  it('is zero for a dealer who has bought no package', () => {
+    expect(cardEarningsRm(0)).toBe(0)
+  })
+
+  it('holds the whole Northern event: 10,480 cards is RM15,720', () => {
+    // The corrected total. An earlier figure of 11,480 / RM17,220 counted an
+    // unattributable RM12,700 row as ten Package Cs — see the note in
+    // sim-stock.ts. This is the number the business should recognise.
+    expect(cardEarningsRm(10_480)).toBe(15_720)
+  })
+
+  it('stays exact on a count that would give floating-point dust', () => {
+    // 0.1 + 0.2 arithmetic reaches this table through nothing today, since
+    // every price is a clean multiple of 0.5 — but a figure someone
+    // reconciles against a bank statement should not start drifting the day
+    // one of them stops being.
+    expect(cardEarningsRm(3)).toBe(4.5)
+    expect(cardEarningsRm(7)).toBe(10.5)
+    expect(Number.isInteger(cardEarningsRm(1234) * 100)).toBe(true)
+  })
+})
 
 describe('packageCardEconomics', () => {
   it('gives the three figures the owner quoted for one of each package', () => {

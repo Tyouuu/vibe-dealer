@@ -25,8 +25,24 @@ export function FlagButton({ transactionId }: { transactionId: string }) {
 
   return (
     <div className="relative inline-block" ref={ref} onKeyDown={(e) => e.key === 'Escape' && closePanel()}>
-      <button ref={triggerRef} type="button" className="btn-clay" onClick={() => setOpen((o) => !o)}>
-        Flag ✕
+      {/* Quiet, and no ✕.
+          It was a filled clay button reading "Flag ✕", which gave it the same
+          visual weight as Verify beside it — the routine action and the
+          irreversible one presented as two equal choices — and put a third
+          colour family in a cell that already had a status dot and a bordered
+          button. Flag is rare; it reads as rare now, and the clay only appears
+          on hover, once you are actually reaching for it.
+
+          Still always visible rather than revealed on hover: an action nobody
+          can find is worse than one that is merely quiet, and on a touch
+          screen there is no hover to reveal it with. */}
+      <button
+        ref={triggerRef}
+        type="button"
+        className="btn-ghost text-paper-dim hover:border-clay/40 hover:text-clay-bright"
+        onClick={() => setOpen((o) => !o)}
+      >
+        Flag
       </button>
       {open && (
         <div className="dropdown-panel w-72 p-3">

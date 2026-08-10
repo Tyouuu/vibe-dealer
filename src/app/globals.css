@@ -686,6 +686,102 @@ body {
     @apply border-b border-ink-800 last:border-none hover:bg-ink-850/70;
   }
 
+  /* ------------------------------------------------------------ the grid
+     The window the two big tables live in — see data-grid.tsx for why a
+     height is what makes a sticky header and a horizontal scrollbar able to
+     coexist, and lib/table-columns.ts for what fills it.
+
+     Below md this is the plain sideways-scrolling table it always was: a
+     scroll container nested in the page scroller is a fight for the thumb on
+     a phone, and there is no scrollbar to reach there anyway. */
+  .grid-viewport {
+    @apply overflow-x-auto rounded-xl;
+  }
+  @media (min-width: 768px) {
+    .grid-viewport {
+      /* A starting value only. data-grid.tsx measures where this box actually
+         begins and overwrites max-height, because the two pages using it carry
+         different amounts of chrome above and a single guess put the scrollbar
+         back below the fold on the taller one. This is what renders before
+         that runs. */
+      max-height: min(calc(100vh - 380px), 760px);
+      min-height: 320px;
+      @apply overflow-auto;
+    }
+  }
+
+  /* border-collapse: collapse drops the borders off sticky cells — the cell
+     sticks, its border does not travel with it, and the frozen column ends up
+     with hairlines showing through from the rows passing underneath. Separate
+     borders, painted on the cells themselves. */
+  .grid-table {
+    @apply border-separate;
+    border-spacing: 0;
+    /* Width comes from the header cells adding up, so switching a column off
+       genuinely narrows the table — but never below the window, or a table
+       with few columns would sit in a short stub with dead space beside it. */
+    width: auto;
+    min-width: 100%;
+  }
+  /* Opaque, so the columns scrolling underneath a frozen one do not show
+     through it. Every cell, not just the frozen ones: a transparent cell over
+     a hover-tinted row would flicker as it passed. */
+  .grid-table .th,
+  .grid-table .td {
+    @apply bg-ink-900;
+  }
+  .grid-table .tr-row {
+    @apply border-b-0;
+  }
+  .grid-table .tr-row > .td {
+    @apply border-b border-ink-800;
+  }
+  .grid-table .tr-row:last-child > .td {
+    @apply border-b-0;
+  }
+  /* Full opacity, unlike .tr-row's /70 — a translucent hover over an opaque
+     cell would sit behind it and never appear. */
+  .grid-table .tr-row:hover > .td {
+    @apply bg-ink-850;
+  }
+
+  /* The frozen columns.
+     .pin-name is the anchor — the dealer or company the row is about — and it
+     is what casts the shadow. On /dealers it is the first cell, so it sits
+     flush; on /records a 44px checkbox column is pinned to its left, and
+     .pin-after-select moves it over by exactly that much. The offset is a
+     literal rather than a measurement because the header declares that 44px
+     itself, and two numbers that must agree are better one line apart than
+     one file apart. */
+  .grid-table .pin-start {
+    @apply sticky left-0 z-[2];
+  }
+  .grid-table .pin-name {
+    @apply sticky left-0 z-[2];
+  }
+  .grid-table .pin-name.pin-after-select {
+    left: 44px;
+  }
+  .grid-table .pin-end {
+    @apply sticky right-0 z-[2];
+  }
+  /* Above the body cells they cover, below the header they pass under. */
+  .grid-table thead .pin-start,
+  .grid-table thead .pin-name,
+  .grid-table thead .pin-end {
+    @apply z-[4];
+  }
+
+  /* A shadow, not a border — "a layer, not a seam" — and only once the edge
+     is genuinely covering something. A permanent line down a table that fits
+     is an affordance for scrolling that isn't there. */
+  .grid-viewport.is-scrolled .pin-name {
+    box-shadow: 8px 0 8px -8px rgb(20 39 61 / 0.22);
+  }
+  .grid-viewport.has-more-right .pin-end {
+    box-shadow: -8px 0 8px -8px rgb(20 39 61 / 0.22);
+  }
+
   .figure {
     @apply font-mono tracking-tight tabular-nums;
   }
@@ -956,8 +1052,13 @@ body {
       animation: none;
     }
   }
+  /* text-paper, not the state's hue. The colour is the dot's job; giving the
+     label the same hue puts the words carrying the meaning in the weakest
+     contrast available, and makes each state a differently coloured shape to
+     re-read rather than one small mark to compare. Same call, and the same
+     reasoning, as the .pill rewrite above. */
   .status-dot-row {
-    @apply inline-flex items-center gap-2 text-xs font-semibold;
+    @apply inline-flex items-center gap-2 text-xs font-medium text-paper;
   }
 
   /* Removed: .tr-warn / .tr-urgent / .tr-info / .tr-slate, the 3px inset

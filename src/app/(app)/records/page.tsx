@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
@@ -19,7 +20,9 @@ import { Avatar } from '../avatar'
 import { StatusDot } from '../status-dot'
 import { Listbox } from '../listbox'
 import { MonthPicker } from '../month-picker'
-import { ScrollFade } from '../scroll-fade'
+import { DataGrid } from '../data-grid'
+import { ColumnsMenu } from '../columns-menu'
+import { TABLE_COLUMNS, columnCookieName, parseHiddenColumns } from '@/lib/table-columns'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
@@ -134,6 +137,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view transactions" />
   }
+
+  // Which columns this reader keeps. Read during the render, so the first
+  // HTML already has the hidden ones hidden — see lib/table-columns.ts.
+  const hiddenColumns = parseHiddenColumns('records', (await cookies()).get(columnCookieName('records'))?.value)
 
   const supabase = await createClient()
 
@@ -462,9 +469,17 @@ export default async function RecordsPage({ searchParams }: PageProps) {
             Oldest first
           </Link>
         </div>
-        <a href={exportHref} className="btn-ghost ml-auto">
-          ⤓ Export
-        </a>
+        <div className="ml-auto flex items-center gap-2">
+          <ColumnsMenu
+            table="records"
+            columns={TABLE_COLUMNS.records}
+            hidden={[...hiddenColumns]}
+            alwaysOn="Dealer, Status and Action"
+          />
+          <a href={exportHref} className="btn-ghost">
+            ⤓ Export
+          </a>
+        </div>
       </div>
 
       <FilterForm className="index-filterbar-stacked">
@@ -607,49 +622,34 @@ export default async function RecordsPage({ searchParams }: PageProps) {
       {pageRows.length ? (
         <>
         <BulkVerifyBar />
-        <ScrollFade label="Transactions">
-          {/* table-fixed with percentage widths. This table had no colgroup
-              at all, so auto layout sized every column from whatever its
-              longest cell happened to be — the columns shifted as you paged
-              and the dealer name wrapped to two and three lines, which is
-              what gave the table three different row heights (61/59/74,
-              measured). Ten columns, percentages summing to 100. */}
-          <table className="w-full min-w-[1100px] table-fixed border-collapse text-sm">
-            {/* Dealer 19% -> 24%. At 1440 the company name was truncating
-                mid-word ("ZZZ TEST - Kampar De…") while Rate, which has been
-                6% on every row since migration 0010 flattened the package
-                rates, and Delivery, which is an em dash on every top-up and
-                adjustment, each held more width than they can use. Nothing is
-                removed — both still record something real about the row — the
-                five points simply go to the column you actually read the row
-                by. Date keeps 9%: "28 Jul 2026" needs more room than the ISO
-                string it replaced. */}
-            <colgroup>
-              <col className="w-[3%]" />
-              <col className="w-[8%]" />
-              <col className="w-[24%]" />
-              <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[4%]" />
-              <col className="w-[9%]" />
-              <col className="w-[7%]" />
-              <col className="w-[9%]" />
-              <col className="w-[7%]" />
-            </colgroup>
+        <DataGrid id="records" label="Transactions">
+          {/* No colgroup. A <col> does not disappear when its cells are
+              hidden, so a hidden column would leave its width behind and every
+              column after it would sit one place to the left. table-fixed
+              takes the widths off the header cells instead, and hiding a
+              header genuinely removes the column. Widths in px, not %,
+              because .pin-name has to know exactly where the select column
+              ends (44px) to sit flush against it. */}
+          <table className="grid-table table-fixed text-sm">
             <thead>
               <tr>
-                <th className="th"><span className="sr-only">Select</span></th>
-                <th className="th">Date</th>
-                <th className="th">Dealer</th>
-                <th className="th">Type</th>
-                <th className="th text-right">In (RM)</th>
-                <th className="th text-right">Out (pts)</th>
-                <th className="th text-right">Rate</th>
-                <th className="th text-right">Your 2%</th>
-                <th className="th">Delivery</th>
-                <th className="th">Status</th>
-                <th className="th">Action</th>
+                <th className="th pin-start" style={{ width: 44 }}>
+                  <span className="sr-only">Select</span>
+                </th>
+                {/* Dealer first, ahead of Date. A frozen column has to be at
+                    the edge, and the thing you read a row by is who it is
+                    for — scrolled right, the old first column left the screen
+                    and every figure lost its subject. */}
+                <th className="th pin-name pin-after-select" style={{ width: 208 }}>Dealer</th>
+                <th className="th" data-c="date" style={{ width: 100 }}>Date</th>
+                <th className="th" data-c="type" style={{ width: 132 }}>Type</th>
+                <th className="th text-right" data-c="in" style={{ width: 108 }}>In (RM)</th>
+                <th className="th text-right" data-c="out" style={{ width: 92 }}>Out (pts)</th>
+                <th className="th text-right" data-c="rate" style={{ width: 64 }}>Rate</th>
+                <th className="th text-right" data-c="commission" style={{ width: 100 }}>Your 2%</th>
+                <th className="th" data-c="delivery" style={{ width: 106 }}>Delivery</th>
+                <th className="th" style={{ width: 120 }}>Status</th>
+                <th className="th pin-end text-right" style={{ width: 124 }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -666,9 +666,8 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
                   <tr key={tx.id} className="tr-row relative h-16">
-                    <td className="td">{tx.status === 'pending' && <RowSelect id={tx.id} />}</td>
-                    <td className="td whitespace-nowrap text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
-                    <td className="td">
+                    <td className="td pin-start">{tx.status === 'pending' && <RowSelect id={tx.id} />}</td>
+                    <td className="td pin-name pin-after-select">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar name={dealerName ?? '?'} size={24} />
                         <a
@@ -679,7 +678,8 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </a>
                       </div>
                     </td>
-                    <td className="td text-paper-dim">
+                    <td className="td whitespace-nowrap text-paper-dim" data-c="date">{formatDateLabel(tx.tx_date)}</td>
+                    <td className="td text-paper-dim" data-c="type">
                       <span className="whitespace-nowrap">
                         {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
                       </span>
@@ -721,15 +721,24 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </a>
                       )}
                     </td>
-                    <td className="td figure-money text-right">{formatMYR(tx.money_rm)}</td>
-                    <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                    <td className="td figure text-right text-paper-dim">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
-                    <td className="td figure-money text-right">{formatMYR(tx.commission_rm)}</td>
-                    <td className="td">
+                    <td className="td figure-money text-right" data-c="in">{formatMYR(tx.money_rm)}</td>
+                    <td className="td figure-points text-right" data-c="out">{tx.points.toLocaleString()}</td>
+                    <td className="td figure text-right text-paper-dim" data-c="rate">{tx.rate != null ? `${tx.rate}%` : '—'}</td>
+                    <td className="td figure-money text-right" data-c="commission">{formatMYR(tx.commission_rm)}</td>
+                    {/* Words, no dot. A status dot beside the Status column's
+                        own status dot is two identical marks side by side
+                        meaning different things, and it is most of what reads
+                        as clutter on a pending row. Delivery is not the state
+                        you act on from this page — /delivery is — so it drops to
+                        plain text and keeps only the overdue count, which is
+                        the part of it that is ever urgent. */}
+                    <td className="td" data-c="delivery">
                       {tx.delivery_status === 'sent' ? (
-                        <StatusDot color="jade-bright" label="Sent" />
+                        <span className="text-[12px] text-paper-dim">Sent</span>
                       ) : tx.delivery_status === 'pending' ? (
-                        <StatusDot color="brass-bright" label={deliveryWarn ? `Pending · ${deliveryDays}d` : 'Pending'} pulse />
+                        <span className={`text-[12px] ${deliveryWarn ? 'font-semibold text-brass-bright' : 'text-paper-dim'}`}>
+                          {deliveryWarn ? `Waiting ${deliveryDays}d` : 'Waiting'}
+                        </span>
                       ) : (
                         <span className="text-paper-dim/50">—</span>
                       )}
@@ -742,32 +751,33 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </div>
                       )}
                     </td>
-                    {/* relative z-10 — the dealer-name link's stretched ::after
-                        (after:absolute after:inset-0) covers the whole row for
-                        click-to-open-dealer, and without their own stacking
-                        context these buttons sit underneath it: a click aimed
-                        at Verify/Flag/Adjust would hit the overlay instead and
-                        navigate to the dealer page rather than firing the
-                        button, since plain static-positioned elements paint
-                        below an absolutely-positioned sibling by default. */}
-                    <td className="td relative z-10">
-                      {tx.status === 'pending' ? (
-                        <div className="flex items-center gap-1.5">
-                          <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
-                          <FlagButton transactionId={tx.id} />
-                        </div>
-                      ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
-                        <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
-                      ) : (
-                        <span className="text-paper-dim/50">—</span>
-                      )}
+                    {/* .pin-end carries z-[2], which is what lifts these above
+                        the dealer-name link's stretched ::after — that overlay
+                        covers the whole row for click-to-open-dealer, and a
+                        statically-positioned button underneath it would send a
+                        click aimed at Verify to the dealer page instead. This
+                        cell used to need `relative z-10` for that; being
+                        sticky now does the same job. */}
+                    <td className="td pin-end">
+                      <div className="flex items-center justify-end gap-1">
+                        {tx.status === 'pending' ? (
+                          <>
+                            <VerifyButton transactionId={tx.id} isSelfRecorded={tx.recorded_by === user.id} isAdjustment={tx.type === 'adjustment'} />
+                            <FlagButton transactionId={tx.id} />
+                          </>
+                        ) : tx.status === 'verified' && tx.type !== 'adjustment' ? (
+                          <AdjustButton transactionId={tx.id} currentPoints={tx.points} currentMoneyRm={tx.money_rm} rate={tx.rate} />
+                        ) : (
+                          <span className="text-paper-dim/50">—</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-        </ScrollFade>
+        </DataGrid>
         </>
       ) : hasFilter ? (
         <EmptyState

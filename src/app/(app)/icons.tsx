@@ -213,6 +213,19 @@ export function IconPaperclip({ className = th }: IconProps) {
   )
 }
 
+// A SIM card, for the one figure on a dealer row that is the master dealer's
+// own margin rather than the dealer's side of the deal. A rounded rectangle
+// with the notched corner every SIM has — not a coin or a banknote, which
+// would say "money" without saying which money.
+export function IconCard({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 3h10l4 4v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <rect x="8" y="11" width="8" height="7" rx="1" />
+    </svg>
+  )
+}
+
 // Sending a dealer their own request link. A paper plane rather than a chain
 // link: what the button does is send, and the thing being sent happening to be
 // a URL is a detail. Distinct from IconPaperclip, which already means "there

@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend, IconCard } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
-import { ScrollFade } from '../scroll-fade'
+import { DataGrid } from '../data-grid'
+import { formatMYR } from '@/lib/money'
 import { toggleDealerPin } from './actions'
 
 export type DealerRow = {
@@ -19,6 +20,10 @@ export type DealerRow = {
   package: 'A' | 'B' | 'C' | null
   rate: number | null
   submitToken: string | null
+  /** RM1.50 a card on everything their packages entitled them to. */
+  cardEarningsRm: number
+  /** Entitled but not yet handed over. Stock the business still owes them. */
+  cardsOwed: number
   totalPoints: number
   rank: number | null
   isInactive: boolean
@@ -159,7 +164,7 @@ export function DealersTable({
     : [['', dealers] as [string, DealerRow[]]]
 
   return (
-    <ScrollFade label="Dealer directory">
+    <DataGrid id="dealers" label="Dealer directory">
       {groups.map(([region, rows]) => {
         // A <details> with no <summary> is not an empty disclosure — the
         // browser supplies its own default label, and "Details" was rendering
@@ -181,66 +186,63 @@ export function DealersTable({
               one with long ones, and the columns visibly stop lining up as
               you scroll past a group boundary. Fixed widths shared by every
               group is what actually keeps them aligned. */}
-          <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
-            {/* Percentages, not fixed widths with one open column. Company
-                was the bare <col>, so it absorbed all the table's slack —
-                ~3.9x the median column, measured — which put a long empty
-                run between the company name and the figures on every row,
-                while the fixed columns stayed cramped. Same bug fixed on
-                /audit.
-
-                Widening Company to 34% to stop it truncating on a phone was
-                tried and reverted: below ~1140px the table sits at its own
-                min-width so it helped there, but above it the same 34%
-                pooled slack again — 3.1x the median column at 1440, the
-                exact bug this colgroup exists to fix. Eight columns do not
-                fit a phone at any split; the answer was not a better split
-                but title attributes on the three cells that clip, so the
-                full value is a hover or a long-press away. Abbreviated is
-                fine. Unrecoverable is not. */}
-            <colgroup>
-              {showRanking && <col className="w-[6%]" />}
-              <col className="w-[26%]" />
-              <col className="w-[13%]" />
-              <col className="w-[15%]" />
-              <col className="w-[16%]" />
-              <col className="w-[9%]" />
-              {showRate && <col className="w-[7%]" />}
-              {showRanking && <col className="w-28" />}
-            </colgroup>
+          {/* Widths on the header cells, not in a colgroup. A <col> keeps its
+              width when its cells are hidden, so a column switched off in the
+              Columns menu would leave a gap behind and shift everything after
+              it — see lib/table-columns.ts. Every group renders its own
+              <table>, and they stay aligned because they all declare the same
+              numbers. */}
+          <table className="grid-table table-fixed text-sm">
             <thead>
               <tr>
-                {showRanking && <th className="th w-12">Rank</th>}
-                <th className="th">
+                {/* Company is the frozen column, so it has to be the first
+                    one. Rank used to sit to its left; it is now a badge inside
+                    this cell, which is where it belonged anyway — a rank is
+                    something a dealer has, not a fact of its own. */}
+                <th className="th pin-name" style={{ width: 264 }}>
                   <span className="inline-flex items-center gap-1.5">
                     <IconBuilding /> Company
                   </span>
                 </th>
-                <th className="th">
+                <th className="th" data-c="region" style={{ width: 120 }}>
                   <span className="inline-flex items-center gap-1.5">
                     <IconMapPin /> Region
                   </span>
                 </th>
-                <th className="th">
+                <th className="th" data-c="phone" style={{ width: 144 }}>
                   <span className="inline-flex items-center gap-1.5">
                     <IconPhone /> Phone
                   </span>
                 </th>
-                <th className="th">
+                <th className="th" data-c="contact" style={{ width: 156 }}>
                   <span className="inline-flex items-center gap-1.5">
                     <IconUsers className="h-3.5 w-3.5" /> Contact
                   </span>
                 </th>
-                <th className="th">
+                <th className="th" data-c="package" style={{ width: 92 }}>
                   <span className="inline-flex items-center gap-1.5">
                     <IconTag /> Package
                   </span>
                 </th>
-                {showRate && <th className="th">Rate</th>}
+                {showRate && (
+                  <th className="th" data-c="rate" style={{ width: 68 }}>
+                    Rate
+                  </th>
+                )}
                 {showRanking && (
-                  <th className="th text-right">
+                  <th className="th text-right" data-c="topup" style={{ width: 118 }}>
                     <span className="inline-flex items-center gap-1.5">
                       <IconTrendUp className="h-3.5 w-3.5" /> Top-up
+                    </span>
+                  </th>
+                )}
+                {/* The owner's own money. Everything else on this row is the
+                    dealer's side of the relationship — what they bought, at
+                    what rate — and none of it is what the business keeps. */}
+                {showRate && (
+                  <th className="th text-right" data-c="cards" style={{ width: 132 }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <IconCard className="h-3.5 w-3.5" /> Card earnings
                     </span>
                   </th>
                 )}
@@ -249,14 +251,14 @@ export function DealersTable({
             <tbody>
               {rows.map((d) => (
                 <tr key={d.id} className="tr-row group relative h-16">
-                  {showRanking && (
-                    <td className="td">
-                      <RankBadge rank={d.rank} />
-                    </td>
-                  )}
-                  <td className="td">
+                  <td className="td pin-name">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <PinButton dealer={d} />
+                      {showRanking && (
+                        <span data-c="rank" className="shrink-0">
+                          <RankBadge rank={d.rank} />
+                        </span>
+                      )}
                       <Avatar name={d.company_name} />
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">
@@ -276,36 +278,80 @@ export function DealersTable({
                             </span>
                           )}
                         </div>
-                        {d.company_no && <div className="text-[12px] text-paper-dim">{d.company_no}</div>}
+                        {d.company_no && <div className="truncate text-[12px] text-paper-dim">{d.company_no}</div>}
                       </div>
-                      {/* Right edge of the widest column, ml-auto, so it lands
-                          in the same place on every row instead of trailing a
-                          company name of unpredictable length. */}
+                      {/* Right edge of the frozen column, so it lands in the
+                          same place on every row and stays reachable however
+                          far the table has been scrolled. */}
                       <span className="ml-auto pl-1">
                         <SendLinkButton dealer={d} origin={origin} />
                       </span>
                     </div>
                   </td>
-                  {/* title on every cell that can truncate. Eight columns do
-                      not fit a phone, and something has to clip — but clipped
-                      with no way to see the rest is information gone, not
-                      information abbreviated. "Tanjong Piandang" was arriving
-                      as "Tanjong Pian…" and "AZLINA BINTI BAHARUDDIN" lost
-                      half its length, with nothing to recover it. */}
-                  <td className="td truncate text-paper-dim" title={d.region ?? undefined}>{d.region ?? '—'}</td>
-                  <td className="td figure text-paper-dim">{d.phone ?? '—'}</td>
-                  <td className="td truncate text-paper-dim" title={d.contact_person ?? undefined}>{d.contact_person ?? '—'}</td>
-                  <td className="td">
+                  {/* title on every cell that can truncate. Clipped with no way
+                      to see the rest is information gone, not information
+                      abbreviated — "Tanjong Piandang" was arriving as "Tanjong
+                      Pian…" with nothing to recover it. */}
+                  <td className="td truncate text-paper-dim" data-c="region" title={d.region ?? undefined}>
+                    {d.region ?? '—'}
+                  </td>
+                  {/* nowrap, and 144px rather than 128. A mobile number is
+                      twelve characters — 012-514 7788 — against eleven for a
+                      landline, and in mono at 14px that one character was the
+                      difference between fitting and wrapping to a second line.
+                      Thirteen of the demo's thirty-four dealers carry mobiles,
+                      which is exactly how many rows came out 81px tall against
+                      64px for the rest. A number is never worth wrapping. */}
+                  <td className="td figure whitespace-nowrap text-paper-dim" data-c="phone">{d.phone ?? '—'}</td>
+                  <td className="td truncate text-paper-dim" data-c="contact" title={d.contact_person ?? undefined}>
+                    {d.contact_person ?? '—'}
+                  </td>
+                  <td className="td" data-c="package">
                     {d.package ? (
                       <span className={`pill ${PACKAGE_PILL_CLASS[d.package]}`}>{d.package}</span>
                     ) : (
                       <span className="text-paper-dim/50">—</span>
                     )}
                   </td>
-                  {showRate && <td className="td figure font-semibold text-paper">{d.rate != null ? `${d.rate}%` : '—'}</td>}
+                  {showRate && (
+                    <td className="td figure whitespace-nowrap font-semibold text-paper" data-c="rate">
+                      {d.rate != null ? `${d.rate}%` : '—'}
+                    </td>
+                  )}
                   {showRanking && (
-                    <td className="td figure-points relative text-right">
+                    <td className="td figure-points whitespace-nowrap text-right" data-c="topup">
                       {d.totalPoints > 0 ? `${d.totalPoints.toLocaleString()} pts` : <span className="text-paper-dim/50">—</span>}
+                    </td>
+                  )}
+                  {showRate && (
+                    <td className="td whitespace-nowrap text-right" data-c="cards">
+                      {/* One line, always. A second line under the figure was
+                          tried and reverted: it appeared only on the rows with
+                          cards outstanding, which made those rows 81px against
+                          64px everywhere else — the uneven-row-heights
+                          complaint this project has already fixed twice.
+
+                          So the shortfall rides on the figure itself, in the
+                          same brass-and-semibold the delivery column uses for
+                          an overdue shipment, with the count in the title. The
+                          amount stays fully readable either way, so the colour
+                          is a second signal rather than the only one; the full
+                          entitled/sent/owed split lives on the dealer's own
+                          page and on /sim-stock, which both have room for it. */}
+                      {d.cardEarningsRm > 0 ? (
+                        <span
+                          className={`figure-money ${d.cardsOwed > 0 ? 'text-brass-bright' : ''}`}
+                          title={
+                            d.cardsOwed > 0
+                              ? `${d.cardsOwed} of these cards have not been handed over yet`
+                              : 'RM1.50 a card on everything their packages entitled them to'
+                          }
+                        >
+                          {formatMYR(d.cardEarningsRm)}
+                        </span>
+                      ) : (
+                        <span className="text-paper-dim/50">—</span>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -315,6 +361,6 @@ export function DealersTable({
         </Wrapper>
         )
       })}
-    </ScrollFade>
+    </DataGrid>
   )
 }

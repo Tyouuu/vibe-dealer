@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
@@ -14,6 +15,9 @@ import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 import { siteOrigin } from '@/lib/site-url'
+import { ColumnsMenu } from '../columns-menu'
+import { TABLE_COLUMNS, columnCookieName, parseHiddenColumns } from '@/lib/table-columns'
+import { cardEarningsRm, cardsOwedByDealer } from '@/lib/sim-stock'
 
 export const metadata: Metadata = {
   title: 'Dealers — Vibe456',
@@ -76,6 +80,20 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // than actually failing, so skip the query and the columns entirely.
   const showRanking = user.role !== 'cs'
 
+  // Which columns this reader keeps, read during the render so the first HTML
+  // already has the hidden ones hidden — see lib/table-columns.ts.
+  const hiddenColumns = parseHiddenColumns('dealers', (await cookies()).get(columnCookieName('dealers'))?.value)
+
+  // cs never sees a rate, a ranking or the card margin — those cells are not
+  // rendered for them at all (0015 keeps rate out of dealers_directory, and
+  // the card figures need `transactions`, which cs cannot read). Offering to
+  // switch one on would be a control that does nothing, and a count of "5/8"
+  // that can never reach 8.
+  const visibleColumnSpecs = TABLE_COLUMNS.dealers.filter(
+    (c) =>
+      (showRate || !['rate', 'cards'].includes(c.key)) && (showRanking || !['rank', 'topup'].includes(c.key))
+  )
+
   const supabase = await createClient()
 
   // cs has no SELECT on the dealers base table (0015 — rate is a commission
@@ -106,7 +124,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     query = query.eq('region', region)
   }
 
-  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap, { data: pinRows }] =
+  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap, { data: pinRows }, { data: packageSaleRows }, { data: simOrderRows }] =
     await Promise.all([
       query,
       supabase.from('dealers_directory').select('region').not('region', 'is', null),
@@ -117,9 +135,26 @@ export default async function DealersPage({ searchParams }: PageProps) {
       // unfiltered view and quietly stop meaning anything everywhere else.
       // RLS (0039) already narrows this to the signed-in person's own rows.
       supabase.from('dealer_pins').select('dealer_id'),
+      // The card side of the business. Both are finance-only: cs has no SELECT
+      // on `transactions` or `sim_orders` at all, so asking as cs would come
+      // back empty and render a confident "RM 0.00" for every dealer — a wrong
+      // figure, not a hidden one. showRate is the same gate the rate column
+      // already uses, and card margin is the same kind of number.
+      showRate
+        ? supabase.from('transactions').select('dealer_id, package').eq('type', 'package').neq('status', 'flagged')
+        : Promise.resolve({ data: [] }),
+      showRate ? supabase.from('sim_orders').select('dealer_id, quantity') : Promise.resolve({ data: [] }),
     ])
 
   const pinnedIds = new Set((pinRows ?? []).map((p) => p.dealer_id as string))
+
+  // Entitled cards against delivered ones, the same reckoning /sim-stock and
+  // each dealer's own page already do — done once here so the list can carry
+  // the figure without asking per row.
+  const cards = cardsOwedByDealer(
+    (packageSaleRows as { dealer_id: string; package: string | null }[] | null) ?? [],
+    (simOrderRows as { dealer_id: string; quantity: number }[] | null) ?? []
+  ).byDealer
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
@@ -130,6 +165,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
       ...d,
       rate: showRate ? (d.rate ?? null) : null,
       submitToken: d.submit_token ?? null,
+      // Earned on what their packages entitled them to, not on what has gone
+      // out of the box. Which of the two is the real revenue depends on who
+      // pays Vibe for the cards, which is one of the open questions for the
+      // supplier — so the list shows the entitlement and names the gap beside
+      // it rather than picking an answer.
+      cardEarningsRm: cardEarningsRm(cards.get(d.id)?.entitled ?? 0),
+      cardsOwed: cards.get(d.id)?.owed ?? 0,
       totalPoints: ranking?.totalPoints ?? 0,
       rank: ranking?.rank ?? null,
       isInactive: activity?.isInactive ?? false,
@@ -321,6 +363,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
             </Link>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <ColumnsMenu
+              table="dealers"
+              columns={visibleColumnSpecs}
+              hidden={[...hiddenColumns]}
+              alwaysOn="Company"
+            />
             <a href={exportHref} className="btn-ghost">
               ⤓ Export
             </a>

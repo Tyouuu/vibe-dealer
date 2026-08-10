@@ -19,9 +19,14 @@ export const SIM_BOX_SIZE = 250
 // been keeping apart. A package is bought for its reload points, and the
 // points side is already modelled — but the cards that come with it are where
 // the master dealer's own money is. On the Northern launch event of
-// 2026-07-27/28 the dealers paid Vibe RM148,064 for packages, none of which
-// reached the master dealer; the 11,480 cards those packages entitled them to,
-// at RM1.50 a card, is the RM17,220 that did.
+// 2026-07-27/28 the dealers paid Vibe for packages, none of which reached the
+// master dealer; the 10,480 cards those packages entitled them to, at RM1.50 a
+// card, is the RM15,720 that did.
+//
+// Earlier notes here and in commit 44a102e say 11,480 cards / RM17,220. That
+// counted a RM12,700 line labelled "NORTHERN POINT" as 10 × Package C, and
+// that row has no company name at all — its "10" sits in the PIC Name column.
+// It cannot be attributed to a dealer, so its 1,000 cards are not counted.
 //
 // So every package sale carries a second figure that nothing in the app was
 // showing: how many cards go out of the box, and what is earned on them.
@@ -56,6 +61,20 @@ export function packageCardEconomics(pkg: PackageCode, quantity = 1): PackageCar
   const revenueRm = Math.round(cards * SIM_SELL_PRICE_RM * 100) / 100
   const costRm = Math.round(cards * SIM_UNIT_COST_RM * 100) / 100
   return { cards, revenueRm, costRm, marginRm: Math.round((revenueRm - costRm) * 100) / 100 }
+}
+
+/**
+ * What a number of cards is worth to the master dealer — RM1.50 each, the
+ * margin between what Vibe charges and what a dealer pays.
+ *
+ * This is the one figure in the business the owner earns directly. Packages
+ * are paid to Vibe and the points side belongs to them; the cards are his.
+ * It had no home in the app outside a single panel on a dealer's own page,
+ * which is why the question "where is the card money" had no answer on any
+ * list.
+ */
+export function cardEarningsRm(cards: number): number {
+  return Math.round(cards * SIM_MARGIN_RM * 100) / 100
 }
 
 /**

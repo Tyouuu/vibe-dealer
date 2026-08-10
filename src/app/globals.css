@@ -725,10 +725,25 @@ body {
   }
   /* Opaque, so the columns scrolling underneath a frozen one do not show
      through it. Every cell, not just the frozen ones: a transparent cell over
-     a hover-tinted row would flicker as it passed. */
+     a hover-tinted row would flicker as it passed.
+
+     The colour follows the surface the table is actually on rather than being
+     white. This shipped as bg-ink-900 and put a white panel back under both
+     big tables — the exact thing .index-surface exists to prevent, and a
+     decision the client had already made. Same mechanism as --fade-from
+     directly above: the default is the card, and a page that puts its table
+     straight on the canvas says so once. */
+  .grid-table {
+    --grid-surface: var(--color-ink-900);
+    --grid-hover: var(--color-ink-850);
+  }
+  .index-surface .grid-table,
+  .band-log .grid-table {
+    --grid-surface: var(--color-canvas);
+  }
   .grid-table .th,
   .grid-table .td {
-    @apply bg-ink-900;
+    background: var(--grid-surface);
   }
   .grid-table .tr-row {
     @apply border-b-0;
@@ -742,7 +757,7 @@ body {
   /* Full opacity, unlike .tr-row's /70 — a translucent hover over an opaque
      cell would sit behind it and never appear. */
   .grid-table .tr-row:hover > .td {
-    @apply bg-ink-850;
+    background: var(--grid-hover);
   }
 
   /* The frozen columns.

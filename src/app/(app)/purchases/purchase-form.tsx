@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { recordCreditPurchase } from './actions'
+import { ReceiptField } from '../receipt-field'
 import { CREDIT_PURCHASE_RATE } from '@/lib/packages'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
@@ -99,6 +100,14 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             </label>
             <input id="cp-note" name="note" type="text" className="field-input" />
           </div>
+        </div>
+
+        {/* The largest single amount this business moves, and until 0044 there
+            was nowhere to keep what it came from. A dealer sale has carried a
+            receipt since day one; the payment to Vibe carried a number and
+            nothing else. */}
+        <div className="mt-4">
+          <ReceiptField hint="Vibe Mobile's invoice, or the bank transfer slip. Image or PDF." />
         </div>
 
         </div>

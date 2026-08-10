@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isSimStockType, isPhysicalSimType } from '@/lib/sim-stock'
 import { friendlyDbError } from '@/lib/db-error'
 import { parseBusinessDate, todayInMalaysia } from '@/lib/month'
+import { uploadReceipt } from '@/lib/receipt-upload'
 
 // Two destinations, because the three actions below are reached from two
 // different pages. Both forms moved to /sim-stock/log when it became its own
@@ -39,12 +40,16 @@ export async function recordSimIntake(formData: FormData) {
   if (!Number.isFinite(costPerUnit) || costPerUnit < 0) failOnLog('Cost per unit must be zero or more.')
 
   const supabase = await createClient()
+  const receipt = await uploadReceipt(supabase, formData, 'sim-intakes')
+  if (receipt.error) failOnLog(receipt.error)
+
   const { error } = await supabase.from('sim_stock_intakes').insert({
     intake_date: intakeDate,
     sim_type: simType,
     quantity,
     cost_per_unit_rm: costPerUnit,
     note,
+    receipt_url: receipt.path,
     recorded_by: user.id,
   })
 

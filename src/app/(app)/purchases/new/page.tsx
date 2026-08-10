@@ -9,6 +9,7 @@ import { PageHeader } from '../../page-header'
 import { ScrollFade } from '../../scroll-fade'
 import { PurchaseForm } from '../purchase-form'
 import { formatMYR } from '@/lib/money'
+import { IconPaperclip } from '../../icons'
 
 export const metadata: Metadata = {
   title: 'Log Purchase — Vibe456',
@@ -20,6 +21,7 @@ type PurchaseRow = {
   money_rm: number | string
   points: number | string
   note: string | null
+  receipt_url: string | null
   recorded_by: string
 }
 
@@ -49,7 +51,7 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
     // The form prints where this purchase lands the balance, so it needs the
     // one it is landing on — the same aggregate the sale hard-block uses.
     getAvailablePointsBalance(supabase),
-    supabase.from('credit_purchases').select('id, purchase_date, money_rm, points, note, recorded_by').order('purchase_date', { ascending: false }),
+    supabase.from('credit_purchases').select('id, purchase_date, money_rm, points, note, receipt_url, recorded_by').order('purchase_date', { ascending: false }),
     supabase.from('staff_directory').select('id, display_name'),
   ])
 
@@ -107,6 +109,7 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
                   <th className="th text-right">Points</th>
                   <th className="th text-right">Cost a point</th>
                   <th className="th">Note</th>
+                  <th className="th">Invoice</th>
                   <th className="th">Recorded by</th>
                 </tr>
               </thead>
@@ -126,6 +129,24 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
                       </td>
                       <td className="td truncate text-paper-dim" title={p.note ?? undefined}>
                         {p.note ?? '—'}
+                      </td>
+                      {/* The document, not just the fact of it. A receipt that
+                          can be stored and not read back is filing, not
+                          evidence. */}
+                      <td className="td">
+                        {p.receipt_url ? (
+                          <a
+                            href={`/api/receipts/view?path=${encodeURIComponent(p.receipt_url)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[12px] font-medium text-paper-dim hover:text-jade-bright"
+                          >
+                            <IconPaperclip className="h-3 w-3" />
+                            Invoice
+                          </a>
+                        ) : (
+                          <span className="text-paper-dim/50">—</span>
+                        )}
                       </td>
                       <td className="td truncate text-paper-dim">{nameById.get(p.recorded_by) ?? '—'}</td>
                     </tr>

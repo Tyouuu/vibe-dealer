@@ -4,6 +4,7 @@ import { cookies, headers } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { getCurrentUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
+import { REMEMBER_COOKIE, REMEMBER_MAX_AGE_SECONDS } from '@/lib/idle'
 
 // Two axes, because they stop different attacks. The email key stops someone
 // grinding one known staff account; the IP key stops credential stuffing —
@@ -111,6 +112,25 @@ export async function signIn(email: string, password: string, rememberMe: boolea
   await supabase.rpc('clear_rate_limit', { p_key: emailKey })
 
   await supabase.from('login_events').insert({ user_id: data.user.id, user_agent: h.get('user-agent'), ip })
+
+  // What the checkbox actually promises. Written after the sign-in succeeds,
+  // and deleted when it was left unticked so that borrowing a colleague's
+  // machine cannot inherit the last person's answer.
+  if (rememberMe) {
+    cookieStore.set(REMEMBER_COOKIE, '1', {
+      // Not httpOnly, unlike the timestamp beside it, so the sign-out button
+      // can clear it without a round trip. It holds no secret — it is a yes
+      // or no about one device — and the middleware reads its absence as the
+      // stricter answer, so losing it can only ever shorten a session.
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: REMEMBER_MAX_AGE_SECONDS,
+      secure: process.env.NODE_ENV === 'production',
+    })
+  } else {
+    cookieStore.delete(REMEMBER_COOKIE)
+  }
 
   return { error: null }
 }

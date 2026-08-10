@@ -36,23 +36,28 @@ export function UnsignedCorrections({ items }: { items: UnsignedCorrection[] }) 
 
   return (
     <div className="page-band">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      {/* One line, not a heading over a paragraph. This band sits between the
+          page header and the ledger, and at 155px for a single unsigned
+          correction it was pushing the grid — the thing the page is for — down
+          to four visible rows. The sentence still earns its place, so it joins
+          the count rather than stacking under it. */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <h2 className="text-sm font-semibold text-paper">
           {items.length} correction{items.length === 1 ? '' : 's'} not signed off yet
         </h2>
+        <p className="min-w-0 text-[12px] text-paper-dim">
+          — reports still show the figure it was meant to correct.
+        </p>
         {oldest >= PENDING_REVIEW_STALE_DAYS && (
-          <span className="text-[12px] text-paper-dim">
+          <span className="ml-auto text-[12px] text-paper-dim">
             oldest waiting {oldest} day{oldest === 1 ? '' : 's'}
           </span>
         )}
       </div>
-      <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
-        Until a correction is signed off, reports and reconciliation still show the figure it was meant to correct.
-      </p>
 
-      <ul className="mt-4 flex flex-col">
+      <ul className="mt-2 flex flex-col">
         {items.map((item) => (
-          <li key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ink-800 py-3">
+          <li key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ink-800 py-2.5">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Avatar name={item.dealerName} size={24} />
               <div className="min-w-0">

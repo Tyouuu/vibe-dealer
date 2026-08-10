@@ -247,13 +247,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         }
         action={
           <div className="flex flex-wrap items-center gap-2">
+            {/* No View button. It sat between the picker and Export CSV as a
+                third control of a different size, and it did nothing the act
+                of choosing a month had not already asked for — picking August
+                and then having to confirm you meant August. The picker
+                submits its own form now; the <noscript> keeps it usable
+                without JavaScript. */}
             <form className="flex items-center gap-2" action="/reports" method="GET">
               <div className="w-40">
-                <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} />
+                <MonthPicker name="month" defaultValue={month} today={todayInMalaysia().slice(0, 7)} submitOnPick />
               </div>
-              <button type="submit" className="btn-ghost py-1.5 text-xs">
-                View
-              </button>
+              <noscript>
+                <button type="submit" className="btn-ghost">
+                  View
+                </button>
+              </noscript>
             </form>
             <a href={`/api/reports/export?month=${month}`} className="btn-ghost shrink-0">
               Export CSV

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { recordSimIntake } from './actions'
+import { ReceiptField } from '../receipt-field'
 import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
@@ -80,6 +81,12 @@ export function IntakeForm({ today }: { today: string }) {
           <label className="field-label">Note (optional)</label>
           <input name="note" type="text" placeholder="e.g. 4 boxes, invoice #1234" className="field-input" />
         </div>
+      </div>
+      {/* The cost side of the only margin this business keeps. The note field
+          above has been inviting an invoice number since day one — "e.g. 4
+          boxes, invoice #1234" — with nowhere to put the invoice itself. */}
+      <div className="mt-4">
+        <ReceiptField hint="The invoice for this intake. Image or PDF." />
       </div>
       {/* The footer shape Onboard Dealer uses: the action sits on the rule
           that closes its section, left-aligned, with one line of guidance

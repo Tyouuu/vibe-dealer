@@ -470,6 +470,13 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </Link>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Was a strip of its own directly above the column headers: one
+              right-aligned figure on an otherwise empty full-width line, and
+              40px of height taken from a grid that is short of room. It is one
+              line of text, so it sits on a line that already exists. */}
+          <span className="mr-1 hidden text-sm text-paper-dim sm:inline">
+            Your 2% on this page <b className="font-semibold text-paper">{formatMYR(pageCommission)}</b>
+          </span>
           <ColumnsMenu
             table="records"
             columns={TABLE_COLUMNS.records}
@@ -604,16 +611,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           </div>
         </details>
       </FilterForm>
-
-      {/* Pending / verified / flagged used to repeat here, a few hundred pixels
-          below the header that already states all three. Only the page-scoped
-          commission is unique to this strip — it's the one figure that changes
-          as you page through, which the header's filter-wide totals can't say. */}
-      <div className="txn-summary">
-        <span className="txn-summary-item accent">
-          Your 2% on this page <b>{formatMYR(pageCommission)}</b>
-        </span>
-      </div>
 
       {/* One form around the whole table so the row checkboxes post as a single
           selection. It wraps the ScrollFade rather than the table so the

@@ -34,12 +34,20 @@ export function MonthPicker({
   placeholder = 'Select a month…',
   allowClear = false,
   today,
+  submitOnPick = false,
 }: {
   name: string
   defaultValue?: string
   placeholder?: string
   allowClear?: boolean
   today?: string
+  /**
+   * Submit the surrounding form as soon as a month is chosen, instead of
+   * waiting for a button beside it. For a picker that is the *only* control
+   * in its form — /reports — a separate View button is a second step that
+   * says nothing the choice did not already say.
+   */
+  submitOnPick?: boolean
 }) {
   const [value, setValue] = useState(defaultValue ?? '')
   const [open, setOpen] = useState(false)
@@ -67,6 +75,11 @@ export function MonthPicker({
   function pick(monthIdx: number) {
     setValue(`${viewYear}-${String(monthIdx + 1).padStart(2, '0')}`)
     closePanel()
+    // After the state lands, so the hidden input carries the new month rather
+    // than the one it is replacing.
+    if (submitOnPick) {
+      requestAnimationFrame(() => triggerRef.current?.form?.requestSubmit())
+    }
   }
 
   return (

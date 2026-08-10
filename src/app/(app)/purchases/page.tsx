@@ -16,7 +16,9 @@ export const metadata: Metadata = {
 // transaction history through PostgREST. Older sales live on Transactions,
 // which this page links to; the all-time totals in the card come from the
 // balance aggregate, so nothing is lost when a row falls off the end.
-const LEDGER_LIMIT = 60
+// 50, the same page size /records and /dealers use, so "one page" means the
+// same number of rows everywhere in the app.
+const PAGE_SIZE = 50
 
 type Movement = {
   key: string
@@ -46,12 +48,12 @@ function withRunningBalance(movements: Movement[], closing: number): (Movement &
 }
 
 type PageProps = {
-  searchParams: Promise<{ saved?: string }>
+  searchParams: Promise<{ saved?: string; page?: string }>
 }
 
 export default async function PurchasesPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { saved } = await searchParams
+  const { saved, page } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view credit purchases" />
@@ -61,7 +63,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   const [{ data: purchaseRows }, { data: saleRows }, { data: profiles }, creditBalance] = await Promise.all([
     supabase
       .from('credit_purchases')
-      .select('id, purchase_date, created_at, money_rm, points, note, recorded_by')
+      .select('id, purchase_date, created_at, money_rm, points, note, receipt_url, recorded_by')
       .order('purchase_date', { ascending: false }),
     // The other half of the ledger. Credit is drawn down by every transaction
     // that is not flagged — pending counts, because the dealer has already had
@@ -71,8 +73,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
       .from('transactions')
       .select('id, tx_date, created_at, type, package, points, status, dealers(company_name)')
       .neq('status', 'flagged')
-      .order('tx_date', { ascending: false })
-      .limit(LEDGER_LIMIT),
+      .order('tx_date', { ascending: false }),
     supabase.from('staff_directory').select('id, display_name'),
     getAvailablePointsBalance(supabase),
   ])
@@ -139,8 +140,17 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
     // created_at breaks the tie rather than the order coming out arbitrary.
   ].sort((a, b) => (b.date === a.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date)))
 
-  const ledger = withRunningBalance(movements.slice(0, LEDGER_LIMIT), balance)
-  const truncated = movements.length > LEDGER_LIMIT
+  // The running balance is computed across the whole ledger first and only
+  // then sliced. It has to be: every row's balance depends on every row after
+  // it, so a page-two figure worked out from page two alone would be wrong by
+  // the entire first page. This is also why the transactions half is no longer
+  // capped — a cap made the oldest visible balance silently incorrect.
+  const withBalance = withRunningBalance(movements, balance)
+  const totalPages = Math.max(1, Math.ceil(withBalance.length / PAGE_SIZE))
+  const pageNum = Math.min(totalPages, Math.max(1, Math.trunc(Number(page)) || 1))
+  const ledger = withBalance.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE)
+  const rangeStart = withBalance.length === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(pageNum * PAGE_SIZE, withBalance.length)
 
   return (
     <>
@@ -279,12 +289,42 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                   </tbody>
                 </table>
               </ScrollFade>
-              {truncated && (
-                <div className="mt-3 border-t border-ink-800 pt-3 text-center">
-                  <span className="text-[12px] text-paper-dim">Showing the {LEDGER_LIMIT} most recent movements. </span>
-                  <Link href="/records" className="inline-block py-1.5 text-[12px] font-semibold text-primary hover:underline">
-                    View all in Transactions →
-                  </Link>
+              {/* A pager, not a cap. This said "showing the 60 most recent
+                  movements" and sent you to Transactions — a different page,
+                  with a different shape and no running balance, to read the
+                  rest of this one. */}
+              {totalPages > 1 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-ink-800 pt-3">
+                  <span className="text-[12px] text-paper-dim">
+                    {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of {withBalance.length.toLocaleString()} movements
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {pageNum > 1 ? (
+                      <Link href={`/purchases?page=${pageNum - 1}`} className="btn-ghost">
+                        Previous
+                      </Link>
+                    ) : (
+                      // A genuinely disabled control, not a dimmed span. axe
+                      // exempts disabled form controls from the contrast rule
+                      // and does not exempt faded text — the 390px audit
+                      // failed on exactly that. Same shape /records uses.
+                      <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
+                        Previous
+                      </button>
+                    )}
+                    <span className="text-[12px] text-paper-dim">
+                      Page {pageNum} of {totalPages}
+                    </span>
+                    {pageNum < totalPages ? (
+                      <Link href={`/purchases?page=${pageNum + 1}`} className="btn-ghost">
+                        Next
+                      </Link>
+                    ) : (
+                      <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
+                        Next
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </>

@@ -69,8 +69,13 @@ export function StatementForm({
         <span className={fileName || extracting ? 'truncate' : 'min-w-0 text-left'}>
           {extracting ? 'Reading statement…' : (fileName ?? "Drag Vibe's statement here, or click to upload — we'll fill in the numbers below")}
         </span>
+        {/* Named, so the same choice both feeds the reader and gets kept.
+            The statement was read for its numbers and then thrown away: a
+            month could be signed off against a document nobody could produce
+            again. 0044 gave company_statements somewhere to put it. */}
         <input
           type="file"
+          name="receipt"
           accept="image/jpeg,image/png,image/webp,image/gif"
           className="hidden"
           onChange={(e) => {

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { REMEMBER_COOKIE } from '@/lib/idle'
 
 export function LogoutButton() {
   const router = useRouter()
@@ -9,6 +10,11 @@ export function LogoutButton() {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    // Forget the device too. Otherwise signing out and letting a colleague
+    // sign in hands them a session with no idle timeout that they never asked
+    // for. Readable by script by design — this one is not httpOnly-critical,
+    // and the middleware treats its absence as the safe answer.
+    document.cookie = `${REMEMBER_COOKIE}=;path=/;max-age=0;samesite=lax`
     router.push('/login')
     router.refresh()
   }

@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
 import { friendlyDbError } from '@/lib/db-error'
+import { uploadReceipt } from '@/lib/receipt-upload'
 
 function fail(month: string, message: string): never {
   redirect(`/reconcile?month=${month}&error=${encodeURIComponent(message)}`)
@@ -47,7 +48,19 @@ export async function saveStatement(formData: FormData) {
     fail(month, 'This month is reconciled — reopen it before changing the statement figures.')
   }
 
-  const payload = { month: monthDate, company_total_points: totalPoints, company_profit_rm: profitRm, note }
+  // Only overwrite the stored document when a new one was attached. Saving
+  // the form again to correct a typo must not wipe the statement that is
+  // already on file.
+  const receipt = await uploadReceipt(supabase, formData, `statements/${month}`)
+  if (receipt.error) fail(month, receipt.error)
+
+  const payload = {
+    month: monthDate,
+    company_total_points: totalPoints,
+    company_profit_rm: profitRm,
+    note,
+    ...(receipt.path ? { receipt_url: receipt.path } : {}),
+  }
 
   const { error } = existing
     ? await supabase.from('company_statements').update(payload).eq('id', existing.id)

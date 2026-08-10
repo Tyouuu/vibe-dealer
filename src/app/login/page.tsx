@@ -52,7 +52,8 @@ export default async function LoginPage({ searchParams }: PageProps) {
               is the thing being prevented. */}
           {idle && (
             <div className="alert alert-warn mt-4">
-              Signed out after 15 minutes without activity, so the ledger is not left open on an unattended screen.
+              Signed out after 15 minutes without activity, so the ledger is not left open on an unattended screen. On your own
+              machine, tick &ldquo;Remember me&rdquo; below and this will not happen again.
             </div>
           )}
 

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { friendlyDbError } from '@/lib/db-error'
 import { parseBusinessDate, todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
+import { uploadReceipt } from '@/lib/receipt-upload'
 
 // Errors go back to the page the form is actually on. The form moved to
 // /purchases/new when Log Purchase became its own sidebar entry, and this kept
@@ -45,11 +46,17 @@ export async function recordCreditPurchase(formData: FormData) {
   // transaction gets.
   if (await isPeriodLocked(supabase, purchaseDate)) fail(periodLockedMessage(purchaseDate))
 
+  // After the period-lock check, so a purchase that is going to be refused
+  // does not leave a stray file behind in the bucket.
+  const receipt = await uploadReceipt(supabase, formData, 'credit-purchases')
+  if (receipt.error) fail(receipt.error)
+
   const { error } = await supabase.from('credit_purchases').insert({
     purchase_date: purchaseDate,
     money_rm: moneyRm,
     points,
     note,
+    receipt_url: receipt.path,
     recorded_by: user.id,
   })
 

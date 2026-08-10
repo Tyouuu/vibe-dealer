@@ -75,7 +75,13 @@ export function DataGrid({
       // than at the bottom of a 4,000px table, which was the whole complaint.
       const top = el.getBoundingClientRect().top + window.scrollY
       const avail = window.innerHeight - (top - window.scrollY) - 72
-      el.style.maxHeight = `${Math.max(300, Math.min(760, avail))}px`
+      // The floor is eight rows, and it is allowed to beat the available
+      // space. A window that only fits four rows of a fifty-row ledger is a
+      // letterbox — "有一点偏离主题", as the owner put it, the page stops being
+      // about transactions. Below the floor the page simply scrolls, which
+      // still leaves the horizontal bar a short scroll away rather than at the
+      // bottom of a 4,000px table.
+      el.style.maxHeight = `${Math.max(520, Math.min(760, avail))}px`
     }
 
     fit()

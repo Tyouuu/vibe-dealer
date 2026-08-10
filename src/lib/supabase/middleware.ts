@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { IDLE_LIMIT_MS, LAST_SEEN_COOKIE } from '@/lib/idle'
+import { IDLE_LIMIT_MS, LAST_SEEN_COOKIE, REMEMBER_COOKIE } from '@/lib/idle'
 
 // /reset-password is public because the recovery session it needs is only
 // established client-side, after the initial (necessarily anonymous) server
@@ -98,8 +98,12 @@ export async function updateSession(request: NextRequest) {
   if (user && !isCronRoute) {
     const seen = Number(request.cookies.get(LAST_SEEN_COOKIE)?.value)
     const now = Date.now()
+    // Ticking "Remember me on this device" turns the idle clock off. See
+    // REMEMBER_COOKIE for why the checkbox gets to make that call and the
+    // fifteen minutes cannot.
+    const remembered = request.cookies.get(REMEMBER_COOKIE)?.value === '1'
 
-    if (seen && now - seen > IDLE_LIMIT_MS) {
+    if (!remembered && seen && now - seen > IDLE_LIMIT_MS) {
       await supabase.auth.signOut()
       const url = request.nextUrl.clone()
       url.pathname = '/login'

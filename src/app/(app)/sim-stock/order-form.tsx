@@ -86,8 +86,17 @@ export function OrderForm({
     // behind an @apply alias.
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <div className="alert alert-bad">{error}</div>}
+        {/* Two across, and the switch takes its own row.
+            It was four fields side by side, which spent the page's width — the
+            scarce axis — and left the room underneath it empty. Six-and-six
+            grows the form downward into that room instead, and every field
+            lands at ~560px rather than ~250px, which is a width that matches
+            what goes in it. */}
       <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
-        <div className="sm:col-span-6 lg:col-span-5">
+        {/* The full row, matching Stock in. A three-way switch does not fit
+            half a row without wrapping, and the same control cannot be two
+            widths on two tabs of one page. */}
+        <div className="sm:col-span-6 lg:col-span-12">
           <label className="field-label">SIM Type</label>
           <input type="hidden" name="sim_type" value={simType} />
           <div className="segmented w-full">
@@ -98,7 +107,7 @@ export function OrderForm({
             ))}
           </div>
         </div>
-        <div className="sm:col-span-6 lg:col-span-4">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">Dealer</label>
           <Combobox
             name="dealer_id"
@@ -114,11 +123,11 @@ export function OrderForm({
             </p>
           )}
         </div>
-        <div className="sm:col-span-3 lg:col-span-3">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">Order Date</label>
           <DatePicker name="order_date" max={today} todayIso={today} required />
         </div>
-        <div className="sm:col-span-3 lg:col-span-3">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="so-qty" className="field-label">
             Quantity (min {SIM_MIN_ORDER_QTY})
           </label>
@@ -129,7 +138,7 @@ export function OrderForm({
         </div>
         {isPhysicalSimType(simType) ? (
           <>
-            <div className="sm:col-span-3 lg:col-span-3">
+            <div className="sm:col-span-6 lg:col-span-6">
               <label className="field-label">Shipping Fee (RM, optional)</label>
               <input name="shipping_fee_rm" type="number" step="0.01" min="0" placeholder="Leave blank if no shipping cost" className="field-input" />
             </div>
@@ -159,7 +168,7 @@ export function OrderForm({
             </div>
           </>
         ) : (
-          <div className="sm:col-span-6 lg:col-span-9">
+          <div className="sm:col-span-6 lg:col-span-12">
             <label className="field-label">eSIM Codes (optional)</label>
             <textarea
               name="esim_codes"

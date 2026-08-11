@@ -163,7 +163,7 @@ export function OnboardForm({ initialError }: { initialError?: string }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="app-card form-measure mt-6 flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="app-card mt-6 flex flex-col gap-6">
         {/* First, because it is what you do first when the details arrived
             over WhatsApp — which is how they arrive. It fills the form and
             stops there: nothing is saved until a person reads it and presses

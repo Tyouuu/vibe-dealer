@@ -44,8 +44,14 @@ export function IntakeForm({ today }: { today: string }) {
     // alias: Tailwind does not resolve responsive grid utilities through
     // @apply and silently compiles grid-template-columns to `none`.
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Two across, and the switch takes its own row.
+            It was four fields side by side, which spent the page's width — the
+            scarce axis — and left the room underneath it empty. Six-and-six
+            grows the form downward into that room instead, and every field
+            lands at ~560px rather than ~250px, which is a width that matches
+            what goes in it. */}
       <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
-        <div className="sm:col-span-6 lg:col-span-5">
+        <div className="sm:col-span-6 lg:col-span-12">
           <label className="field-label">SIM Type</label>
           <input type="hidden" name="sim_type" value={simType} />
           <div className="segmented w-full">
@@ -56,7 +62,7 @@ export function IntakeForm({ today }: { today: string }) {
             ))}
           </div>
         </div>
-        <div className="sm:col-span-3 lg:col-span-3">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">Intake Date</label>
           {/* todayIso and max, like the other four pickers in the app. Without
               them this calendar had no Today button and did not even mark
@@ -66,13 +72,13 @@ export function IntakeForm({ today }: { today: string }) {
               it afterwards. */}
           <DatePicker name="intake_date" max={today} todayIso={today} required />
         </div>
-        <div className="sm:col-span-3 lg:col-span-2">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="si-qty" className="field-label">
             Quantity (cards)
           </label>
           <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
         </div>
-        <div className="sm:col-span-3 lg:col-span-2">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="si-cost" className="field-label">
             Cost per unit (RM)
           </label>
@@ -82,13 +88,13 @@ export function IntakeForm({ today }: { today: string }) {
             prompting for "invoice #1234" since day one with nowhere structured
             to put it, so the one value worth searching by lived in free text
             beside "4 boxes". Every receiving-form guide names it. */}
-        <div className="sm:col-span-3 lg:col-span-3">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="si-ref" className="field-label">
             Invoice no. <span className="font-normal text-paper-dim">(optional)</span>
           </label>
           <input id="si-ref" name="reference" type="text" maxLength={80} placeholder="e.g. VM-1234" className="field-input" />
         </div>
-        <div className="sm:col-span-3 lg:col-span-3">
+        <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">
             Note <span className="font-normal text-paper-dim">(optional)</span>
           </label>

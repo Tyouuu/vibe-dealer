@@ -262,7 +262,7 @@ export function EntryForm({
           note field, because "what the dealer said" and "what we recorded"
           have to stay tellable apart. */}
       {fromRequest && (
-        <div className="app-card form-measure p-5">
+        <div className="app-card p-5">
           <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-paper-dim">From the dealer&apos;s own link</p>
           <p className="mt-1.5 text-[15px] font-semibold text-paper">
             {fromRequest.dealerName} asked for{' '}
@@ -283,7 +283,7 @@ export function EntryForm({
         </div>
       )}
 
-      <div className="app-card form-measure">
+      <div className="app-card">
 
         {error && <div className="alert alert-bad">{error}</div>}
 

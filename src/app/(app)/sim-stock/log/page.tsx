@@ -106,7 +106,7 @@ export default async function LogSimStockPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      <div className="app-card form-measure mt-4 flex flex-col gap-6">
+      <div className="app-card mt-4 flex flex-col gap-6">
         {canLogIntake && showIntake && (
           <div className="form-block">
             <h2 className="form-block-title">Stock in — bought from Vibe Mobile</h2>

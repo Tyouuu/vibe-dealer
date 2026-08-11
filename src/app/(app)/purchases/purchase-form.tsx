@@ -42,7 +42,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
           Dealer and Log SIM Stock already use. This page was four bare fields
           stretched edge to edge under nothing, which is why it read as a strip
           floating on an empty page rather than as a form. */}
-      <form onSubmit={handleSubmit} className="form-measure flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="form-block">
         <h2 className="form-block-title">The purchase</h2>
         <p className="form-block-desc">
@@ -50,11 +50,11 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
           batch was priced differently.
         </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
-          <div className="sm:col-span-3 lg:col-span-3">
+          <div className="sm:col-span-6 lg:col-span-6">
             <label className="field-label">Date<span className="req"> *</span></label>
             <DatePicker name="purchase_date" max={today} todayIso={today} required />
           </div>
-          <div className="sm:col-span-3 lg:col-span-3">
+          <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-money" className="field-label">
               Amount paid (RM)<span className="req"> *</span>
             </label>
@@ -70,7 +70,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               className="field-input"
             />
           </div>
-          <div className="sm:col-span-3 lg:col-span-3">
+          <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-points" className="field-label">
               Points / credit received
             </label>
@@ -94,7 +94,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               className="field-input"
             />
           </div>
-          <div className="sm:col-span-3 lg:col-span-3">
+          <div className="sm:col-span-6 lg:col-span-6">
             {/* Structured, so a payment can be matched to Vibe's invoice
                 without opening the invoice. */}
             <label htmlFor="cp-ref" className="field-label">
@@ -107,7 +107,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               right and a hole where the eye expects the grid to close. A note
               is also the one free-text field here, so it is the one that
               earns the extra width. */}
-          <div className="sm:col-span-3 lg:col-span-6">
+          <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-note" className="field-label">
               Note <span className="font-normal text-paper-dim">(optional)</span>
             </label>

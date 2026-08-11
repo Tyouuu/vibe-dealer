@@ -104,34 +104,34 @@ export function DealerOrdersTable({
           const toggle = () => setOpenId(open ? null : o.id)
           return (
             <Fragment key={o.id}>
-              <div onClick={toggle} className={`cursor-pointer whitespace-nowrap py-3.5 text-paper-dim`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer whitespace-nowrap text-paper-dim`}>
                 {formatDateLabel(o.order_date)}
               </div>
-              <div onClick={toggle} title={o.dealerName} className={`cursor-pointer truncate py-3.5 font-semibold text-paper`}>
+              <div onClick={toggle} title={o.dealerName} className={`px-3 py-3.5 cursor-pointer truncate font-semibold text-paper`}>
                 {o.dealerName}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer`}>
                 {/* max-w-none: see the note in stock-intake-table.tsx. */}
                 <span className={`tag max-w-none whitespace-nowrap ${SIM_TYPE_PILL_CLASS[o.sim_type]}`}>{SIM_TYPE_LABEL[o.sim_type]}</span>
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right text-paper-dim`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right text-paper-dim`}>
                 {o.quantity.toLocaleString()}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-semibold text-paper`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right figure-money font-semibold text-paper`}>
                 {formatMYR(o.paid)}
               </div>
               {isFinance && (
-                <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-normal text-paper-dim`}>
+                <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right figure-money font-normal text-paper-dim`}>
                   +{formatMYR(o.margin)}
                 </div>
               )}
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-right figure-money font-normal text-paper-dim`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right figure-money font-normal text-paper-dim`}>
                 {o.shipping_fee_rm != null ? formatMYR(Number(o.shipping_fee_rm)) : <span className="text-paper-dim/50">—</span>}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer`}>
                 {o.delivery_status === 'sent' ? <StatusDot color="jade-bright" label="Sent" /> : <StatusDot color="brass-bright" label="Pending" pulse />}
               </div>
-              <div onClick={toggle} className={`cursor-pointer py-3.5 text-paper-dim`}>
+              <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-paper-dim`}>
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"

@@ -98,7 +98,7 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
 
         {recent && recent.length > 0 && (
           <div className="app-card mt-4 p-6">
-            <h2 className="text-[15px] font-semibold text-paper">Your recent requests</h2>
+            <h2 className="text-[14px] font-semibold text-paper">Your recent requests</h2>
             <p className="mt-1 text-[13px] text-paper-dim">
               This is everything you&apos;ve sent through this link, and where each one got to.
             </p>

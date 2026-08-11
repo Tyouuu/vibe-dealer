@@ -16,8 +16,17 @@
 // var() — the properties resolved to nothing, `grid-template-columns` became
 // invalid, and both grids silently collapsed to a single auto column. Measured
 // rather than assumed: the intake grid computed to one 1136px column.
+// Cell padding is written on the elements as `px-3 py-3.5`, not as a class in
+// globals.css. Two attempts to put shared values in a hand-written rule inside
+// @layer components — first these widths as custom properties, then a
+// `.log-cell` padding class — were both silently dropped from the emitted
+// stylesheet, and both times the page looked subtly wrong rather than broken.
+// The 12px matters: `.th` has it and the data cells did not, so every column
+// heading sat 12px right of the values under it.
 export const LOG_COL = {
-  date: '84px',
+  /* 108, not 84. The cells gained the same 12px padding the headers always
+     had (see .log-cell), and "7 Aug 2026" does not fit 84px minus 24. */
+  date: '108px',
   /** A fixed width, not max-content, or the two tables disagree by a label. */
   sim: '168px',
   qty: '64px',
@@ -25,6 +34,8 @@ export const LOG_COL = {
   money: '108px',
   status: '104px',
   person: '148px',
+  /** Free text. Wide enough to be worth reading, not wide enough to own the row. */
+  note: '220px',
   chevron: '20px',
 } as const
 

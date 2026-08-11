@@ -142,6 +142,12 @@ export function OrderForm({
               <label className="field-label">Shipping Fee (RM, optional)</label>
               <input name="shipping_fee_rm" type="number" step="0.01" min="0" placeholder="Leave blank if no shipping cost" className="field-input" />
             </div>
+            {/* An empty left half, on purpose. There is no note on a SIM
+                order, and the invoice still belongs in the right column so it
+                sits where it does on Stock in, Log Purchase and New
+                Transaction. A field that moves side to side between two tabs
+                of the same page is the worst case of all. */}
+            <div className="hidden lg:col-span-6 lg:block" aria-hidden="true" />
             <div className="sm:col-span-6 lg:col-span-6">
               {/* The same component, the same width and the same words as the
                   intake form above. This was a bespoke box reading "Click to

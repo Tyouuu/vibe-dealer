@@ -57,7 +57,12 @@ export function StatementForm({
           saveStatement(formData)
         })
       }}
-      className="flex flex-col gap-3.5"
+      // One measure for the whole form. The number fields were capped at
+      // 576px, the note at 576, and the upload box ran the full 1136 — three
+      // widths in a four-field form. The dropzone is the page's entry point
+      // so it keeps its prominence, but it keeps it inside the same column
+      // as the fields it fills in.
+      className="flex max-w-xl flex-col gap-3.5"
     >
       <input type="hidden" name="month" value={month} />
       <label className="upload-box">
@@ -89,7 +94,7 @@ export function StatementForm({
       {/* Side by side, and capped. A points total in a 1100px box is the
           field-width mismatch Baymard warns about; the note below is free
           text and keeps the wider row. */}
-      <div className="grid grid-cols-1 gap-3.5 sm:max-w-xl sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
       <Field label="Vibe total top-up (pts)" required>
         {(id) => (
         <input
@@ -120,7 +125,7 @@ export function StatementForm({
         )}
       </Field>
       </div>
-      <div className="sm:max-w-xl">
+      <div>
         <Field label="Note">
           {(id) => <input id={id} name="note" type="text" defaultValue={initialNote} className="field-input" />}
         </Field>

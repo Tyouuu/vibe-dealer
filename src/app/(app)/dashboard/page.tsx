@@ -545,7 +545,7 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
       <div className="page-band">
         <h3 className="mb-1 text-sm font-semibold text-paper">Reconciliation {periodKey}</h3>
         <p className="mb-3 text-[12px] text-paper-dim">Until this is closed, the month is not final.</p>
-        <Link href="/reconcile" className="inline-flex items-center gap-2 text-[15px] font-semibold hover:underline">
+        <Link href="/reconcile" className="inline-flex items-center gap-2 text-[14px] font-semibold hover:underline">
           <span className={`h-2 w-2 rounded-full ${statement?.reconciled ? 'bg-jade' : 'bg-clay'}`} />
           <span className={statement?.reconciled ? 'text-jade-bright' : 'text-clay-bright'}>{statement?.reconciled ? 'Closed' : 'Open'}</span>
         </Link>

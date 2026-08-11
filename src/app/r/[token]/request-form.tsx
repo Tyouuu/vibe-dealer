@@ -62,7 +62,7 @@ export function RequestForm({
       <input type="hidden" name="type" value={type} />
 
       <div>
-        <h2 className="text-[15px] font-semibold text-paper">What would you like?</h2>
+        <h2 className="text-[14px] font-semibold text-paper">What would you like?</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Choice active={type === 'topup'} onClick={() => setType('topup')} label="Top up credit" />
           <Choice active={type === 'package'} onClick={() => setType('package')} label="Buy a package" />
@@ -228,7 +228,7 @@ export function RequestForm({
         />
       </div>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-[15px]">
+      <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-[14px]">
         {submitting ? 'Sending…' : 'Send request'}
       </button>
     </form>

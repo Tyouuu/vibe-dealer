@@ -95,13 +95,20 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
         {rows.length ? (
           <ScrollFade label="Credit purchases">
             <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+              {/* Seven, matching the seven headers below.
+                  The Invoice column was added without a <col>, so table-fixed
+                  had six widths for seven columns and gave the seventh zero —
+                  "Recorded by" measured 0px wide and its names pushed 79px out
+                  of the scroller, on a page where nothing else scrolls
+                  sideways. A colgroup has to be counted, not appended to. */}
               <colgroup>
-                <col className="w-[14%]" />
+                <col className="w-[12%]" />
+                <col className="w-[15%]" />
+                <col className="w-[13%]" />
                 <col className="w-[16%]" />
-                <col className="w-[14%]" />
-                <col className="w-[18%]" />
-                <col className="w-[22%]" />
-                <col className="w-[16%]" />
+                <col className="w-[20%]" />
+                <col className="w-[11%]" />
+                <col className="w-[13%]" />
               </colgroup>
               <thead>
                 <tr>

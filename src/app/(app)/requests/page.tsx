@@ -137,7 +137,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               <li key={r.id} className="app-card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <Link href={`/dealers/${r.dealer_id}`} className="text-[15px] font-semibold text-paper hover:underline">
+                    <Link href={`/dealers/${r.dealer_id}`} className="text-[14px] font-semibold text-paper hover:underline">
                       {r.dealers?.company_name ?? 'Unknown dealer'}
                     </Link>
                     <p className="mt-0.5 text-[13px] text-paper-dim">{whenInMalaysia(r.created_at)}</p>
@@ -224,7 +224,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
 
       {decided.length > 0 && (
         <div className="app-card mt-6 p-5">
-          <h2 className="text-[15px] font-semibold text-paper">Recently handled</h2>
+          <h2 className="text-[14px] font-semibold text-paper">Recently handled</h2>
           <ul className="mt-3 flex flex-col divide-y divide-ink-800">
             {decided.map((r) => (
               <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0">

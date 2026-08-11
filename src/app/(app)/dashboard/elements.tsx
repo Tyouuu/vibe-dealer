@@ -94,7 +94,7 @@ export function StatTiles({ stats }: { stats: Stat[] }) {
           <Link key={s.label} href={s.href} className="group block">
             <div className="text-[12px] text-paper-dim">{s.label}</div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-              <span className="figure-points text-[23px] leading-tight tracking-[-.026em] group-hover:underline">{s.value}</span>
+              <span className="figure-points text-[22px] leading-tight tracking-[-.026em] group-hover:underline">{s.value}</span>
               {r != null && (
                 <span className={`chg text-[12px] ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'}`}>
                   {r === 0 ? '→' : r > 0 ? '↑' : '↓'} {Math.abs(r).toFixed(1)}%

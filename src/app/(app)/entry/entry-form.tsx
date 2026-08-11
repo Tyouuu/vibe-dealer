@@ -264,7 +264,7 @@ export function EntryForm({
       {fromRequest && (
         <div className="app-card p-5">
           <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-paper-dim">From the dealer&apos;s own link</p>
-          <p className="mt-1.5 text-[15px] font-semibold text-paper">
+          <p className="mt-1.5 text-[14px] font-semibold text-paper">
             {fromRequest.dealerName} asked for{' '}
             {fromRequest.type === 'topup' ? `a top-up of RM${fromRequest.money_rm?.toLocaleString()}` : `Package ${fromRequest.package}`}
             <span className="font-normal text-paper-dim"> · {fromRequest.submittedAt}</span>
@@ -578,6 +578,32 @@ export function EntryForm({
               Add a receipt or note
             </summary>
           <div className="form-grid mt-3">
+            {/* One rule, every form: the last row is Note on the left and
+                the invoice or receipt on the right, at the same width.
+                Measured before this existed — the upload box sat in the right
+                column on two forms, the left column on two others, and full
+                width on two more, so a reader relearned where it was on every
+                page. The two exceptions are Onboard Dealer and Reconciliation,
+                where the upload is the page's entry point rather than an
+                attachment. */}
+            {/* Seeded with the bank line off the request, because that is
+                the sentence someone reads six weeks later while matching a
+                statement, and re-typing it from the banner above is exactly
+                the work the link was meant to remove. Editable, and the
+                dealer's own note stays quoted in the banner rather than being
+                merged in — what they said and what we recorded have to stay
+                tellable apart. */}
+            <Field label="Note (optional)">
+              {(id) => (
+                <textarea
+                  id={id}
+                  name="note"
+                  rows={2}
+                  defaultValue={fromRequest?.paidFrom ?? ''}
+                  className="field-input resize-none"
+                />
+              )}
+            </Field>
             <div>
               <label className="field-label">Receipt (optional)</label>
               <label className="upload-box">
@@ -604,24 +630,6 @@ export function EntryForm({
                 />
               </label>
             </div>
-            {/* Seeded with the bank line off the request, because that is
-                the sentence someone reads six weeks later while matching a
-                statement, and re-typing it from the banner above is exactly
-                the work the link was meant to remove. Editable, and the
-                dealer's own note stays quoted in the banner rather than being
-                merged in — what they said and what we recorded have to stay
-                tellable apart. */}
-            <Field label="Note (optional)">
-              {(id) => (
-                <textarea
-                  id={id}
-                  name="note"
-                  rows={2}
-                  defaultValue={fromRequest?.paidFrom ?? ''}
-                  className="field-input resize-none"
-                />
-              )}
-            </Field>
           </div>
           </details>
           {/* The submit lived in the right-hand card, above the live totals.

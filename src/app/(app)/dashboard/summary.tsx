@@ -75,7 +75,7 @@ export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; fl
   return (
     <div className={flat ? 'page-band' : 'app-card'}>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-paper">
+        <h2 className="text-[14px] font-semibold text-paper">
           {items.length} {items.length === 1 ? 'thing needs' : 'things need'} you
         </h2>
         {/* The only route to the rest of the list now, so it says where it

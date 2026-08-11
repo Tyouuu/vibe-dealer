@@ -42,7 +42,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
           Dealer and Log SIM Stock already use. This page was four bare fields
           stretched edge to edge under nothing, which is why it read as a strip
           floating on an empty page rather than as a form. */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="form-measure flex flex-col gap-6">
         <div className="form-block">
         <h2 className="form-block-title">The purchase</h2>
         <p className="form-block-desc">
@@ -102,21 +102,25 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             </label>
             <input id="cp-ref" name="reference" type="text" maxLength={80} placeholder="e.g. VM-2026-114" className="field-input" />
           </div>
-          <div className="sm:col-span-3 lg:col-span-3">
+          {/* Six, not three. Row one is four fields of three; row two was a
+              three and a six, which left a quarter of the row empty on the
+              right and a hole where the eye expects the grid to close. A note
+              is also the one free-text field here, so it is the one that
+              earns the extra width. */}
+          <div className="sm:col-span-3 lg:col-span-6">
             <label htmlFor="cp-note" className="field-label">
               Note <span className="font-normal text-paper-dim">(optional)</span>
             </label>
             <input id="cp-note" name="note" type="text" className="field-input" />
           </div>
+          {/* In the grid at six columns, the same as Log SIM Stock's. It sat
+              outside at full bleed, so the two money-in forms in this app had
+              upload boxes of different widths again. */}
+          <div className="sm:col-span-6 lg:col-span-6">
+            <ReceiptField hint="Vibe Mobile's invoice, or the bank transfer slip. Image or PDF." />
+          </div>
         </div>
 
-        {/* The largest single amount this business moves, and until 0044 there
-            was nowhere to keep what it came from. A dealer sale has carried a
-            receipt since day one; the payment to Vibe carried a number and
-            nothing else. */}
-        <div className="mt-4">
-          <ReceiptField hint="Vibe Mobile's invoice, or the bank transfer slip. Image or PDF." />
-        </div>
 
         </div>
 

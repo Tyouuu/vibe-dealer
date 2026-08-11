@@ -531,6 +531,21 @@ body {
      which on a three-section form left two tall empty gaps in that column
      (visible on Onboard Dealer) and pushed the fields into the remaining
      5fr. One line under the heading says the same thing and costs 20px. */
+  /* A form has a measure, the same way prose does.
+     Measured before this existed: the card ran the full 1136px of the content
+     column on every form page, so a text input holding "VM-1234" was 1088px
+     wide and the Reconciliation form filled 35% of the screen while spanning
+     100% of it. A field's width is a promise about how much belongs in it, and
+     at that size every field was lying.
+
+     60rem, not the container: four fields across still get ~220px each, two
+     get ~460, and a full-width note gets ~910 — all of which read as chosen.
+     It caps the form only. Lists and tables on the same page keep the whole
+     column, because a table's width is set by its content, not by comfort. */
+  .form-measure {
+    @apply max-w-[60rem];
+  }
+
   .form-block {
     @apply border-t border-ink-800 pt-6 first:border-t-0 first:pt-0;
   }

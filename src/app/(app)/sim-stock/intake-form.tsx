@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import { recordSimIntake } from './actions'
 import { ReceiptField } from '../receipt-field'
-import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
+import { SIM_BOX_SIZE, SIM_STOCK_TYPES, SIM_TYPE_LABEL,
+  SIM_TYPE_SHORT, SIM_UNIT_COST_RM, type SimStockType } from '@/lib/sim-stock'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
@@ -50,7 +51,7 @@ export function IntakeForm({ today }: { today: string }) {
           <div className="segmented w-full">
             {SIM_STOCK_TYPES.map((t) => (
               <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
-                {SIM_TYPE_LABEL[t]}
+                {SIM_TYPE_SHORT[t]}
               </button>
             ))}
           </div>

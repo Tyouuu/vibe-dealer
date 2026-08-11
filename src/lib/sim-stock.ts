@@ -142,6 +142,18 @@ export const SIM_TYPE_LABEL: Record<SimStockType, string> = {
   esim: 'eSIM',
 }
 
+// The same three pools, named for a segmented control rather than a table.
+//
+// The full labels wrap to two lines inside a 448px three-way switch, which
+// made that control taller than every field beside it and left the row ragged
+// along the bottom. The group is already labelled "SIM Type", so repeating
+// "Physical SIM" three times inside it says nothing the label has not.
+export const SIM_TYPE_SHORT: Record<SimStockType, string> = {
+  physical: 'With number',
+  physical_no_number: 'No number',
+  esim: 'eSIM',
+}
+
 // All neutral. These were slate / info / jade — three status hues for what is
 // a category, so eSIM rendered in the green that means "verified" and a SIM
 // type read as a verdict. The status palette is reserved for things that can

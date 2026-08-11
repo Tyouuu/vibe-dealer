@@ -262,7 +262,7 @@ export function EntryForm({
           note field, because "what the dealer said" and "what we recorded"
           have to stay tellable apart. */}
       {fromRequest && (
-        <div className="app-card border-l-[3px] border-l-brass p-5">
+        <div className="app-card form-measure p-5">
           <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-paper-dim">From the dealer&apos;s own link</p>
           <p className="mt-1.5 text-[15px] font-semibold text-paper">
             {fromRequest.dealerName} asked for{' '}
@@ -283,7 +283,7 @@ export function EntryForm({
         </div>
       )}
 
-      <div className="app-card">
+      <div className="app-card form-measure">
 
         {error && <div className="alert alert-bad">{error}</div>}
 
@@ -455,7 +455,11 @@ export function EntryForm({
                 />
                 <span className="hint">Auto-calculated from rate — editable.</span>
               </div>
-              <div className="sm:col-span-2">
+              {/* One column, like the two money fields above it. It spanned
+                  both, which made a ringgit input 912px wide next to two at
+                  448 — the widest field on the form holding the smallest
+                  number on it. */}
+              <div>
                 <label className="field-label">Coupon amount (RM, optional)</label>
                 <input
                   name="coupon_rm"

@@ -57,7 +57,7 @@ export function StatementForm({
           saveStatement(formData)
         })
       }}
-      className="flex flex-col gap-3.5"
+      className="form-measure flex flex-col gap-3.5"
     >
       <input type="hidden" name="month" value={month} />
       <label className="upload-box">

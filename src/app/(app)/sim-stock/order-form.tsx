@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createSimOrder } from './actions'
-import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
+import { SIM_MIN_ORDER_QTY, SIM_SELL_PRICE_RM, SIM_STOCK_TYPES, SIM_TYPE_LABEL,
+  SIM_TYPE_SHORT, isPhysicalSimType, type SimStockType } from '@/lib/sim-stock'
 import { Combobox } from '../combobox'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
@@ -92,7 +93,7 @@ export function OrderForm({
           <div className="segmented w-full">
             {SIM_STOCK_TYPES.map((t) => (
               <button key={t} type="button" onClick={() => setSimType(t)} className={`segmented-btn flex-1 ${simType === t ? 'active' : ''}`}>
-                {SIM_TYPE_LABEL[t]}
+                {SIM_TYPE_SHORT[t]}
               </button>
             ))}
           </div>

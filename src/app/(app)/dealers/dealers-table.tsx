@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend, IconCard } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend, IconCard, IconTrophy } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 import { DataGrid } from '../data-grid'
 import { formatMYR } from '@/lib/money'
@@ -120,20 +120,30 @@ function SendLinkButton({ dealer, origin }: { dealer: DealerRow; origin: string 
   )
 }
 
+// Every rank in the same chip, in one colour.
+//
+// It used to be three things at once: #1 in semibold ink, #2 and #3 in a
+// lighter chip, and #4 onward as bare dim figures with no chip at all. Three
+// treatments for one kind of value, and the darker #1 read as a state rather
+// than a position.
+//
+// Now the chip is the same for everybody and the podium is marked by a trophy
+// beside the number — the shape says "top three", the digit says which. No
+// gold, silver or bronze: the owner asked for one colour, and a medal palette
+// would put three more hues next to a status system that already owns the
+// only coloured marks in this table.
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank == null) return <span className="text-paper-dim/50">—</span>
-  // No status dot. #1 used to render as `pill pill-brass`, which now draws the
-  // amber dot that means "pending" everywhere else — a rank is a position, not
-  // a state. The top three are distinguished by weight and a chip; the rest
-  // are plain figures.
-  if (rank <= 3) {
-    return (
-      <span className={`pill pill-neutral ${rank === 1 ? 'font-semibold text-paper' : ''}`} title={`#${rank} by cumulative top-up`}>
-        #{rank}
-      </span>
-    )
-  }
-  return <span className="figure text-paper-dim">#{rank}</span>
+  const podium = rank <= 3
+  return (
+    <span
+      className="pill pill-neutral whitespace-nowrap tabular-nums"
+      title={`#${rank} by cumulative top-up`}
+    >
+      {podium && <IconTrophy className="h-3.5 w-3.5 shrink-0" />}
+      {podium ? rank : `#${rank}`}
+    </span>
+  )
 }
 
 export function DealersTable({

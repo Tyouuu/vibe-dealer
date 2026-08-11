@@ -63,6 +63,12 @@ export function IntakeForm({ today }: { today: string }) {
           </div>
         </div>
         <div className="sm:col-span-6 lg:col-span-6">
+          <label htmlFor="si-qty" className="field-label">
+            Quantity (cards)
+          </label>
+          <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
+        </div>
+        <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">Intake Date</label>
           {/* todayIso and max, like the other four pickers in the app. Without
               them this calendar had no Today button and did not even mark
@@ -71,12 +77,6 @@ export function IntakeForm({ today }: { today: string }) {
               also let a future date be chosen and left the server to refuse
               it afterwards. */}
           <DatePicker name="intake_date" max={today} todayIso={today} required />
-        </div>
-        <div className="sm:col-span-6 lg:col-span-6">
-          <label htmlFor="si-qty" className="field-label">
-            Quantity (cards)
-          </label>
-          <input id="si-qty" name="quantity" type="number" min="1" step="1" required placeholder={`e.g. ${SIM_BOX_SIZE} for one box`} className="field-input" />
         </div>
         <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="si-cost" className="field-label">

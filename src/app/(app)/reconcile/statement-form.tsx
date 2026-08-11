@@ -57,12 +57,11 @@ export function StatementForm({
           saveStatement(formData)
         })
       }}
-      // One measure for the whole form. The number fields were capped at
-      // 576px, the note at 576, and the upload box ran the full 1136 — three
-      // widths in a four-field form. The dropzone is the page's entry point
-      // so it keeps its prominence, but it keeps it inside the same column
-      // as the fields it fills in.
-      className="flex max-w-xl flex-col gap-3.5"
+      // Full page width and two across, the same shape as every other form —
+      // the owner asked for these forced into line rather than each explained.
+      // The 576px column this briefly had made its Note 576 where every other
+      // form's is 536.
+      className="flex flex-col gap-3.5"
     >
       <input type="hidden" name="month" value={month} />
       <label className="upload-box">
@@ -91,9 +90,9 @@ export function StatementForm({
       </label>
       {extractError && <p className="text-xs text-clay-bright">{extractError}</p>}
 
-      {/* Side by side, and capped. A points total in a 1100px box is the
-          field-width mismatch Baymard warns about; the note below is free
-          text and keeps the wider row. */}
+      {/* Two across. A points total in a 1100px box is the field-width
+          mismatch Baymard warns about, and half of 1088 is 536 — the width
+          every other form gives a field. */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
       <Field label="Vibe total top-up (pts)" required>
         {(id) => (
@@ -125,7 +124,9 @@ export function StatementForm({
         )}
       </Field>
       </div>
-      <div>
+      {/* Left column, 536px, like the note on every other form. It was a
+          full-width row of its own. */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <Field label="Note">
           {(id) => <input id={id} name="note" type="text" defaultValue={initialNote} className="field-input" />}
         </Field>

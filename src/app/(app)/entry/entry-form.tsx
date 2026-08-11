@@ -317,6 +317,13 @@ export function EntryForm({
             </div>
           )}
 
+          {/* Who and when on one row, what kind on the next.
+              The dealer picker ran the full width while every other
+              first field is half of one, and the date sat in the right
+              column here but the left column on Log Purchase. The rule
+              now holds across every form: the left column says what the
+              row is about, the right column says when. */}
+          <div className="form-grid">
           {dealerId && dealer ? (
             /* Collapsed to a one-line summary with a Change affordance once
                chosen — the same GOV.UK check-answers move Reconciliation uses
@@ -359,6 +366,12 @@ export function EntryForm({
             />
           </div>
           )}
+            <div>
+              <label className="field-label">Date</label>
+              <DatePicker name="tx_date" value={txDate} onChange={setTxDate} max={today} todayIso={today} required />
+              <span className="hint">When the sale actually happened, not when you&apos;re entering it.</span>
+            </div>
+          </div>
 
           <div className="form-grid">
             <div>
@@ -380,12 +393,6 @@ export function EntryForm({
                   Buy Package
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label className="field-label">Date</label>
-              <DatePicker name="tx_date" value={txDate} onChange={setTxDate} max={today} todayIso={today} required />
-              <span className="hint">When the sale actually happened, not when you&apos;re entering it.</span>
             </div>
           </div>
 

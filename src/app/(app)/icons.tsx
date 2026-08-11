@@ -213,6 +213,29 @@ export function IconPaperclip({ className = th }: IconProps) {
   )
 }
 
+// The podium. Drawn, not an emoji — an emoji is whatever font the machine
+// happens to have, and this one sits inside a 20px pill beside a number.
+//
+// It marks the top three and nothing else; which of the three is the number
+// next to it, not a colour. Gold, silver and bronze were the obvious reach and
+// the owner ruled them out in the same breath as the dark/light split they
+// replaced: one colour for every rank, so the eye reads the shape and then the
+// digit rather than decoding a palette.
+export function IconTrophy({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {/* the cup */}
+      <path d="M4.6 2.4h6.8v3.1a3.4 3.4 0 0 1-6.8 0V2.4z" />
+      {/* handles */}
+      <path d="M4.6 3.3H2.9v.8a2.1 2.1 0 0 0 1.9 2.1" />
+      <path d="M11.4 3.3h1.7v.8a2.1 2.1 0 0 1-1.9 2.1" />
+      {/* stem and base */}
+      <path d="M8 8.9v2.2" />
+      <path d="M5.6 13.6h4.8a2.4 2.4 0 0 0-2.4-2.5 2.4 2.4 0 0 0-2.4 2.5z" />
+    </svg>
+  )
+}
+
 // A SIM card, for the one figure on a dealer row that is the master dealer's
 // own margin rather than the dealer's side of the deal. A rounded rectangle
 // with the notched corner every SIM has — not a coin or a banknote, which

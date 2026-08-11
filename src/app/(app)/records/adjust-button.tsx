@@ -63,7 +63,13 @@ export function AdjustButton({
     <>
       {/* w-full, so Adjust and Verify are the same rectangle in the same slot
           — see row-actions.tsx. */}
-      <button type="button" className="btn-ghost w-full" onClick={() => setOpen(true)}>
+      {/* Verify's metrics, not btn-ghost's. btn-ghost is px-5 py-2 text-sm —
+          a page-level control — and Verify is px-3 py-1.5 text-xs, so the two
+          buttons in one column were visibly different sizes. The utilities are
+          on the element rather than a new class: two hand-written rules in
+          globals.css have already been dropped silently from the stylesheet.
+          Utilities win the cascade over @layer components, so this holds. */}
+      <button type="button" className="btn-ghost w-full px-3 py-1.5 text-xs" onClick={() => setOpen(true)}>
         Adjust
       </button>
       <Modal open={open} onClose={close} className="max-w-md">

@@ -51,10 +51,6 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
         </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
           <div className="sm:col-span-6 lg:col-span-6">
-            <label className="field-label">Date<span className="req"> *</span></label>
-            <DatePicker name="purchase_date" max={today} todayIso={today} required />
-          </div>
-          <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-money" className="field-label">
               Amount paid (RM)<span className="req"> *</span>
             </label>
@@ -69,6 +65,10 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               onChange={(e) => setMoneyRm(e.target.value)}
               className="field-input"
             />
+          </div>
+          <div className="sm:col-span-6 lg:col-span-6">
+            <label className="field-label">Date<span className="req"> *</span></label>
+            <DatePicker name="purchase_date" max={today} todayIso={today} required />
           </div>
           <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-points" className="field-label">

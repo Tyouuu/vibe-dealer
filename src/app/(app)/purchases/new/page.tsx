@@ -10,6 +10,7 @@ import { ScrollFade } from '../../scroll-fade'
 import { PurchaseForm } from '../purchase-form'
 import { formatMYR } from '@/lib/money'
 import { IconPaperclip } from '../../icons'
+import { EmptyState } from '../../empty-state'
 
 export const metadata: Metadata = {
   title: 'Log Purchase — Vibe456',
@@ -156,9 +157,13 @@ export default async function NewPurchasePage({ searchParams }: PageProps) {
             </table>
           </ScrollFade>
         ) : (
-          <p className="py-8 text-center text-sm text-paper-dim">
-            Log your past batches with their real dates so the running balance on Credit Purchases is accurate.
-          </p>
+          // The form is directly above, so this offers no button — a CTA
+          // pointing at something already on screen is a chore.
+          <EmptyState
+            variant="empty"
+            title="Nothing logged yet"
+            description="Batches you save with the form above appear here, oldest date last. Enter your past ones with their real dates so the running balance on Credit Purchases is right."
+          />
         )}
       </div>
     </div>

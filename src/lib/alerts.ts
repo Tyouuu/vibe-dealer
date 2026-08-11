@@ -16,7 +16,7 @@
 // firing, and a cron that has silently stopped firing looks exactly like a
 // month with no problems.
 
-export type AlertKind = 'credit_low' | 'month_unreconciled' | 'pending_too_long'
+export type AlertKind = 'not_started' | 'credit_low' | 'month_unreconciled' | 'pending_too_long'
 
 // How long before the same unresolved problem is raised again. Daily would
 // train everyone to delete it unread, which is the failure mode that matters:
@@ -76,6 +76,28 @@ export function decideAlerts(
   today: string,
 ): Alert[] {
   const raised: Alert[] = []
+
+  // Before anything else, and only once.
+  //
+  // credit_low deliberately stays quiet until the first purchase — see its
+  // comment — because "you are running low" is a false alarm on a system
+  // nobody has started. That was the right call and it left a hole: on a
+  // system nobody has started, this said *nothing at all*, while every sale
+  // the owner tried to record was refused for a reason the screen never gave.
+  // Silence is the worse failure of the two. This is the setup prompt that
+  // belongs in that gap.
+  if (!facts.hasEverPurchased) {
+    raised.push({
+      kind: 'not_started',
+      headline: 'No credit bought from Vibe yet',
+      detail:
+        'Every sale is checked against the credit you have bought, and the balance starts at zero — so until a purchase is logged, ' +
+        'every top-up and package you try to record will be refused. Log what you paid Vibe Mobile and how many points they gave you, and the ledger opens.',
+    })
+    // Nothing below this is worth saying yet. An unreconciled month and a
+    // stale pending row are both about work in progress, and there is none.
+    return raised
+  }
 
   // Below the threshold, not at zero. At zero the ledger already refuses the
   // sale and the dealer is standing there — the point of saying anything is to

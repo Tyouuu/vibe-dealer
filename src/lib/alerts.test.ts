@@ -13,6 +13,37 @@ const quiet: AlertFacts = {
   pendingCount: 0,
 }
 
+describe('not_started', () => {
+  it('says why nothing can be recorded on a system nobody has started', () => {
+    // Production on 2026-08-11: 284 dealers, zero credit purchases, zero
+    // transactions. decideAlerts returned nothing at all, so the owner met a
+    // form that refused every entry and a dashboard that mentioned no reason.
+    const [a] = decideAlerts(
+      { ...quiet, hasEverPurchased: false, availablePoints: 0 },
+      {},
+      '2026-08-11',
+    )
+    expect(a.kind).toBe('not_started')
+    expect(a.detail).toMatch(/refused/)
+  })
+
+  it('is the only thing said until then', () => {
+    // An unreconciled month and a stale pending row are both about work in
+    // progress. There is none, and three alerts on day one is noise.
+    const all = decideAlerts(
+      { ...quiet, hasEverPurchased: false, availablePoints: 0, previousMonthReconciled: false, oldestPendingDays: 40, pendingCount: 3 },
+      {},
+      '2026-08-11',
+    )
+    expect(all.map((x) => x.kind)).toEqual(['not_started'])
+  })
+
+  it('goes quiet the moment credit has been bought', () => {
+    const kinds = decideAlerts({ ...quiet, hasEverPurchased: true }, {}, '2026-08-11').map((x) => x.kind)
+    expect(kinds).not.toContain('not_started')
+  })
+})
+
 describe('decideAlerts', () => {
   it('says nothing when nothing is wrong', () => {
     // The whole design rests on this: an email from this cron has to mean
@@ -30,7 +61,14 @@ describe('decideAlerts', () => {
     // The state production is in right now: nothing bought, nothing sold. A
     // shortage warning here would be the first thing the system ever said to
     // its owner, and it would be wrong.
-    expect(decideAlerts({ ...quiet, availablePoints: 0, hasEverPurchased: false }, {}, '2026-08-10')).toEqual([])
+    //
+    // This used to assert silence. Silence turned out to be the worse answer —
+    // the owner met a form refusing every entry with nothing on screen saying
+    // why — so the case now raises `not_started` instead. What must stay true
+    // is the original point: it is a setup prompt, never a shortage warning.
+    const kinds = decideAlerts({ ...quiet, availablePoints: 0, hasEverPurchased: false }, {}, '2026-08-10').map((a) => a.kind)
+    expect(kinds).not.toContain('credit_low')
+    expect(kinds).toEqual(['not_started'])
   })
 
   it('leaves credit alone exactly at the threshold', () => {

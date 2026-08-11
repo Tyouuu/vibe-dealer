@@ -7,6 +7,7 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
+import { EmptyState } from '../empty-state'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — Vibe456',
@@ -329,9 +330,16 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
               )}
             </>
           ) : (
-            <p className="py-8 text-center text-sm text-paper-dim">
-              Nothing logged yet. Log your past batches with their real dates for an accurate running balance.
-            </p>
+            /* The consequence, then the way out. This was one grey line that
+               stated the obvious and offered nothing — and it is the page a
+               brand-new system opens on, because until a purchase exists here
+               the balance is zero and /entry refuses every sale. */
+            <EmptyState
+              variant="empty"
+              title="No credit bought yet"
+              description="Every sale is checked against this balance, and it starts at zero — so until a purchase is logged, every top-up and package is refused. Log the batches you have already paid Vibe for, with their real dates, and the running balance below builds itself."
+              action={{ href: '/purchases/new', label: 'Log a purchase' }}
+            />
           )}
         </div>
       </div>

@@ -14,13 +14,14 @@ import { PACKAGE_SIM_CARDS } from '@/lib/sim-stock'
 import type { PackageCode } from '@/lib/packages'
 import { balanceSeries } from '@/lib/dashboard-period'
 import { formatMYR } from '@/lib/money'
+import { EmptyState } from '../empty-state'
 
 export const metadata: Metadata = {
   title: 'Monthly Report — Vibe456',
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; by?: string }>
+  searchParams: Promise<{ month?: string; by?: string; page?: string }>
 }
 
 // This page used to run one query — verified transactions — and print the 2%
@@ -45,7 +46,7 @@ type PageProps = {
 // closing balance.
 export default async function ReportsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month: monthParam, by: byRaw } = await searchParams
+  const { month: monthParam, by: byRaw, page } = await searchParams
   const by: 'dealer' | 'type' = byRaw === 'type' ? 'type' : 'dealer'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -214,7 +215,22 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const typeBreakdown = [...byType.values()].sort((a, b) => b.money - a.money)
 
   const breakdown = [...byDealer.values()].sort((a, b) => b.points - a.points)
+  // Against the whole month's leader, not the page's — a dealer's bar must
+  // mean the same thing on page two as on page one.
   const maxMoney = Math.max(...breakdown.map((d) => d.money), 0)
+
+  // 50 a page, the size /records, /dealers and /purchases all use.
+  //
+  // This had no limit at all. Every dealer that traded in the month rendered,
+  // each with a bar, which is 284 rows once the business is actually running —
+  // and the demo's thirty is exactly why nobody saw it.
+  const REPORT_PAGE_SIZE = 50
+  const breakdownPages = Math.max(1, Math.ceil(breakdown.length / REPORT_PAGE_SIZE))
+  const breakdownPage = Math.min(breakdownPages, Math.max(1, Math.trunc(Number(page)) || 1))
+  const breakdownRows = breakdown.slice((breakdownPage - 1) * REPORT_PAGE_SIZE, breakdownPage * REPORT_PAGE_SIZE)
+  const breakdownStart = breakdown.length === 0 ? 0 : (breakdownPage - 1) * REPORT_PAGE_SIZE + 1
+  const breakdownEnd = Math.min(breakdownPage * REPORT_PAGE_SIZE, breakdown.length)
+  const breakdownHref = (n: number) => `/reports?month=${month}${by === 'type' ? '&by=type' : ''}&page=${n}`
 
   // Per SIM type, so the second revenue line can be broken down the way the
   // first one is rather than arriving as a single figure.
@@ -557,11 +573,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {breakdown.map((d, i) => {
+                {breakdownRows.map((d, i) => {
                   const pct = maxMoney > 0 ? Math.round((d.money / maxMoney) * 100) : 0
                   return (
                     <tr key={d.id} className="tr-row relative h-14">
-                      <td className="td figure text-paper-dim">{i + 1}</td>
+                      <td className="td figure text-paper-dim">{(breakdownPage - 1) * REPORT_PAGE_SIZE + i + 1}</td>
                       <td className="td truncate font-semibold text-paper">
                         <a
                           href={`/records?month=${month}&status=verified&dealer=${d.id}`}
@@ -581,16 +597,47 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     </tr>
                   )
                 })}
-                {!breakdown.length && (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-paper-dim">
-                      No verified transactions this month yet.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </ScrollFade>
+        )}
+        {!breakdown.length && (
+          <EmptyState
+            variant="empty"
+            title="No verified transactions this month"
+            description="Every figure on this page is built from verified transactions. Record one, verify it, and the month fills in."
+            action={{ href: '/entry', label: 'New transaction' }}
+          />
+        )}
+        {breakdownPages > 1 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-ink-800 pt-3">
+            <span className="text-[12px] text-paper-dim">
+              {breakdownStart}–{breakdownEnd} of {breakdown.length.toLocaleString()} dealers
+            </span>
+            <div className="flex items-center gap-2">
+              {breakdownPage > 1 ? (
+                <Link href={breakdownHref(breakdownPage - 1)} className="btn-ghost">
+                  Previous
+                </Link>
+              ) : (
+                <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
+                  Previous
+                </button>
+              )}
+              <span className="text-[12px] text-paper-dim">
+                Page {breakdownPage} of {breakdownPages}
+              </span>
+              {breakdownPage < breakdownPages ? (
+                <Link href={breakdownHref(breakdownPage + 1)} className="btn-ghost">
+                  Next
+                </Link>
+              ) : (
+                <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
+                  Next
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

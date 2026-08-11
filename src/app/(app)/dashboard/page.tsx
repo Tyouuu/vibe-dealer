@@ -123,7 +123,11 @@ function buildRegionGrowth(monthTx: { points: number | string; dealers: DealerRe
 
 // Top dealers by this month's verified points. Derived from monthTx, which is
 // already in memory — 249 dealers and this page had never named one of them.
-function topDealers(monthTx: { dealer_id: string; points: number | string; dealers: DealerRegionRel }[], limit = 5) {
+// No limit here any more. One cap rule, in one place: BarList takes the top
+// eight and puts the rest behind a disclosure, which is what the region list
+// beside this one does. Two different caps in two different files is how the
+// region list ended up with none at all.
+function topDealers(monthTx: { dealer_id: string; points: number | string; dealers: DealerRegionRel }[]) {
   const by = new Map<string, { id: string; name: string; points: number }>()
   for (const t of monthTx) {
     const prev = by.get(t.dealer_id) ?? { id: t.dealer_id, name: dealerNameOf(t.dealers), points: 0 }
@@ -132,7 +136,6 @@ function topDealers(monthTx: { dealer_id: string; points: number | string; deale
   }
   return [...by.values()]
     .sort((a, b) => b.points - a.points)
-    .slice(0, limit)
     .map((d) => ({ ...d, href: `/dealers/${d.id}` }))
 }
 

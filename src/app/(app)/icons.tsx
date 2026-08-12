@@ -224,14 +224,18 @@ export function IconPaperclip({ className = th }: IconProps) {
 export function IconTrophy({ className = th }: IconProps) {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      {/* the cup */}
-      <path d="M4.6 2.4h6.8v3.1a3.4 3.4 0 0 1-6.8 0V2.4z" />
+      {/* The cup and base are filled, not outlined. This icon exists to carry
+          gold, silver or bronze at 14px, and a 1.3px outline gives a metal
+          almost no area to be seen in — all three read as the same grey
+          scratch at that size. The handles stay as strokes, which is what
+          keeps it legible as a trophy rather than a filled blob. */}
+      <path d="M4.6 2.4h6.8v3.1a3.4 3.4 0 0 1-6.8 0V2.4z" fill="currentColor" />
       {/* handles */}
       <path d="M4.6 3.3H2.9v.8a2.1 2.1 0 0 0 1.9 2.1" />
       <path d="M11.4 3.3h1.7v.8a2.1 2.1 0 0 1-1.9 2.1" />
       {/* stem and base */}
       <path d="M8 8.9v2.2" />
-      <path d="M5.6 13.6h4.8a2.4 2.4 0 0 0-2.4-2.5 2.4 2.4 0 0 0-2.4 2.5z" />
+      <path d="M5.6 13.6h4.8a2.4 2.4 0 0 0-2.4-2.5 2.4 2.4 0 0 0-2.4 2.5z" fill="currentColor" />
     </svg>
   )
 }

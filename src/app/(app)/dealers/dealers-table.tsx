@@ -120,27 +120,46 @@ function SendLinkButton({ dealer, origin }: { dealer: DealerRow; origin: string 
   )
 }
 
-// Every rank in the same chip, in one colour.
+// Every rank in the same chip. Gold, silver and bronze on the trophy.
 //
 // It used to be three things at once: #1 in semibold ink, #2 and #3 in a
 // lighter chip, and #4 onward as bare dim figures with no chip at all. Three
 // treatments for one kind of value, and the darker #1 read as a state rather
-// than a position.
+// than a position. The chip is now identical for everybody — same border,
+// same fill, same text colour — and the only thing that changes across the
+// podium is the metal on the trophy, which is the one place a reader already
+// expects first/second/third to be encoded by colour.
 //
-// Now the chip is the same for everybody and the podium is marked by a trophy
-// beside the number — the shape says "top three", the digit says which. No
-// gold, silver or bronze: the owner asked for one colour, and a medal palette
-// would put three more hues next to a status system that already owns the
-// only coloured marks in this table.
+// The metals are their own tokens rather than borrowed from the status
+// palette; see --color-medal-* in globals.css for why, and for the contrast
+// each one had to be darkened to.
+// Utility classes, not style={{ color: 'var(--color-medal-gold)' }}. The
+// tokens live in @theme, and Tailwind v4 only emits a theme variable it can
+// see being used — a var() built inside JSX is invisible to the scanner, so
+// the first version of this rendered all three trophies in the inherited grey
+// and the test caught three identical colours. Writing the class names as
+// whole literals is what makes them exist at all. Fourth time this codebase
+// has lost something to Tailwind's scanner; see lib/log-columns.ts.
+const MEDAL = ['text-medal-gold', 'text-medal-silver', 'text-medal-bronze']
+
 function RankBadge({ rank }: { rank: number | null }) {
-  if (rank == null) return <span className="text-paper-dim/50">—</span>
+  // The same 58px, even with nothing in it. Most dealers have no rank, so a
+  // narrow dash here would put the avatar and the company name at a different
+  // x on those rows — the ragged edge would just move one column right.
+  if (rank == null) return <span className="inline-block w-[58px] text-center text-paper-dim/50">—</span>
   const podium = rank <= 3
   return (
+    // One width for every chip, podium or not. A trophy is 14px plus a 6px
+    // gap, so "1" and "#4" produced chips 20px apart and the column had a
+    // ragged right edge down the whole table — which is the thing that reads
+    // as untidy, not the colours. Fixed width and centred content instead of
+    // min-width: the widest possible content is "#284", and sizing to the
+    // content means the column changes shape as you page through it.
     <span
-      className="pill pill-neutral whitespace-nowrap tabular-nums"
+      className="pill pill-neutral w-[58px] justify-center whitespace-nowrap tabular-nums"
       title={`#${rank} by cumulative top-up`}
     >
-      {podium && <IconTrophy className="h-3.5 w-3.5 shrink-0" />}
+      {podium && <IconTrophy className={`h-3.5 w-3.5 shrink-0 ${MEDAL[rank - 1]}`} />}
       {podium ? rank : `#${rank}`}
     </span>
   )

@@ -100,6 +100,21 @@
   --color-info: #3b62d9;
   --color-info-bright: #2d4bb0;
 
+  /* The podium: gold, silver, bronze, on the ranking trophy and nowhere else.
+     Deliberately outside the status family above — every other colour here
+     answers "what state is this in", and a place on a leaderboard is not a
+     state. Reusing brass for gold would have put the pending/warning hue on
+     the best-performing dealer.
+     Darkened from the literal metals, which cannot survive as a 14px icon on
+     a white card — #ffd700, #c0c0c0 and #cd7f32 measure 1.40:1, 1.82:1 and
+     3.14:1. These three are 4.52:1, 4.30:1 and 4.58:1: legible in their own
+     right, and matched to each other so the three places differ by hue only.
+     Bronze started at #8f5426 and had to be lightened — at 6.06:1 it was the
+     darkest mark of the three, so third place read as the heaviest. */
+  --color-medal-gold: #9a6f06;
+  --color-medal-silver: #6f7b8c;
+  --color-medal-bronze: #a56732;
+
   /* Chart-fill aliases — jade/brass already pass the categorical checks
      directly as chart marks on the white surface (validated with the
      dataviz skill's validate_palette.js), so these are just aliases kept

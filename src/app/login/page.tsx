@@ -21,13 +21,21 @@ export default async function LoginPage({ searchParams }: PageProps) {
     <div className="grid min-h-screen place-items-center bg-canvas px-4 py-10">
       <div className="w-full max-w-[400px]">
         {/* Brand mark and wordmark above the card rather than inside it, so
-            the card holds only the task. */}
-        <div className="mb-6 flex items-center justify-center gap-2.5">
+            the card holds only the task.
+
+            <header> and <main>, because this page has no app shell to give it
+            either. It is the first screen everyone in the company sees, and it
+            had no main landmark and ten pieces of content outside any region —
+            unnoticed because every audit and sweep in this repo signs in
+            before it starts measuring, so /login is the one page they all
+            navigate away from. Found by checking the deployed site instead. */}
+        <header className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
           <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
-        </div>
+        </header>
 
-        <div className="app-card p-7">
+        <main>
+          <div className="app-card p-7">
           {/* 24px, not the 20px this was. The page had four type sizes inside
               a 1.7:1 range — 12/14/16/20 — which impeccable's detector reads
               as no hierarchy at all, and it was right: nothing on the page
@@ -65,12 +73,13 @@ export default async function LoginPage({ searchParams }: PageProps) {
                 WhatsApp — had to find their way back to it by hand. The
                 value is validated in actions.ts before it is used. */}
             <LoginForm resetSuccess={reset === '1'} next={next} />
+            </div>
           </div>
-        </div>
 
-        <p className="mt-5 text-center text-[12px] text-paper-dim">
-          Staff access only — accounts are set up by your admin, no self-signup.
-        </p>
+          <p className="mt-5 text-center text-[12px] text-paper-dim">
+            Staff access only — accounts are set up by your admin, no self-signup.
+          </p>
+        </main>
       </div>
     </div>
   )

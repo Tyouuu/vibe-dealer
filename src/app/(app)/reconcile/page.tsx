@@ -404,7 +404,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                           </div>
                         </td>
                         <td className="td text-paper-dim">
-                          {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'}
+                          {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Regular Top-up'}
                         </td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
                         <td className="td">

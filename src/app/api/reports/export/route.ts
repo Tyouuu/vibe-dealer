@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     prev.commission += Number(t.commission_rm)
     byDealer.set(t.dealer_id, prev)
 
-    const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Adjustment' : 'Top-up'
+    const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Correction' : 'Top-up'
     const prevType = byType.get(label) ?? { label, count: 0, points: 0, money: 0, commission: 0 }
     prevType.count += 1
     prevType.points += Number(t.points)

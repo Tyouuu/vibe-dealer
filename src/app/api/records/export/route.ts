@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       [
         csvCell(tx.tx_date),
         csvCell(dealerName),
-        csvCell(tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'),
+        csvCell(tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'),
         // Number(...) — these arrive over PostgREST as numeric-typed JSON
         // strings, not real numbers, despite TxRow's type claiming otherwise.
         // Passed raw, a negative amount (any adjustment correction) hits

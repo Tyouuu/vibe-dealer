@@ -204,7 +204,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   // as the type column everywhere else in the app.
   const byType = new Map<string, { label: string; points: number; money: number; commission: number; count: number }>()
   for (const t of rows) {
-    const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Adjustment' : 'Top-up'
+    const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Correction' : 'Top-up'
     const prev = byType.get(label) ?? { label, points: 0, money: 0, commission: 0, count: 0 }
     prev.points += Number(t.points)
     prev.money += Number(t.money_rm)

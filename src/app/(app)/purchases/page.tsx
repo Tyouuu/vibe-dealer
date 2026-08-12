@@ -116,7 +116,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
     ...(saleRows ?? []).map((t) => {
       const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
       const dealer = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
-      const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Adjustment' : 'Top-up'
+      const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Correction' : 'Top-up'
       // A correction carries a delta, and a downward one is negative: it hands
       // points back to the pool rather than drawing from it. Treated as an
       // outflow of a negative number, the Out column rendered "−-80" — two

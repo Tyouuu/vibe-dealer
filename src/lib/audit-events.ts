@@ -140,13 +140,13 @@ export async function getAuditEvents(supabase: SupabaseClient, opts: { before?: 
 
   for (const tx of txRows) {
     const dealerName = Array.isArray(tx.dealers) ? tx.dealers[0]?.company_name : tx.dealers?.company_name
-    const typeLabel = tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Regular Top-up'
+    const typeLabel = tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Regular Top-up'
     const eventLabel =
       tx.type === 'adjustment'
         ? tx.status === 'verified'
-          ? 'Verified adjustment'
+          ? 'Verified correction'
           : tx.status === 'flagged'
-            ? 'Flagged adjustment'
+            ? 'Flagged correction'
             : 'Recorded adjustment'
         : tx.status === 'verified'
           ? 'Verified top-up'

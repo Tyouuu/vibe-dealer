@@ -37,7 +37,15 @@ export const TABLE_COLUMNS: Record<TableId, ColumnSpec[]> = {
     // the same three characters on every row of every page since then.
     { key: 'rate', label: 'Rate', hint: 'the same 6% on every row', hiddenByDefault: true },
     { key: 'commission', label: 'Your 2%' },
-    { key: 'delivery', label: 'Delivery', hint: 'empty on top-ups and corrections' },
+    // Hidden by default so the frozen Action column stops sitting on top of
+    // Status. Measured at 1440px: the table is 1187px inside a 1136px
+    // viewport, so the sticky Action column parks at the right edge and
+    // covers the last 51px of Status — every row read "Pendi" and "Verifi".
+    // No column had any slack to give (each was already narrower than its
+    // own content needs), so one had to go, and this is the one whose own
+    // note below says the page is not where you act on it. Hiding it takes
+    // the overflow to 0 and Status from 57px of 120 to 113px, both measured.
+    { key: 'delivery', label: 'Delivery', hint: 'empty on top-ups and corrections — /delivery is where you act on it', hiddenByDefault: true },
   ],
   dealers: [
     { key: 'rank', label: 'Rank' },
@@ -53,8 +61,27 @@ export const TABLE_COLUMNS: Record<TableId, ColumnSpec[]> = {
 
 export const COLUMN_COOKIE_PREFIX = 'cols_'
 
+/**
+ * Bumped when a table's *defaults* change, and only then.
+ *
+ * parseHiddenColumns deliberately ignores hiddenByDefault the moment a cookie
+ * exists — otherwise a column someone chose to reveal would hide itself again
+ * on the next load. The cost is that a new default reaches nobody who has ever
+ * opened the page, which is everybody. Marking Delivery hidden by default
+ * would therefore have changed nothing for the three people who use this.
+ *
+ * So the name carries a version. Bumping it retires the old preference for
+ * that one table and lets the new default apply; every other table keeps its
+ * cookie. Costs a reader whatever they had toggled on /records, once.
+ */
+const COOKIE_VERSION: Record<TableId, number> = {
+  records: 2, // v2: Delivery hidden by default — see the note on that column
+  dealers: 1,
+}
+
 export function columnCookieName(table: TableId): string {
-  return `${COLUMN_COOKIE_PREFIX}${table}`
+  const v = COOKIE_VERSION[table]
+  return v > 1 ? `${COLUMN_COOKIE_PREFIX}${table}_v${v}` : `${COLUMN_COOKIE_PREFIX}${table}`
 }
 
 /**

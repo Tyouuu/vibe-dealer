@@ -334,7 +334,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           reconciliation, not the monthly report, not the 2%. */}
       <PageHeader
         title="Transactions"
-        subtitle="Every top-up, package and adjustment. Append-only — corrections post as new linked entries, nothing is edited or deleted."
+        subtitle="Every top-up, package and correction. Append-only — corrections post as new linked entries, nothing is edited or deleted."
         action={{ href: '/entry', label: 'New transaction' }}
       />
 
@@ -681,7 +681,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     <td className="td whitespace-nowrap text-paper-dim" data-c="date">{formatDateLabel(tx.tx_date)}</td>
                     <td className="td text-paper-dim" data-c="type">
                       <span className="whitespace-nowrap">
-                        {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
+                        {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'}
                       </span>
                       {/* title, not wrapping. Measured with real data: 31% of
                           "RM 50.00 as coupon (5×)" was cut at 1440px and 34%
@@ -796,7 +796,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
           variant="empty"
           icon={<IconSearch className="h-5 w-5" />}
           title="No transactions yet"
-          description="Record a transaction to start the ledger. Entries here can be corrected by adjustment, never edited or deleted."
+          description="Record a transaction to start the ledger. Entries here can be corrected by a linked correction, never edited or deleted."
           action={{ href: '/entry', label: 'New transaction' }}
         />
       )}

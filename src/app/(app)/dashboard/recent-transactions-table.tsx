@@ -97,7 +97,7 @@ export function RecentTransactionsTable({ rows }: { rows: RecentTxRow[] }) {
                   {tx.type === 'package'
                     ? `Buy Package ${tx.package ?? '—'}`
                     : tx.type === 'adjustment'
-                      ? 'Adjustment'
+                      ? 'Correction'
                       : 'Regular Top-up'}
                 </td>
                 <td className="td">

@@ -488,7 +488,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                       tx.status === 'flagged'
                         ? 'Flagged'
                         : tx.type === 'adjustment'
-                          ? `Adjustment — ${tx.points >= 0 ? '+' : ''}${tx.points.toLocaleString()} pts`
+                          ? `Correction — ${tx.points >= 0 ? '+' : ''}${tx.points.toLocaleString()} pts`
                           : tx.type === 'package'
                             ? `Package ${tx.package} assigned`
                             : `Top-up recorded — ${tx.points.toLocaleString()} pts`
@@ -527,7 +527,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                       <tr key={tx.id} className="tr-row">
                         <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                         <td className="td text-paper-dim">
-                          {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Adjustment' : 'Top-up'}
+                          {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'}
                           {tx.type === 'topup' && tx.coupon_rm > 0 && (
                             <div className="mt-0.5 text-[11px] text-paper-dim">
                               {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)

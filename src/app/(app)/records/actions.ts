@@ -102,7 +102,7 @@ export async function adjustTransaction(formData: FormData) {
   const newPoints = Number(formData.get('new_points'))
   const newMoneyRm = Number(formData.get('new_money_rm'))
 
-  if (!originalId || !reason) fail('An adjustment needs a reason.')
+  if (!originalId || !reason) fail('A correction needs a reason.')
   if (!Number.isFinite(newPoints) || newPoints < 0) fail('Enter a valid points value.')
   if (!Number.isFinite(newMoneyRm) || newMoneyRm < 0) fail('Enter a valid RM value.')
 
@@ -127,7 +127,7 @@ export async function adjustTransaction(formData: FormData) {
   if (deltaPoints > 0) {
     const { available } = await getAvailablePointsBalance(supabase)
     if (deltaPoints > available) {
-      fail(`Not enough credit balance: ${available.toLocaleString()} pts available, this adjustment needs ${deltaPoints.toLocaleString()} more pts.`)
+      fail(`Not enough credit balance: ${available.toLocaleString()} pts available, this correction needs ${deltaPoints.toLocaleString()} more pts.`)
     }
   }
 

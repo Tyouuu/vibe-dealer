@@ -213,19 +213,26 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
            This note is a plain block comment rather than a braced JSX one,
            deliberately: a ternary branch holds one expression, and a JSX
            comment beside the element is a second child with no parent. */
-        <div className="app-card flex flex-wrap items-baseline gap-x-3 gap-y-1.5 px-5 py-5">
-          <span className="text-[13px] font-semibold text-brass-bright">
-            Vibe has not sent their {formatMonthLabel(month)} statement yet
-          </span>
-          <span className="text-[13px] text-paper-dim">
-            Your side: <b className="figure-points font-semibold text-paper">{systemPoints.toLocaleString()} pts</b> ·{' '}
-            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} · your 2%{' '}
+        <div className="app-card">
+          <div className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Your verified total</div>
+          <div className="figure-points mt-1 text-[34px] font-semibold leading-none text-paper">{systemPoints.toLocaleString()} pts</div>
+          {/* Everything the dead three-cell strip used to carry, on one line.
+              Of those three cells, one repeated the figure above it verbatim
+              and one held the words "Not entered yet" — a whole column spent
+              saying a thing was absent. Only "Your 2% due" was a fact the
+              headline did not already state, so it joins the sentence that
+              was there anyway. */}
+          <div className="mt-2.5 text-[13px] text-paper-dim">
+            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} in {formatMonthLabel(month)} · your 2%{' '}
             <b className="figure-money font-semibold text-paper">{formatMYR(systemProfit)}</b>
-          </span>
+          </div>
+          <div className="mt-1 text-[13px] text-brass-bright">
+            Vibe has not sent their {formatMonthLabel(month)} statement yet — nothing can be compared until it is in.
+          </div>
           {monthAuto && (
-            <span className="text-[13px] text-brass-bright">
-              Nothing verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
-            </span>
+            <div className="mt-1 text-[13px] text-brass-bright">
+              Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
+            </div>
           )}
         </div>
       ) : (

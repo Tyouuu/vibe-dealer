@@ -36,8 +36,38 @@ export const LOG_COL = {
   person: '148px',
   /** Free text. Wide enough to be worth reading, not wide enough to own the row. */
   note: '220px',
-  chevron: '20px',
+  /* 32, not 20. Cells on these grids carry px-3 — 24px of padding before any
+     glyph — so a 20px track was always 4-6px too narrow for its own cell. The
+     trailing 1fr spacer used to swallow that; with the spacer gone the grid
+     overflowed its band by 6px and one of the page's three tables scrolled
+     sideways while the others did not. The name column is the 1fr now, so
+     these 12px come out of it and nothing else moves. */
+  chevron: '32px',
 } as const
 
-/** Whatever is left over goes here, never into a data column. */
+/**
+ * Retired. Slack used to be parked in an empty trailing column so it could
+ * never distort a data column — defensible in isolation, but it drew an empty
+ * plank down the right of every log: 140px on Stock in, 44px on Stock out,
+ * measured at 1440px. Beside a full-width table on the same page the client
+ * read it, correctly, as the tables not being finished.
+ *
+ * Slack now goes to the one column on each table that genuinely wants it —
+ * free text on Stock in, the dealer name on Stock out, both of which truncate
+ * today. Widening a fixed data column would still be wrong; widening the
+ * column that holds a sentence is just giving it room.
+ */
 export const LOG_COL_SPACER = 'minmax(0,1fr)'
+
+/** Note, taking whatever is left rather than a spacer beside it. */
+export const LOG_COL_NOTE_FLEX = 'minmax(220px,1fr)'
+
+/**
+ * The dealer-name column on Stock out, same idea — but with a 0 floor, not a
+ * 140px one. At minmax(140px,1fr) the row could not shrink below the sum of
+ * its fixed columns plus that floor, so the grid overflowed its band by 6px
+ * and design-audit reported one of the page's three tables scrolling sideways
+ * while the others did not. The name cell truncates and carries a title, so
+ * letting it give way is the correct behaviour rather than a compromise.
+ */
+export const LOG_COL_NAME_FLEX = 'minmax(0,1fr)'

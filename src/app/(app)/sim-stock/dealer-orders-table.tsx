@@ -8,7 +8,7 @@ import { ScrollFade } from '../scroll-fade'
 import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
 import { formatDateLabel } from '@/lib/month'
-import { LOG_COL, LOG_COL_SPACER } from '@/lib/log-columns'
+import { LOG_COL, LOG_COL_NAME_FLEX } from '@/lib/log-columns'
 
 export type OrderItem = {
   id: string
@@ -68,7 +68,7 @@ export function DealerOrdersTable({
           // the two read as one page rather than two unrelated grids.
           gridTemplateColumns: [
             LOG_COL.date,
-            'minmax(140px,260px)',
+            LOG_COL_NAME_FLEX,
             LOG_COL.sim,
             LOG_COL.qty,
             LOG_COL.money,
@@ -76,7 +76,6 @@ export function DealerOrdersTable({
             LOG_COL.money,
             LOG_COL.status,
             LOG_COL.chevron,
-            LOG_COL_SPACER,
           ].join(' '),
         }}
       >

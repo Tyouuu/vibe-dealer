@@ -438,7 +438,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </p>
           ) : (
             <div className="band-log min-w-0 overflow-x-auto">
-              <table className="w-full max-w-[620px] border-collapse text-sm">
+              {/* Full width, no max-w cap. Capped at 620px it left 516px of
+                  empty band to its right — measured — which is the same empty
+                  plank the two SIM logs were drawing, and on a page whose
+                  other two tables both run the full width. The third column
+                  holds the per-line notes and takes the slack. */}
+              <table className="w-full border-collapse text-sm">
                 <tbody>
                   <tr className="tr-row h-14">
                     <td className="td text-paper-dim">Opened with</td>

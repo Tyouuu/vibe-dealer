@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   title: 'Reconciliation — Vibe456',
 }
 
-const PAGE_SIZE = 50
+// How many verified rows the evidence table shows before handing off to
+// Transactions. Enough to recognise the month, few enough that Close stays
+// on the same screen as the form above it.
+const EVIDENCE_ROWS = 8
 
 type BreakdownRow = {
   id: string
@@ -35,13 +38,12 @@ type BreakdownRow = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; error?: string; saved?: string; reopened?: string; resolved?: string; page?: string }>
+  searchParams: Promise<{ month?: string; error?: string; saved?: string; reopened?: string; resolved?: string }>
 }
 
 export default async function ReconcilePage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month: monthParam, error, saved, reopened, resolved, page } = await searchParams
-  const pageNum = Math.max(1, Math.trunc(Number(page)) || 1)
+  const { month: monthParam, error, saved, reopened, resolved } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view reconciliation" />
@@ -106,14 +108,10 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   // exactly 0 and wrongly report "Mismatch found".
   const diff = companyPoints != null ? Math.round((systemPoints - companyPoints) * 100) / 100 : null
 
-  const totalPages = Math.max(1, Math.ceil(breakdownRows.length / PAGE_SIZE))
-  const currentPage = Math.min(pageNum, totalPages)
-  const pagedRows = breakdownRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  function pageHref(p: number) {
-    const params = new URLSearchParams({ month })
-    if (p > 1) params.set('page', String(p))
-    return `/reconcile?${params.toString()}`
-  }
+  // An extract, not a page of results. The full list lives on Transactions,
+  // which is built for reading a ledger; here it only has to answer "does
+  // this look like my month" before you lock it.
+  const evidenceRows = breakdownRows.slice(0, EVIDENCE_ROWS)
 
   // Single column, ordered by the task, and state-driven rather than a fixed
   // layout — the shape research settled on after checking how QuickBooks,
@@ -347,124 +345,18 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
         </details>
       )}
 
-      {/* Supporting evidence, folded away by default — Stripe and Adyen both
-          split reconciliation into a summary with itemised detail behind a
-          deliberate step. Opened automatically when the difference isn't zero,
-          because at that point the task changes from confirming to
-          investigating and the rows stop being background material. The
-          summary line carries the count and total, since NN/g requires the
-          progression mechanic to say what's behind it. */}
-      <details className="page-band group" open={hasStatement && gap !== 0}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-          <span className="text-[13px] font-semibold text-paper">
-            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} behind your total
-          </span>
-          {/* The total used to be repeated here. It earned its place when the
-              hero sat 600px up the page; with the summary now one line under
-              the title it is the same figure twice within a screen, which is
-              the defect this whole redesign is about. The count stays — that
-              is what says how much is behind the fold. */}
-          <span className="flex shrink-0 items-center gap-2.5">
-            <IconChevronDown className="h-3 w-3 text-paper-dim transition-transform duration-150 group-open:rotate-180" />
-          </span>
-        </summary>
-        <div className="mt-4 border-t border-ink-800 pt-4">
-          {pagedRows.length ? (
-            <ScrollFade label="Verified transactions in this period">
-              <table className="w-full min-w-[620px] border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="th">Date</th>
-                    <th className="th">Dealer</th>
-                    <th className="th">Type</th>
-                    <th className="th text-right">Points</th>
-                    <th className="th">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedRows.map((tx) => {
-                    const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
-                    const dealerName = dealerRel?.company_name
-                    return (
-                      <tr key={tx.id} className="tr-row relative">
-                        <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
-                        <td className="td">
-                          <div className="flex items-center gap-2.5">
-                            <Avatar name={dealerName ?? '?'} size={24} />
-                            {tx.dealer_id ? (
-                              <a
-                                href={`/dealers/${tx.dealer_id}`}
-                                className="font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
-                              >
-                                {dealerName ?? '—'}
-                              </a>
-                            ) : (
-                              <span className="font-semibold text-paper">{dealerName ?? '—'}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="td text-paper-dim">
-                          {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Regular Top-up'}
-                        </td>
-                        <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                        <td className="td">
-                          <StatusDot color="jade-bright" label="Verified" />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </ScrollFade>
-          ) : (
-            <p className="text-sm text-paper-dim">No verified transactions in this period yet.</p>
-          )}
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[12px] text-paper-dim">
-                Page {currentPage} of {totalPages}
-              </span>
-              <div className="flex items-center gap-2">
-                {currentPage > 1 ? (
-                  <Link href={pageHref(currentPage - 1)} className="btn-ghost py-1.5 text-xs">
-                    Previous
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Previous
-                  </button>
-                )}
-                {currentPage < totalPages ? (
-                  <Link href={pageHref(currentPage + 1)} className="btn-ghost py-1.5 text-xs">
-                    Next
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Next
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="mt-3 text-center">
-            {/* inline-block + py-1.5 so this standalone link is a 24px-tall
-                touch target (WCAG 2.5.8) rather than just its 15px line box. */}
-            <a
-              href={`/records?month=${month}&status=verified`}
-              className="inline-block py-1.5 text-[12px] font-semibold text-primary hover:underline"
-            >
-              View all in Transactions →
-            </a>
-          </div>
-        </div>
-      </details>
 
       {/* Closing is the consequential act on this page: migration 0031 locks
           the month at the database level afterwards. NetSuite, QuickBooks and
           Xero all put visible preconditions, a separate confirmation and an
           audit trail around the equivalent action; this gets its own block at
-          the end of the task rather than sitting beside the figures. */}
-      <div className="page-band">
+          the end of the task rather than sitting beside the figures.
+
+          A card, not a bare band. This page is three steps — see where you
+          stand, enter Vibe's figures, lock the month — and the first two were
+          cards while the third was loose text on the canvas, so the one
+          irreversible act on the page looked like a footer. */}
+      <div className="app-card">
         {isClosed ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -514,6 +406,104 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
             </div>
           </>
         )}
+      </div>
+
+      {/* Supporting evidence, open, and below the three steps rather than
+          between them.
+          It used to be a <details> — the only collapsed table in the whole
+          app. Transactions, Dealers, SIM Card Stock, Monthly Report and
+          Credit Purchases all show theirs, so this one read as belonging to
+          a different product. Folding it also put a click between the reader
+          and the only proof the figure above is right.
+          It is capped instead. Fifty rows of evidence between the entry form
+          and the Close button pushed the one irreversible act on the page
+          hundreds of pixels down; the most recent few answer "does this look
+          like my month", and Transactions is where you go to read the rest.
+          Pagination went with the cap — a paged control on an eight-row
+          extract is machinery for nothing. */}
+      <div className="page-band">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <span className="text-[13px] font-semibold text-paper">
+            What is behind the {systemPoints.toLocaleString()} pts
+            <span className="ml-2 font-normal text-paper-dim">
+              {breakdownRows.length <= EVIDENCE_ROWS
+                ? `all ${breakdownRows.length}`
+                : `most recent ${EVIDENCE_ROWS} of ${breakdownRows.length}`}
+            </span>
+          </span>
+          <Link href={`/records?month=${month}&status=verified`} className="text-[12px] font-semibold text-primary hover:underline">
+            View all {breakdownRows.length} in Transactions →
+          </Link>
+        </div>
+        <div>
+          {evidenceRows.length ? (
+            <ScrollFade label="Verified transactions in this period">
+              <table className="w-full min-w-[620px] border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="th">Date</th>
+                    <th className="th">Dealer</th>
+                    <th className="th">Type</th>
+                    <th className="th text-right">Points</th>
+                    <th className="th">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {evidenceRows.map((tx) => {
+                    const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
+                    const dealerName = dealerRel?.company_name
+                    return (
+                      <tr key={tx.id} className="tr-row relative">
+                        {/* nowrap. "10 Aug 2026" is one character longer
+                            than "8 Aug 2026" and wrapped where the shorter
+                            dates did not — so on the demo month exactly the
+                            two-digit days ran 61px rows and the rest 45px. */}
+                        <td className="td whitespace-nowrap text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
+                        {/* truncate + title, the same treatment /records
+                            gives a dealer name. Left to wrap, the longest
+                            name on the demo — Bayan Baru Handphone Centre —
+                            took its row to 61px against 45px for the rest.
+                            Abbreviated is fine here; unrecoverable is not,
+                            so the full name stays on the title. */}
+                        <td className="td">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <Avatar name={dealerName ?? '?'} size={24} />
+                            {tx.dealer_id ? (
+                              <a
+                                href={`/dealers/${tx.dealer_id}`}
+                                title={dealerName ?? undefined}
+                                className="truncate font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
+                              >
+                                {dealerName ?? '—'}
+                              </a>
+                            ) : (
+                              <span className="truncate font-semibold text-paper" title={dealerName ?? undefined}>
+                                {dealerName ?? '—'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        {/* nowrap: at 390px "Regular Top-up" wrapped to two
+                            lines while "Buy Package B" did not, so the table
+                            ran 61px rows and 45px rows alternately. The audit
+                            never saw it because this table was collapsed. */}
+                        <td className="td whitespace-nowrap text-paper-dim">
+                          {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Regular Top-up'}
+                        </td>
+                        <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
+                        <td className="td">
+                          <StatusDot color="jade-bright" label="Verified" />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </ScrollFade>
+          ) : (
+            <p className="text-sm text-paper-dim">No verified transactions in this period yet.</p>
+          )}
+        </div>
       </div>
     </div>
   )

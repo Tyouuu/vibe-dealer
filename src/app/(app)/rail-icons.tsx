@@ -144,3 +144,45 @@ export function IconShield({ className = 'h-[18px] w-[18px]' }: IconProps) {
     </svg>
   )
 }
+
+// Staff. Two of the fourteen rail items had no icon at all, and the rail
+// renders `{Icon && <Icon />}` — so their labels sat flush against the edge
+// while the other twelve were indented past an 18px glyph. A gap in a column
+// of icons is more visible than any of the icons in it.
+//
+// A lanyard badge rather than another person: /dealers is already two people
+// and /onboard is a person with a plus, so a third human silhouette would
+// have been the least distinguishable shape in the rail. A badge is what
+// staff carry, and it reads at 18px because its outline is a card, not a
+// body.
+export function IconBadge({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {/* the clip it hangs from */}
+      <path d="M10 2.5h4v3h-4z" />
+      {/* the card */}
+      <rect x="4" y="5.5" width="16" height="16" rx="2.5" />
+      {/* whoever it belongs to */}
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M8.2 18.4a3.9 3.9 0 0 1 7.6 0" />
+    </svg>
+  )
+}
+
+// Dealer Requests. A tray with something dropping into it — the page is
+// things that arrived from outside and are waiting on you, which is what an
+// inbox has always meant. Deliberately not an envelope: /notifications is
+// already the bell, and mail would read as a message rather than as a queue
+// of work.
+export function IconInbox({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {/* arriving */}
+      <path d="M12 3v6.5" />
+      <path d="M9.2 7l2.8 2.8L14.8 7" />
+      {/* the tray */}
+      <path d="M3 13h4.5l1.4 2.4h6.2L16.5 13H21" />
+      <path d="M3 13v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" />
+    </svg>
+  )
+}

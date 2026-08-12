@@ -22,6 +22,8 @@ import {
   IconSettings,
   IconLayers,
   IconLayersPlus,
+  IconBadge,
+  IconInbox,
 } from './rail-icons'
 import { IconBell, IconChevronDown } from './icons'
 
@@ -41,6 +43,8 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/purchases': IconShoppingBag,
   '/purchases/new': IconShoppingBagPlus,
   '/audit': IconShield,
+  '/staff': IconBadge,
+  '/requests': IconInbox,
 }
 
 const PREVIEW_ROLES: Role[] = ['master', 'accountant', 'cs']

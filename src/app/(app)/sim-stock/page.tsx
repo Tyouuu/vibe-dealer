@@ -5,9 +5,9 @@ import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import {
   SIM_BOX_SIZE,
-  SIM_MARGIN_RM,
   SIM_SELL_PRICE_RM,
   SIM_STOCK_TYPES,
+  SIM_TYPE_LABEL,
   SIM_UNIT_COST_RM,
   cardsOwedByDealer,
   type SimStockType,
@@ -15,8 +15,8 @@ import {
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { PageHeader } from '../page-header'
-import { StatusDot } from '../status-dot'
-import { BandHeading, Pool, StockBar } from './elements'
+import { ScrollFade } from '../scroll-fade'
+import { BandHeading } from './elements'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -143,6 +143,27 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const sentQty = qtyBy(null, 'sent')
   const emptyPool = balances.some((b) => b.available <= 0)
 
+  // What is genuinely sellable, which is not what this page used to print.
+  //
+  // `available` is already net of every order raised — see the note above. The
+  // commitment it does NOT know about is the card entitlement inside a package
+  // a dealer has already paid for and never collected: 2,275 cards against 805
+  // on the shelf on the seeded month. The page called that 805 "Available to
+  // sell" and put the debt three lines below in small brass text, so the
+  // headline and the warning contradicted each other and the headline won.
+  //
+  // Shopify's definitions are the ones this now follows: "Available" is
+  // "inventory that you can sell. Available inventory isn't committed to any
+  // orders", and on hand is the sum of committed and available. By that rule
+  // 805 was on hand, not available.
+  //
+  // Finance only, and deliberately: cs has no SELECT on `transactions`, so
+  // packageSales is empty for them and the shortfall would silently compute as
+  // a comfortable surplus. A figure that lies to one role is worse than one
+  // they never see — so cs keeps the plain shelf count.
+  const cardsShort = totalAvailable - cardsOwed.totalOwed
+  const showShortfall = isFinance && cardsOwed.totalOwed > 0
+
   // Sliced in memory rather than a second .range() query per list — unlike
   // Records/Dealers this data doesn't grow across a whole customer base, just
   // one master dealer's own order/intake history, so fetching the full set
@@ -222,90 +243,129 @@ export default async function SimStockPage({ searchParams }: PageProps) {
           fulfilment fact (sold, still sitting here), not an availability
           one, and the legend says so rather than subtracting them twice. */}
       <section className="app-card">
-        <div className="flex flex-wrap items-end gap-x-12 gap-y-6">
-          <div>
-            <p className="text-[12px] text-paper-dim">Available to sell</p>
-            {/* Sans, not .figure's mono, and this is the one place on the
-                page that differs. Mono exists so columns of digits line up;
-                a single headline figure has no column to line up with, and
-                the mono comma takes a full character advance — at 38px
-                "2,945" rendered with a visible hole on each side of it.
-                Tabular figures are kept so the number doesn't jump width
-                when the count changes. */}
-            <p className="tnum mt-1.5 text-[38px] font-semibold leading-none tracking-[-.03em] text-paper">
-              {totalAvailable.toLocaleString()}
+        <div>
+          <p className="text-[12px] text-paper-dim">
+            {showShortfall ? (cardsShort < 0 ? 'Short by' : 'Available to sell') : 'On the shelf'}
+          </p>
+          {/* One figure. It used to be four: this one at 38px and the three
+              pools at 22px directly beneath a rule — and 625 + 0 + 180 is
+              exactly this number, so the card stated the same fact twice at
+              two sizes and neither read as the answer. The pools moved into
+              the table below, where they are a decomposition rather than
+              three rivals. */}
+          <p
+            className={`tnum mt-1.5 text-[38px] font-semibold leading-none tracking-[-.03em] ${
+              showShortfall && cardsShort < 0 ? 'text-clay-bright' : 'text-paper'
+            }`}
+          >
+            {showShortfall ? Math.abs(cardsShort).toLocaleString() : totalAvailable.toLocaleString()}
+            <span className="ml-2 text-[20px] font-semibold">cards</span>
+          </p>
+          {showShortfall ? (
+            <p className="mt-2.5 text-[13px] text-paper-dim">
+              <b className="figure font-semibold text-paper">{totalAvailable.toLocaleString()}</b> on the shelf{' '}
+              {cardsShort < 0 ? '−' : 'against'}{' '}
+              <b className="figure font-semibold text-paper">{cardsOwed.totalOwed.toLocaleString()}</b> owed to {owedDealerCount} dealer
+              {owedDealerCount === 1 ? '' : 's'} on packages they have already paid for.
             </p>
-            <p className="mt-2 text-[13px] text-paper-dim">of {totalBought.toLocaleString()} bought from Vibe Mobile</p>
-          </div>
-          {/* Capped, not stretched to the full 1,137px. Left as flex-1 the
-              legend and the shelf count sat at opposite ends of the page
-              with 700px of nothing between them — the exact "empty here,
-              crowded there" the client keeps pointing at. */}
-          {/* min-w-0, not min-w-[320px]. A hard 320px floor is wider than the
-              content area of a 320px phone once padding is taken, so the whole
-              page scrolled sideways by 40px — the one thing a page must never
-              do. basis-[320px] keeps the same intent (do not squeeze this
-              below a readable width while there is room) without making it a
-              floor the viewport cannot honour. */}
-          <div className="min-w-0 basis-[320px] max-w-[620px] flex-1">
-            <StockBar sent={sentQty} pending={pendingQty} total={totalBought} />
-            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-              <StatusDot color="jade-bright" label={`${sentQty.toLocaleString()} sent`} />
-              <StatusDot color="brass-bright" label={`${pendingQty.toLocaleString()} sold, still to send`} />
-              <span className="text-[13px] text-paper-dim">{totalAvailable.toLocaleString()} still on the shelf</span>
-            </div>
-            {isFinance && (
-              <p className="mt-3.5 text-[12px] text-paper-dim">
-                {formatMYR(SIM_UNIT_COST_RM)} a card in, {formatMYR(SIM_SELL_PRICE_RM)} out — a flat {formatMYR(SIM_MARGIN_RM)} each ·{' '}
-                {formatMYR(totalIntakeCost)} spent on stock · {formatMYR(totalIntakeCost - soldAtCost)} of it still unsold · margin{' '}
-                {formatMYR(totalOrderMargin)} after shipping
-              </p>
-            )}
-            {/* Cards a dealer has paid for inside a package and has not been
-                given yet. These two facts lived in two tables that had never
-                been asked to agree — packages in `transactions`, cards in
-                `sim_orders` — so a dealer could buy a hundred cards, walk out
-                with ten, and nothing anywhere would say the other ninety were
-                owed. Finance only: it needs `transactions`, which cs cannot
-                read, and a figure that silently reads zero for one role is
-                worse than one they never see. */}
-            {isFinance && cardsOwed.totalOwed > 0 && (
-              <p className="mt-2 text-[12px]" style={{ color: 'var(--color-brass-bright)' }}>
-                {cardsOwed.totalOwed.toLocaleString()} cards are owed to {owedDealerCount} dealer
-                {owedDealerCount === 1 ? '' : 's'} — bought inside a package, not yet handed over.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* The three pools sit under the shelf inside the same card, split
-            off by one rule — the same anatomy every other summary card in
-            this app uses: headline figure, rule, the figures that break it
-            down. Same bar as the shelf above, once per pool, because three
-            bare numbers cannot show that one pool is draining while the
-            other two are not. */}
-        <div className="mt-7 border-t border-ink-800 pt-6">
-          <BandHeading title="Three pools" sub="an order can only draw from its own type" />
-          {emptyPool && (
-            <p className="mb-4 text-[13px]" style={{ color: 'var(--color-clay-bright)' }}>
-              One pool is empty — log a stock intake before taking that order.
+          ) : (
+            <p className="mt-2.5 text-[13px] text-paper-dim">
+              of {totalBought.toLocaleString()} bought from Vibe Mobile · {sentQty.toLocaleString()} sent ·{' '}
+              {pendingQty.toLocaleString()} sold and still to send
             </p>
           )}
-          <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-3">
-            {balances.map((b) => (
-              <Pool
-                key={b.sim_type}
-                simType={b.sim_type}
-                available={b.available}
-                intake={b.total_intake}
-                sold={b.total_sold}
-                sent={qtyBy(b.sim_type, 'sent')}
-                pending={qtyBy(b.sim_type, 'pending')}
-                low={b.available > 0 && b.available < SIM_BOX_SIZE}
-              />
-            ))}
-          </div>
         </div>
+
+        {/* The next action, beside the reason for it. It was a red sentence
+            with nothing to press, four hundred pixels above the button that
+            answers it. */}
+        {emptyPool && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-ink-800 pt-4">
+            <p className="text-[13px] text-clay-bright">
+              {balances
+                .filter((b) => b.available <= 0)
+                .map((b) => SIM_TYPE_LABEL[b.sim_type])
+                .join(' and ')}{' '}
+              {balances.filter((b) => b.available <= 0).length === 1 ? 'has' : 'have'} none left — an order for that type cannot be taken.
+            </p>
+            {isFinance && (
+              <Link href="/sim-stock/log" className="btn-ghost shrink-0 px-3 py-1.5 text-xs">
+                Log a stock intake
+              </Link>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* The pools, as rows. Three columns of big figures could hold three
+          pools and no more — a fourth SIM type would have forced the row to
+          re-wrap. Rows grow downward, so it takes a fourth type without the
+          layout changing at all, and it can carry the sent/to-send split that
+          previously needed a separate legend and a bar beside the headline. */}
+      <section className="page-band">
+        <BandHeading
+          title="On the shelf, by pool"
+          sub="an order can only draw from its own type"
+          facts={
+            showShortfall
+              ? [`the ${cardsOwed.totalOwed.toLocaleString()} owed on packages are not split by type — a package says how many cards, not which kind`]
+              : undefined
+          }
+        />
+        {/* ScrollFade, not a bare overflow-x-auto div. axe caught the first
+            version at 390px: scrollable-region-focusable — a scroller with no
+            tabIndex cannot be reached or moved by keyboard. This component
+            already solves it the way every other table on the page does, and
+            only applies role/tabIndex when the content genuinely overflows. */}
+        {/* 51px rows, not the h-12 this started as. The two logs further
+            down are CSS grids built on lib/log-columns.ts and measure 51px a
+            row; a 48px table above them put three row heights on one page,
+            which is the same "tables on one page must align" rule that was
+            already applied to Stock in and Stock out. An arbitrary value
+            rather than a scale step because it is matching a measurement,
+            not choosing one. */}
+        <ScrollFade label="SIM card stock by pool" className="band-log min-w-0">
+          <table className="w-full min-w-[560px] border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="th">Pool</th>
+                <th className="th text-right">Bought</th>
+                <th className="th text-right">Sold</th>
+                <th className="th text-right">Sent</th>
+                <th className="th text-right">To send</th>
+                <th className="th text-right">On shelf</th>
+              </tr>
+            </thead>
+            <tbody>
+              {balances.map((b) => (
+                <tr key={b.sim_type} className="tr-row h-[51px]">
+                  <td className="td font-semibold text-paper">{SIM_TYPE_LABEL[b.sim_type]}</td>
+                  <td className="td figure text-right text-paper-dim">{b.total_intake.toLocaleString()}</td>
+                  <td className="td figure text-right text-paper-dim">{b.total_sold.toLocaleString()}</td>
+                  <td className="td figure text-right text-paper-dim">{qtyBy(b.sim_type, 'sent').toLocaleString()}</td>
+                  <td className="td figure text-right text-paper-dim">{qtyBy(b.sim_type, 'pending').toLocaleString()}</td>
+                  <td
+                    className={`td figure text-right font-semibold ${
+                      b.available <= 0 ? 'text-clay-bright' : b.available < SIM_BOX_SIZE ? 'text-brass-bright' : 'text-paper'
+                    }`}
+                  >
+                    {b.available.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="h-[51px] border-t border-ink-800">
+                <td className="td font-semibold text-paper">All pools</td>
+                <td className="td figure text-right font-semibold text-paper">{totalBought.toLocaleString()}</td>
+                <td className="td figure text-right font-semibold text-paper">{totalSold.toLocaleString()}</td>
+                <td className="td figure text-right font-semibold text-paper">{sentQty.toLocaleString()}</td>
+                <td className="td figure text-right font-semibold text-paper">{pendingQty.toLocaleString()}</td>
+                <td className="td figure text-right font-semibold text-paper">{totalAvailable.toLocaleString()}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </ScrollFade>
       </section>
 
       {/* Stock in — money out, stock up. */}
@@ -315,10 +375,18 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             arrow="in"
             title="Stock in"
             sub="bought from Vibe Mobile"
+            /* The unit economics used to run along the summary card as one
+               sentence carrying six money figures — in price, out price,
+               margin each, total spent, still unsold, margin after shipping.
+               Three of the six were already on this heading and the other
+               three on Stock out's. They now sit with the side they belong
+               to: what was spent is a buying fact, what was made is a
+               selling one. */
             facts={[
               `${intakes.length} intake${intakes.length === 1 ? '' : 's'}`,
-              `${formatMYR(totalIntakeCost)} spent`,
               `${totalBought.toLocaleString()} cards at ${formatMYR(SIM_UNIT_COST_RM)} each`,
+              `${formatMYR(totalIntakeCost)} spent`,
+              `${formatMYR(totalIntakeCost - soldAtCost)} of it still on the shelf`,
             ]}
           />
           <div className="band-log min-w-0">

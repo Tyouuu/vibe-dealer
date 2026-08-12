@@ -313,41 +313,80 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </p>
         )}
 
-        {/* Two revenue lines, then what changed hands. The 2% and the SIM
-            margin are separate businesses sharing one month, and the report
-            had only ever shown the first. */}
-        <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-6 border-t border-ink-800 pt-5 sm:grid-cols-3">
-          <div>
-            <div className="text-[12px] text-paper-dim">Points — your 2%</div>
-            <div className="figure-money mt-1 text-[20px] tracking-[-.02em]">{formatMYR(totalCommission)}</div>
-            <div className="mt-1 text-[12px] text-paper-dim">
-              {totalPoints.toLocaleString()} pts over {rows.length} transaction{rows.length === 1 ? '' : 's'}
-            </div>
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">SIM cards — margin</div>
-            <div className="figure-money mt-1 text-[20px] tracking-[-.02em]">{formatMYR(simMargin)}</div>
-            <div className="mt-1 text-[12px] text-paper-dim">
-              {simCards.toLocaleString()} card{simCards === 1 ? '' : 's'} over {simThis.length} order{simThis.length === 1 ? '' : 's'}
-            </div>
-            {/* The margin above counts cards that actually went out. This
-                counts cards this month's package sales promised. When the
-                second number is larger, the difference is stock a dealer has
-                paid for and not received — and until this line existed there
-                was nowhere the two figures were ever put side by side. */}
-            {cardsFromPackages > 0 && cardsFromPackages !== simCards && (
-              <div className="mt-1 text-[12px]" style={{ color: 'var(--color-brass-bright)' }}>
-                packages sold this period promised {cardsFromPackages.toLocaleString()}
-              </div>
-            )}
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">Money collected</div>
-            <div className="figure-money mt-1 text-[20px] tracking-[-.02em]">{formatMYR(moneyCollected)}</div>
-            <div className="mt-1 text-[12px] text-paper-dim">
-              {formatMYR(totalMoney)} points · {formatMYR(simRevenue)} cards
-            </div>
-          </div>
+        {/* The composition, as a sentence rather than three more figures.
+            These were three cells at 20px under a 38px headline, and the
+            first two of them add up to exactly that headline — so the card
+            printed one fact twice and the eye had four things to land on
+            where there is only one answer. Counting the four in the ledger
+            below, this page carried seven figures at 20px or larger. Every
+            number that was here is still here; none of them is competing
+            with the total any more. */}
+        <p className="mt-4 text-[13px] leading-relaxed text-paper-dim">
+          Points 2% <b className="figure-money font-semibold text-paper">{formatMYR(totalCommission)}</b> over{' '}
+          {totalPoints.toLocaleString()} pts in {rows.length} transaction{rows.length === 1 ? '' : 's'} + SIM cards{' '}
+          <b className="figure-money font-semibold text-paper">{formatMYR(simMargin)}</b> on {simCards.toLocaleString()} card
+          {simCards === 1 ? '' : 's'} over {simThis.length} order{simThis.length === 1 ? '' : 's'}. Money collected{' '}
+          <b className="figure-money font-semibold text-paper">{formatMYR(moneyCollected)}</b> — {formatMYR(totalMoney)} points,{' '}
+          {formatMYR(simRevenue)} cards.
+        </p>
+        {/* The margin above counts cards that actually went out. This counts
+            cards this month's package sales promised. When the second number
+            is larger, the difference is stock a dealer has paid for and not
+            received. */}
+        {cardsFromPackages > 0 && cardsFromPackages !== simCards && (
+          <p className="mt-1.5 text-[12px] text-brass-bright">
+            Packages sold this period promised {cardsFromPackages.toLocaleString()} cards — see SIM Card Stock for what is still owed.
+          </p>
+        )}
+
+        {/* The caveats, against the figure they qualify. They were a band of
+            their own two blocks down the page, headed "Before you rely on
+            this" — an instruction that arrives after you have already relied
+            on it. The rule on this project is that explanation sits beside
+            what it explains. */}
+        <div className="mt-5 flex flex-col gap-1.5 border-t border-ink-800 pt-4 text-[12px] leading-relaxed">
+          {excludedCount === 0 ? (
+            <p className="text-paper-dim">Every transaction dated in {monthLabel} is verified and counted.</p>
+          ) : (
+            <p className="text-brass-bright">
+              Not counted: {excludedCount} transaction{excludedCount === 1 ? '' : 's'} ·{' '}
+              {(flagged.points + pending.points).toLocaleString()} pts · {formatMYR(flagged.money + pending.money)}
+              {flagged.count > 0 && ` — ${flagged.count} flagged (${formatMYR(flagged.commission)}), disputed and held out until resolved`}
+              {flagged.count > 0 && pending.count > 0 && ';'}
+              {pending.count > 0 &&
+                ` ${flagged.count > 0 ? '' : '— '}${pending.count} still pending review (${formatMYR(pending.commission)}), will count once verified`}
+              .{' '}
+              <Link href={`/records?month=${month}`} className="font-semibold text-primary hover:underline">
+                See them →
+              </Link>
+            </p>
+          )}
+          {companyPoints == null ? (
+            <p className="text-paper-dim">
+              Vibe&apos;s own statement for {monthLabel} has not been recorded, so nothing here has been agreed with them.{' '}
+              <Link href={`/reconcile?month=${month}`} className="font-semibold text-primary hover:underline">
+                Open Reconciliation →
+              </Link>
+            </p>
+          ) : (
+            <p className={variance === 0 ? 'text-jade-bright' : 'text-clay-bright'}>
+              Checked against Vibe: {variance === 0 ? 'matched exactly' : `${variance! > 0 ? '+' : ''}${variance!.toLocaleString()} pts apart`}
+              {isClosed ? ', month closed' : ', month still open'} — you recorded {totalPoints.toLocaleString()} pts, Vibe&apos;s statement
+              says {companyPoints.toLocaleString()} pts.{' '}
+              <Link href={`/reconcile?month=${month}`} className="font-semibold text-primary hover:underline">
+                Open Reconciliation →
+              </Link>
+            </p>
+          )}
+          {/* Closed is not the same as settled. A month can be marked
+              reconciled over a gap, with a reason, and that gap stays open
+              until Vibe answers. */}
+          {openVariances.length > 0 && (
+            <p className="text-brass-bright">
+              {openVariances.length} unresolved {openVariances.length === 1 ? 'variance' : 'variances'} on this month,{' '}
+              {openVarianceTotal.toLocaleString()} pts — closed, but not yet agreed.
+            </p>
+          )}
         </div>
 
         {/* Opening balance, what moved, closing balance — the shape every
@@ -363,7 +402,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             The closing figure ties to the balance printed on Credit
             Purchases: it is walked backwards from the live number by
             balanceSeries, not recomputed. */}
-        <div className="mt-6 border-t border-ink-800 pt-5">
+      </div>
+
+      {/* Its own section, out of the earnings card.
+          "What did I make" is a profit-and-loss question; "what credit have I
+          got left" is a balance roll-forward. Two different questions sharing
+          one card, and the second one contributed four of the seven 20px
+          figures this page was carrying.
+          Stripe's Balance summary report is the shape borrowed here: a
+          summary section for the period, then "Balance change from activity"
+          as a separate section, then the itemised rows — starting balance,
+          activity, ending balance, in their own block. A roll-forward reads
+          as rows because each line acts on the one above it; four figures
+          side by side hid that entirely. */}
+      <div className="page-band">
+        <div className="border-t-0 pt-0">
           <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-sm font-semibold text-paper">Points ledger</h3>
             <span className="text-[12px] text-paper-dim">
@@ -384,110 +437,43 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               on to dealers.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-10 gap-y-5 sm:grid-cols-4">
-              <div>
-                <div className="text-[12px] text-paper-dim">Opened with</div>
-                <div className="figure-points mt-1 text-[20px]">{openingBalance.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-[12px] text-paper-dim">Bought from Vibe</div>
-                <div className="figure-points mt-1 text-[20px]">{pointsBought > 0 ? `+${pointsBought.toLocaleString()}` : '0'}</div>
-                {pointsBought > 0 && <div className="mt-1 text-[12px] text-paper-dim">{formatMYR(paidToVibe)} paid</div>}
-              </div>
-              <div>
-                <div className="text-[12px] text-paper-dim">Sold to dealers</div>
-                <div className="figure-points mt-1 text-[20px]">{pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}</div>
-              </div>
-              <div>
-                <div className="text-[12px] text-paper-dim">Closed with</div>
-                <div className="figure-points mt-1 text-[20px] font-semibold">{closingBalance.toLocaleString()}</div>
-                {cardsBought > 0 && (
-                  <div className="mt-1 text-[12px] text-paper-dim">
-                    {cardsBought.toLocaleString()} SIM cards bought, {formatMYR(stockBought)}
-                  </div>
-                )}
-              </div>
+            <div className="band-log min-w-0 overflow-x-auto">
+              <table className="w-full max-w-[620px] border-collapse text-sm">
+                <tbody>
+                  <tr className="tr-row h-14">
+                    <td className="td text-paper-dim">Opened with</td>
+                    <td className="td figure-points text-right font-semibold text-paper">{openingBalance.toLocaleString()}</td>
+                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell" />
+                  </tr>
+                  <tr className="tr-row h-14">
+                    <td className="td text-paper-dim">Bought from Vibe</td>
+                    <td className="td figure-points text-right font-semibold text-jade-bright">
+                      {pointsBought > 0 ? `+${pointsBought.toLocaleString()}` : '0'}
+                    </td>
+                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell">{pointsBought > 0 ? `${formatMYR(paidToVibe)} paid` : ''}</td>
+                  </tr>
+                  <tr className="tr-row h-14">
+                    <td className="td text-paper-dim">Sold to dealers</td>
+                    <td className="td figure-points text-right font-semibold text-paper">
+                      {pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}
+                    </td>
+                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell">
+                      {excludedCount > 0 ? `includes ${excludedCount} not yet verified` : ''}
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr className="h-14 border-t border-ink-800">
+                    <td className="td font-semibold text-paper">Closed with</td>
+                    <td className="td figure-points text-right font-semibold text-paper">{closingBalance.toLocaleString()}</td>
+                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell">
+                      {cardsBought > 0 ? `${cardsBought.toLocaleString()} SIM cards bought, ${formatMYR(stockBought)}` : ''}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Whether these figures can be trusted, and what they leave out. A
-          report that silently drops a disputed transaction cannot be checked
-          against anything, and one that does not say whether the month has
-          been agreed with Vibe is a claim rather than a statement. */}
-      <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Before you rely on this</h3>
-        <p className="mb-4 text-[12px] text-paper-dim">What the figures above leave out, and whether they have been checked against Vibe.</p>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-5 lg:grid-cols-2">
-          <div>
-            <div className="text-[12px] text-paper-dim">Not counted</div>
-            {excludedCount === 0 ? (
-              <p className="mt-1 text-[13px] text-paper">Nothing. Every transaction dated in {monthLabel} is verified.</p>
-            ) : (
-              <>
-                <p className="mt-1 text-[13px] font-semibold text-paper">
-                  {excludedCount} transaction{excludedCount === 1 ? '' : 's'} · {(flagged.points + pending.points).toLocaleString()} pts ·{' '}
-                  {formatMYR(flagged.money + pending.money)}
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
-                  {flagged.count > 0 && (
-                    <>
-                      {flagged.count} flagged ({formatMYR(flagged.commission)} of commission) — disputed, so held out until resolved.
-                    </>
-                  )}
-                  {flagged.count > 0 && pending.count > 0 && ' '}
-                  {pending.count > 0 && (
-                    <>
-                      {pending.count} still pending review ({formatMYR(pending.commission)}) — will count once verified.
-                    </>
-                  )}
-                </p>
-                <Link href={`/records?month=${month}`} className="mt-1.5 inline-block text-[12px] font-semibold text-primary hover:underline">
-                  See them in Transactions →
-                </Link>
-              </>
-            )}
-          </div>
-          <div>
-            <div className="text-[12px] text-paper-dim">Checked against Vibe</div>
-            {companyPoints == null ? (
-              <>
-                <p className="mt-1 text-[13px] font-semibold" style={{ color: 'var(--color-brass-bright)' }}>
-                  Not entered yet
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
-                  Vibe&apos;s own statement for {monthLabel} has not been recorded, so nothing here has been agreed with them.
-                </p>
-              </>
-            ) : (
-              <>
-                <p
-                  className="mt-1 text-[13px] font-semibold"
-                  style={{ color: variance === 0 ? 'var(--color-jade-bright)' : 'var(--color-clay-bright)' }}
-                >
-                  {variance === 0 ? 'Matched exactly' : `${variance! > 0 ? '+' : ''}${variance!.toLocaleString()} pts apart`}
-                  {isClosed ? ' · month closed' : ' · month still open'}
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
-                  You recorded {totalPoints.toLocaleString()} pts; Vibe&apos;s statement says {companyPoints.toLocaleString()} pts.
-                </p>
-              </>
-            )}
-            {/* Closed is not the same as settled. A month can be marked
-                reconciled over a gap, with a reason, and that gap stays open
-                until Vibe answers — saying so here stops the report reading
-                as agreed when it is not. */}
-            {openVariances.length > 0 && (
-              <p className="mt-1 text-[12px] font-semibold" style={{ color: 'var(--color-brass-bright)' }}>
-                {openVariances.length} unresolved {openVariances.length === 1 ? 'variance' : 'variances'} on this month,{' '}
-                {openVarianceTotal.toLocaleString()} pts — closed, but not yet agreed.
-              </p>
-            )}
-            <Link href={`/reconcile?month=${month}`} className="mt-1.5 inline-block text-[12px] font-semibold text-primary hover:underline">
-              Open Reconciliation →
-            </Link>
-          </div>
         </div>
       </div>
 

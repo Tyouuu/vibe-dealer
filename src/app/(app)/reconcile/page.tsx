@@ -189,32 +189,44 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
            cannot exist yet. But your own side of the comparison does exist,
            and stating it is not a verdict. So the card carries what is known
            and names what is missing, and the form moves below it as a band. */
-        <div className="app-card">
-          <div className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Your verified total</div>
-          <div className="figure-points mt-1 text-[34px] font-semibold leading-none text-paper">{systemPoints.toLocaleString()} pts</div>
-          <div className="mt-2 text-[13px] text-paper-dim">
-            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} in {formatMonthLabel(month)}. Nothing can be
-            compared until Vibe&apos;s own figures are in.
-          </div>
+        /* One line, not a hero.
+           The hero here was 97,465 pts at 34px under "YOUR VERIFIED TOTAL",
+           and the strip beneath it opened with "Your system 97,465 pts" —
+           the same number, printed twice inside one card, with the third
+           appearance on the breakdown fold below. Two of the strip's three
+           cells were dead: one a duplicate, one the words "Not entered yet"
+           occupying a whole column to say a thing was absent.
+           It is also a hero that cannot mean anything yet. This page exists
+           to answer whether two sides agree; before Vibe's figures arrive
+           there is no answer, and dressing your own subtotal up as one is
+           what made the page feel like it was reporting a result. State the
+           two facts that are true, and let the form be the page.
+
+           py-5, not py-4. At py-4 this measured 52px and design-audit's anchor
+           rule — the page's first painted surface must be at least 56px and
+           start near the title — skipped it as too small to land on, then
+           reported the form card below at y=211 as the page opening on bare
+           canvas. The threshold is right: a 52px strip is a caption, not
+           something the eye can settle on. So the card grew rather than the
+           rule shrinking.
+
+           This note is a plain block comment rather than a braced JSX one,
+           deliberately: a ternary branch holds one expression, and a JSX
+           comment beside the element is a second child with no parent. */
+        <div className="app-card flex flex-wrap items-baseline gap-x-3 gap-y-1.5 px-5 py-5">
+          <span className="text-[13px] font-semibold text-brass-bright">
+            Vibe has not sent their {formatMonthLabel(month)} statement yet
+          </span>
+          <span className="text-[13px] text-paper-dim">
+            Your side: <b className="figure-points font-semibold text-paper">{systemPoints.toLocaleString()} pts</b> ·{' '}
+            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} · your 2%{' '}
+            <b className="figure-money font-semibold text-paper">{formatMYR(systemProfit)}</b>
+          </span>
           {monthAuto && (
-            <div className="mt-1.5 text-[13px] text-brass-bright">
-              Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
-            </div>
+            <span className="text-[13px] text-brass-bright">
+              Nothing verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
+            </span>
           )}
-          <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-ink-800 pt-4 sm:grid-cols-3">
-            <div>
-              <div className="text-[12px] font-medium text-paper-dim">Your system</div>
-              <div className="figure-points mt-0.5 text-[14px] font-semibold text-paper">{systemPoints.toLocaleString()} pts</div>
-            </div>
-            <div>
-              <div className="text-[12px] font-medium text-paper-dim">Vibe&apos;s statement</div>
-              <div className="mt-0.5 text-[14px] font-semibold text-brass-bright">Not entered yet</div>
-            </div>
-            <div>
-              <div className="text-[12px] font-medium text-paper-dim">Your 2% due</div>
-              <div className="figure-money mt-0.5 text-[14px] font-semibold text-paper">{formatMYR(systemProfit)}</div>
-            </div>
-          </div>
         </div>
       ) : (
         /* STATE B — statement is in. The difference becomes the anchor and
@@ -278,9 +290,13 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           three things below it — enter, check, close — are the task itself
           laid out in order. Same reasoning as an index page's table, which
           also stopped being boxed. */}
+      {/* A card now, not a band. The rule on this page is that the card is
+          the thing you act on, and with no statement in there is exactly one
+          thing to act on — this. The summary above gave up its card in the
+          same move, so the page still carries one. */}
       {!hasStatement && (
-        <div className="page-band">
-          <h2 className="text-sm font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
+        <div className="app-card">
+          <h2 className="text-[14px] font-semibold text-paper">Enter Vibe&apos;s {formatMonthLabel(month)} statement</h2>
           <p className="mb-4 mt-1 text-[12px] leading-relaxed text-paper-dim">
             Upload their statement and the numbers below fill themselves in, or type them.
           </p>
@@ -336,8 +352,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <span className="text-[13px] font-semibold text-paper">
             {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} behind your total
           </span>
+          {/* The total used to be repeated here. It earned its place when the
+              hero sat 600px up the page; with the summary now one line under
+              the title it is the same figure twice within a screen, which is
+              the defect this whole redesign is about. The count stays — that
+              is what says how much is behind the fold. */}
           <span className="flex shrink-0 items-center gap-2.5">
-            <span className="figure-points text-[13px] font-semibold text-paper-dim">{systemPoints.toLocaleString()} pts</span>
             <IconChevronDown className="h-3 w-3 text-paper-dim transition-transform duration-150 group-open:rotate-180" />
           </span>
         </summary>

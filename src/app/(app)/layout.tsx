@@ -172,7 +172,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               the header. It read as the header drifting while scrolling.
               Horizontal padding stays here so the scrollbar sits at the far
               right edge rather than inset from it. */}
-          <main className="flex-1 px-4 sm:px-7 lg:overflow-y-auto">
+          {/* tabIndex on the scroll container.
+              <main> is the scrollport on lg, and a scrollport that contains no
+              focusable descendant cannot be scrolled by keyboard at all — axe's
+              scrollable-region-focusable. Nearly every page hides this by
+              happening to contain a link or a button; /sim-stock as cs does
+              not, because every action on that page is finance-only, and
+              redesigning its summary made the page just tall enough to scroll.
+              Rather than plant a decorative button on one page to satisfy one
+              role, the scrollport itself becomes reachable — Adrian Roselli's
+              pattern, the same one scroll-fade.tsx already applies to the
+              horizontal scrollers inside it. On pages that do carry focusable
+              content this adds one tab stop at the top of the content pane,
+              which is what a scrollable region is supposed to have. */}
+          <main tabIndex={0} className="flex-1 px-4 sm:px-7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary lg:overflow-y-auto">
             {/* No max-width here — the shell above already caps out at 1440px
                 total (md:max-w-[1440px]), so this only needs w-full to use
                 whatever room that leaves past the rail. A redundant narrower

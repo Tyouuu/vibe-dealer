@@ -52,9 +52,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // No dealer count here any more — the /dealers badge that consumed it is
   // gone (see the badge note below), and this was a COUNT over 249 rows on
   // every single page load in the app, for a number nothing rendered.
-  const [{ count: pendingCount }, { count: pendingDeliveryCount }, creditBalance, builtNotifications] = await Promise.all([
+  const [{ count: pendingCount }, { count: pendingDeliveryCount }, { count: pendingRequestCount }, creditBalance, builtNotifications] = await Promise.all([
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending'),
+    // Same definition the page itself uses: status = 'pending'. A dealer
+    // waiting for an answer is the clearest case of "this needs you" in the
+    // whole rail — clearer than the delivery count beside it — and it was the
+    // one queue with no badge at all, so two people could be waiting and the
+    // nav said nothing until you opened the page.
+    // cs never sees /requests, so this only runs for the two roles that do.
+    isFinance
+      ? supabase.from('topup_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      : Promise.resolve({ count: null }),
     getAvailablePointsBalance(supabase),
     getNotifications(user.id, user.role),
   ])
@@ -73,7 +82,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ? (pendingCount ?? undefined)
         : item.href === '/delivery'
           ? (pendingDeliveryCount ?? undefined)
-          : undefined,
+          : item.href === '/requests'
+            ? (pendingRequestCount ?? undefined)
+            : undefined,
   }))
 
   // The bell dropdown is a short preview (capped at 4) of the same list the

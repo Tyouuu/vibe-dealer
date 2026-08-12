@@ -85,13 +85,17 @@ export function BulkVerifyBar() {
 // pointer events", not by looking at the screen, where it appears fine.
 export function RowSelect({ id }: { id: string }) {
   return (
-    <input
-      type="checkbox"
-      name="ids"
-      value={id}
-      form={FORM_ID}
-      className="relative z-10 h-4 w-4 accent-primary"
-      aria-label="Select for bulk verify"
-    />
+    // The box stays 16px; the thing you tap is 28px.
+    //
+    // A bare 16×16 checkbox is the one control in the app that failed WCAG
+    // 2.2's 24px target size on a phone with no exception to fall back on —
+    // it is not inline text and it has no spacing to spare in a table row.
+    // The label around it carries negative margin equal to its padding, so
+    // the hit area grows without moving the box or changing the row height.
+    // Same pattern SIM Delivery already used for its row checkbox; this was
+    // the one that never got it.
+    <label className="relative z-10 -m-1.5 inline-flex cursor-pointer p-1.5">
+      <input type="checkbox" name="ids" value={id} form={FORM_ID} className="h-4 w-4 accent-primary" aria-label="Select for bulk verify" />
+    </label>
   )
 }

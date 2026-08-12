@@ -2,12 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { signIn } from './actions'
 import { IconMail, IconLock, IconEye, IconEyeOff } from '../(app)/icons'
 
-export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
-  const router = useRouter()
+export function LoginForm({ resetSuccess, next }: { resetSuccess?: boolean; next?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,16 +21,14 @@ export function LoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
     setPending(true)
     setError(null)
 
-    const { error } = await signIn(email, password, rememberMe)
+    // On success this never resolves: the action redirects (303) and Next
+    // navigates, unmounting this form. So a returned value is always a
+    // failure, and `pending` stays true for the whole navigation rather than
+    // flicking back to "Sign in" a moment before the page changes.
+    const res = await signIn(email, password, rememberMe, next)
 
-    if (error) {
-      setError(error)
-      setPending(false)
-      return
-    }
-
-    router.push('/')
-    router.refresh()
+    setError(res?.error ?? 'Sign in failed. Please check your email / password.')
+    setPending(false)
   }
 
   return (

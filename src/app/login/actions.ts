@@ -1,5 +1,6 @@
 'use server'
 
+import { redirect } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { getCurrentUser } from '@/lib/auth/dal'
@@ -22,18 +23,27 @@ function clientIp(h: Headers): string | null {
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? h.get('x-real-ip') ?? null
 }
 
-// Signs in server-side rather than from the browser client, so the session
-// cookie comes back on the server's own Set-Cookie response header and can
-// be httpOnly (src/lib/supabase/server.ts) — a browser-issued
-// signInWithPassword can only ever set the cookie via document.cookie,
-// which structurally cannot be httpOnly, leaving the session token readable
-// by any future XSS. Also the one place brute-force protection can actually
-// live, since it has to hold regardless of which client calls it.
+// Signs in server-side rather than from the browser client. That gives the
+// rate limiting below a home — it has to hold regardless of which client
+// calls it — and it puts the Set-Cookie on the server's own response instead
+// of document.cookie.
+//
+// It does NOT make the session cookie httpOnly, and a comment here used to
+// claim it did. Measured: sb-<ref>-auth-token comes back with httpOnly
+// false. It cannot be otherwise while six client components
+// (logout-button, change-password-form, realtime-refresher, order-form,
+// entry-form, reset-password-form) authenticate through @supabase/ssr's
+// browser client, which reads the token out of document.cookie — flipping
+// the flag would sign the app out of itself. This is the standard trade-off
+// of using the JS client at all, not something this file gets to fix; the
+// defence against a stolen token is the short refresh window and the idle
+// sign-out in lib/idle.ts. Worth knowing rather than worth believing
+// otherwise.
 //
 // A one-off client instead of the shared createClient() helper: it's the
 // only call site that needs to touch the cookie's own maxAge (for
 // rememberMe), which the shared helper doesn't expose.
-export async function signIn(email: string, password: string, rememberMe: boolean): Promise<{ error: string | null }> {
+export async function signIn(email: string, password: string, rememberMe: boolean, next?: string): Promise<{ error: string }> {
   const cookieStore = await cookies()
   const h = await headers()
 
@@ -132,7 +142,30 @@ export async function signIn(email: string, password: string, rememberMe: boolea
     cookieStore.delete(REMEMBER_COOKIE)
   }
 
-  return { error: null }
+  // Redirect from the action, not with router.push() on the client.
+  //
+  // The form used to await this, get {error:null}, then push('/'), which
+  // redirects to /dashboard — and Next fetches both, twice each. Measured on
+  // the dev server: POST /login, GET / ×2, GET /dashboard ×2, five round
+  // trips where one would do. Through all of them the button sits on
+  // "Signing in…" with nothing else moving, which is the frozen screen the
+  // client screenshotted. Locally that is 1.3s; on a cold serverless
+  // function it is long enough to look broken and be clicked again.
+  //
+  // In a Server Action redirect() serves a 303 and Next performs the
+  // navigation itself (see next/dist/docs/.../redirect.md), so the session
+  // cookie set above and the navigation ride the same response. It throws,
+  // so nothing below it runs and the success branch never returns.
+  redirect(safeNext(next))
+}
+
+// Where to land. Only ever a path on this site: a value like
+// "https://evil.example" or "//evil.example" would turn the login form into
+// an open redirect, which is worth the four lines to close even though the
+// only caller today is our own middleware.
+function safeNext(next?: string): string {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return '/dashboard'
+  return next
 }
 
 // Kept separate from signIn for any sign-in path that doesn't go through it

@@ -48,12 +48,21 @@ const paths = rest.map((p) => (p.startsWith('/') ? p : `/${p}`))
 // its own accounts and a database with a month of trading in it. Auditing an
 // empty system measures almost nothing: the rules that matter — row heights,
 // pooled slack, clipped text, dead charts — all need rows to look at.
+//
+// master is here so the two master-only pages can be audited at all. Without
+// it /audit and /staff had never been through this — the audit refused them
+// as "accountant cannot see this page", which is the correct refusal and also
+// meant the two screens with the widest permissions were the two nobody
+// measured. There is no master account on production's QA pair, so this one
+// only resolves when an email is supplied (the demo has one).
 const ACCOUNTS = {
   accountant: { email: process.env.QA_ACCOUNTANT_EMAIL || 'accountant@dealerhub.test', password: process.env.QA_PASSWORD || env.QA_PASSWORD },
   cs: { email: process.env.QA_CS_EMAIL || 'cs@dealerhub.test', password: process.env.QA_PASSWORD || env.QA_PASSWORD },
+  master: { email: process.env.QA_MASTER_EMAIL, password: process.env.QA_PASSWORD || env.QA_PASSWORD },
 }
 const acct = ACCOUNTS[role]
 if (!acct) throw new Error(`unknown role ${role}`)
+if (!acct.email) throw new Error(`no email for role ${role} — set QA_${role.toUpperCase()}_EMAIL`)
 if (!acct.password) throw new Error('QA_PASSWORD is not set in .env.local — the audit cannot sign in')
 
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
@@ -182,9 +191,16 @@ for (const p of paths) {
     // That is worse than a failure. It means auditing with the wrong role
     // quietly produces a page of green that measured nothing, and the pages
     // you thought were covered never were.
+    // No length bound. It used to require the refusal to be under 400
+    // characters, on the assumption that the screen was one bare sentence —
+    // which it was, and which was itself the defect: no heading, no way out.
+    // The moment that screen was given a title and a route back, it grew past
+    // 400 and this check silently stopped firing, handing back "✓ clean" for
+    // pages the role cannot see. A heuristic tied to how short a screen
+    // happens to be is a heuristic that expires. The phrase is the contract.
     const mainText = (main.innerText || '').trim()
-    if (/does not have permission/i.test(mainText) && mainText.length < 400) {
-      return { permissionDenied: mainText.split('\n')[0].slice(0, 120), url: location.pathname }
+    if (/does not have permission/i.test(mainText)) {
+      return { permissionDenied: mainText.split('\n').find((l) => /does not have permission/i.test(l))?.slice(0, 120) ?? mainText.slice(0, 120), url: location.pathname }
     }
 
     const mb = main.getBoundingClientRect()

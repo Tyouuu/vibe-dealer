@@ -7,11 +7,11 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ reset?: string; ended?: string; idle?: string }>
+  searchParams: Promise<{ reset?: string; ended?: string; idle?: string; next?: string }>
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
-  const { reset, ended, idle } = await searchParams
+  const { reset, ended, idle, next } = await searchParams
   return (
     // The form now sits in a card on the canvas, which is how every other
     // surface in this app is built and how Stripe, Linear and Mercury all
@@ -58,7 +58,13 @@ export default async function LoginPage({ searchParams }: PageProps) {
           )}
 
           <div className="mt-6">
-            <LoginForm resetSuccess={reset === '1'} />
+            {/* `next` is where they were headed before the middleware sent
+                them here. Signing in used to land everyone on the dashboard
+                regardless, so anyone opening a link to a specific dealer or
+                transaction — the normal way a link gets shared over
+                WhatsApp — had to find their way back to it by hand. The
+                value is validated in actions.ts before it is used. */}
+            <LoginForm resetSuccess={reset === '1'} next={next} />
           </div>
         </div>
 

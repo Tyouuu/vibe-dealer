@@ -55,7 +55,13 @@ export function StaffRow({
               </span>
               {isSelf && <span className="text-[12px] text-paper-dim">you</span>}
             </div>
-            <p className="truncate text-[12px] text-paper-dim">
+            {/* title, because this truncates. On a phone the line is 154px
+                wide and the address alone needs 262 — measured — so the only
+                thing on screen was "accounts@vibe456de…" with no way to read
+                the rest. An email you cannot read is the one field on this
+                screen that has to be exact: it is what the person types to
+                sign in. Same treatment the dealer name gets on /records. */}
+            <p className="truncate text-[12px] text-paper-dim" title={`${email}${since ? ` · added ${since}` : ''}`}>
               {email}
               {since && ` · added ${since}`}
             </p>

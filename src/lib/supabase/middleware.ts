@@ -128,6 +128,14 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublicRoute && !isCronRoute && !isDealerLink(pathname) && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    // Carry the destination so signing in returns them to it. Without this,
+    // opening a link to a dealer or a transaction while signed out landed on
+    // the dashboard and the link was simply lost. Path and query only — the
+    // login action refuses anything that is not a relative path, so this can
+    // never become an open redirect. Not set for /api routes, which nobody
+    // is trying to look at in a browser.
+    const dest = pathname + request.nextUrl.search
+    url.search = pathname.startsWith('/api/') ? '' : `?next=${encodeURIComponent(dest)}`
     return NextResponse.redirect(url)
   }
 

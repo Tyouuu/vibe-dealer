@@ -328,7 +328,13 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             <div className="flex items-center gap-3">
               <Avatar name={typedDealer.company_name} size={44} />
               <div>
-                <h2 className="text-lg font-semibold text-paper">{typedDealer.company_name}</h2>
+                {/* h1, not h2. The dealer's name IS this page's title — the
+                    page carries no other heading above it — and as an h2 the
+                    page had no level-one heading at all (axe:
+                    page-has-heading-one) and jumped h2 → h3 into every
+                    section below. Only the tag changes; the size is set by
+                    the class, as it is everywhere else here. */}
+                <h1 className="text-lg font-semibold text-paper">{typedDealer.company_name}</h1>
                 {typedDealer.company_no && <div className="mt-0.5 text-xs text-paper-dim">{typedDealer.company_no}</div>}
               </div>
             </div>
@@ -467,7 +473,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
         <div className="flex min-w-0 flex-col gap-5">
           {isFinance && txRows.length > 0 && (
             <div className="app-card">
-              <h3 className="mb-1 text-sm font-semibold text-paper">Recent Activity</h3>
+              <h2 className="mb-1 text-sm font-semibold text-paper">Recent Activity</h2>
               <Timeline>
                 {txRows.slice(0, 6).map((tx) => (
                   <TimelineItem
@@ -501,7 +507,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           )}
 
           <div className="app-card">
-            <h3 className="mb-3.5 text-sm font-semibold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h3>
+            <h2 className="mb-3.5 text-sm font-semibold text-paper">{isFinance ? 'All Transactions' : 'Delivery History'}</h2>
 
             {isFinance ? (
               <ScrollFade label="All transactions for this dealer">
@@ -640,7 +646,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
           {isFinance && (
             <div className="app-card">
-              <h3 className="mb-3.5 text-sm font-semibold text-paper">Rate History</h3>
+              <h2 className="mb-3.5 text-sm font-semibold text-paper">Rate History</h2>
               <ScrollFade label="Rate change history">
                 <table className="w-full min-w-[520px] border-collapse text-sm">
                   <thead>
@@ -678,7 +684,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           )}
         </div>
 
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-5">
+        {/* Labelled: this is the page's second <aside>, the app rail being the
+            first, and two unnamed complementary landmarks cannot be told apart
+            (axe: landmark-unique). */}
+        <aside aria-label="Dealer summary" className="flex flex-col gap-4 lg:sticky lg:top-5">
           {/* First in the rail, above even the contact details. Sending a
               dealer their link is the most common reason anyone opens this
               page now, and it used to sit below the transaction history and
@@ -694,7 +703,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
           )}
 
           <div className="app-card">
-            <h3 className="mb-1 text-sm font-semibold text-paper">Contact</h3>
+            <h2 className="mb-1 text-sm font-semibold text-paper">Contact</h2>
             <div className="mt-2.5">
               <RailField label="Contact Person" value={typedDealer.contact_person ?? '—'} />
               <RailField label="Phone" value={typedDealer.phone ?? '—'} />
@@ -711,7 +720,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               panel on 242 of 284 dealer pages is noise. */}
           {cards.entitled > 0 && (
             <div className="app-card">
-              <h3 className="mb-1 text-sm font-semibold text-paper">SIM cards</h3>
+              <h2 className="mb-1 text-sm font-semibold text-paper">SIM cards</h2>
               <p className="text-[12px] leading-relaxed text-paper-dim">
                 What their packages entitle them to, against what has actually gone out.
               </p>
@@ -730,7 +739,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
           {typedDealer.notes && (
             <div className="app-card">
-              <h3 className="mb-1.5 text-sm font-semibold text-paper">Notes</h3>
+              <h2 className="mb-1.5 text-sm font-semibold text-paper">Notes</h2>
               <p className="whitespace-pre-wrap text-[12px] text-paper-dim">{typedDealer.notes}</p>
             </div>
           )}
@@ -739,7 +748,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             (() => {
               return (
                 <div className="rounded-2xl bg-paper p-5 shadow-sm">
-                  <h3 className="mb-3.5 text-sm font-semibold text-white">Lifetime</h3>
+                  <h2 className="mb-3.5 text-sm font-semibold text-white">Lifetime</h2>
                   <div className="flex flex-col gap-3">
                     <div>
                       <div className="text-xs font-semibold text-white/50">Lifetime Top-up</div>

@@ -445,7 +445,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                     <th className="th">Dealer</th>
                     <th className="th">Type</th>
                     <th className="th text-right">Points</th>
-                    <th className="th">Status</th>
+                    {/* Right-aligned. A status chip in a left-aligned last
+                        column sits mid-cell and leaves the row's ink 78px
+                        short of the table's own edge — see qa-probe-ink.mjs.
+                        Every other table here ends on ink at the edge. */}
+                    <th className="th text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -491,7 +495,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                           {tx.type === 'package' ? `Buy Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Regular Top-up'}
                         </td>
                         <td className="td figure-points text-right">{tx.points.toLocaleString()}</td>
-                        <td className="td">
+                        <td className="td text-right">
                           <StatusDot color="jade-bright" label="Verified" />
                         </td>
                       </tr>

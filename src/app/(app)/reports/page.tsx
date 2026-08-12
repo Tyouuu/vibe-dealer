@@ -418,7 +418,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <div className="page-band">
         <div className="border-t-0 pt-0">
           <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h3 className="text-sm font-semibold text-paper">Points ledger</h3>
+            <h2 className="text-sm font-semibold text-paper">Points ledger</h2>
             <span className="text-[12px] text-paper-dim">
               what {monthLabel} did to the credit you hold — sold counts pending as well as verified, the way the live balance does
             </span>
@@ -441,39 +441,46 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               {/* Full width, no max-w cap. Capped at 620px it left 516px of
                   empty band to its right — measured — which is the same empty
                   plank the two SIM logs were drawing, and on a page whose
-                  other two tables both run the full width. The third column
-                  holds the per-line notes and takes the slack. */}
+                  other two tables both run the full width.
+
+                  The note column is in the MIDDLE and the figure is last.
+                  With the note trailing, the slack went to a left-aligned
+                  caption and the row's last glyph landed 335px short of the
+                  table's own edge (qa-probe-ink.mjs) — a full-width table that
+                  still read as half-finished. A ledger ends on its amount
+                  anyway: description, memo, amount, which is the order every
+                  other money table in this app already uses. */}
               <table className="w-full border-collapse text-sm">
                 <tbody>
                   <tr className="tr-row h-14">
-                    <td className="td text-paper-dim">Opened with</td>
-                    <td className="td figure-points text-right font-semibold text-paper">{openingBalance.toLocaleString()}</td>
+                    <td className="td whitespace-nowrap text-paper-dim">Opened with</td>
                     <td className="td hidden text-[12px] text-paper-dim sm:table-cell" />
+                    <td className="td figure-points text-right font-semibold text-paper">{openingBalance.toLocaleString()}</td>
                   </tr>
                   <tr className="tr-row h-14">
-                    <td className="td text-paper-dim">Bought from Vibe</td>
+                    <td className="td whitespace-nowrap text-paper-dim">Bought from Vibe</td>
+                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell">{pointsBought > 0 ? `${formatMYR(paidToVibe)} paid` : ''}</td>
                     <td className="td figure-points text-right font-semibold text-jade-bright">
                       {pointsBought > 0 ? `+${pointsBought.toLocaleString()}` : '0'}
                     </td>
-                    <td className="td hidden text-[12px] text-paper-dim sm:table-cell">{pointsBought > 0 ? `${formatMYR(paidToVibe)} paid` : ''}</td>
                   </tr>
                   <tr className="tr-row h-14">
-                    <td className="td text-paper-dim">Sold to dealers</td>
-                    <td className="td figure-points text-right font-semibold text-paper">
-                      {pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}
-                    </td>
+                    <td className="td whitespace-nowrap text-paper-dim">Sold to dealers</td>
                     <td className="td hidden text-[12px] text-paper-dim sm:table-cell">
                       {excludedCount > 0 ? `includes ${excludedCount} not yet verified` : ''}
+                    </td>
+                    <td className="td figure-points text-right font-semibold text-paper">
+                      {pointsSold > 0 ? `−${pointsSold.toLocaleString()}` : '0'}
                     </td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr className="h-14 border-t border-ink-800">
-                    <td className="td font-semibold text-paper">Closed with</td>
-                    <td className="td figure-points text-right font-semibold text-paper">{closingBalance.toLocaleString()}</td>
+                    <td className="td whitespace-nowrap font-semibold text-paper">Closed with</td>
                     <td className="td hidden text-[12px] text-paper-dim sm:table-cell">
                       {cardsBought > 0 ? `${cardsBought.toLocaleString()} SIM cards bought, ${formatMYR(stockBought)}` : ''}
                     </td>
+                    <td className="td figure-points text-right font-semibold text-paper">{closingBalance.toLocaleString()}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -490,7 +497,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <div className="page-band">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-paper">Where the points came from</h3>
+            <h2 className="text-sm font-semibold text-paper">Where the points came from</h2>
             <p className="mt-0.5 text-[12px] text-paper-dim">
               {by === 'type'
                 ? 'The same month split by what was sold.'
@@ -635,7 +642,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       {/* The second revenue line, broken down the way the first one is. It
           had never appeared on this page at all. */}
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">SIM cards</h3>
+        <h2 className="mb-1 text-sm font-semibold text-paper">SIM cards</h2>
         <p className="mb-4 text-[12px] text-paper-dim">
           Bought from Vibe and resold to dealers, separate from the points ledger. Margin is after the {formatMYR(simShipping)} it cost
           to ship — nothing in this app used to subtract that.

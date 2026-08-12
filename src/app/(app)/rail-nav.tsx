@@ -187,7 +187,12 @@ export function RailNav({
   const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?'
 
   return (
-    <aside className="rail" ref={wrapRef}>
+    // aria-label because a page can hold more than one <aside> — the dealer
+    // detail page puts its own summary column in one — and two unlabelled
+    // complementary landmarks are indistinguishable to a screen reader
+    // (axe: landmark-unique). Naming this one names the one that appears on
+    // every page, so a page only has to label its own.
+    <aside className="rail" aria-label="Sidebar" ref={wrapRef}>
       <Link href="/dashboard" className="flex items-center gap-2.5 px-1.5 pb-3 pt-1.5">
         <LogoMark className="h-8 w-8 shrink-0" />
         <span className="overflow-hidden whitespace-nowrap text-base font-semibold tracking-tight text-paper">Vibe456</span>

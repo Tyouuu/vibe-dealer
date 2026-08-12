@@ -59,8 +59,31 @@ export const LOG_COL = {
  */
 export const LOG_COL_SPACER = 'minmax(0,1fr)'
 
-/** Note, taking whatever is left rather than a spacer beside it. */
-export const LOG_COL_NOTE_FLEX = 'minmax(220px,1fr)'
+/**
+ * Note, taking whatever is left rather than a spacer beside it — and sitting
+ * SECOND in the row, not last.
+ *
+ * Moving the slack out of a trailing spacer and into Note fixed the table's
+ * box and not the complaint. A left-aligned sentence puts its last glyph
+ * wherever the sentence ends, so with Note trailing, the row's ink stopped
+ * 223px inside the table's own right edge while the two tables above and
+ * below it ended flush. That gap is what the client kept drawing a box
+ * around. Inland, the same raggedness is covered by the next column and is
+ * invisible.
+ *
+ * The rule this is an instance of: a table's last column must be
+ * right-aligned — a figure, a chip or a chevron. qa-probe-ink.mjs measures
+ * it (healthy is ~12px, the cell's own padding).
+ *
+ * A 0 floor, not 220px, for the same reason LOG_COL_NAME_FLEX below has one.
+ * At minmax(220px,1fr) the six fixed tracks plus that floor plus the gutters
+ * came to 996px against a 976px band at 1280 — the grid overflowed by 13px
+ * and Stock in scrolled sideways while the other two tables on the page did
+ * not. It has always done that; nobody saw it because the row's ink used to
+ * stop 223px early, so the overflow happened past the last visible glyph.
+ * The cell truncates and carries a title, so giving way is correct.
+ */
+export const LOG_COL_NOTE_FLEX = 'minmax(0,1fr)'
 
 /**
  * The dealer-name column on Stock out, same idea — but with a 0 floor, not a

@@ -66,13 +66,23 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
     .order('created_at', { ascending: false })
     .limit(8)
 
+  // <header> and <main>, like every signed-in page gets from the app shell.
+  //
+  // This page has none of that shell — it is the one screen someone outside
+  // the company ever sees, and it was built as bare divs, so it had no
+  // landmarks at all: axe reported landmark-one-main plus twelve separate
+  // pieces of content sitting outside any region. It had never been caught
+  // because every audit and sweep in this repo signs in first, and signing in
+  // is exactly what this page exists to avoid.
   return (
     <div className="min-h-screen bg-canvas px-4 py-8">
       <div className="mx-auto w-full max-w-[440px]">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
+        <header className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
           <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
-        </div>
+        </header>
+
+        <main>
 
         {/* Their own name, first and unmistakable. A dealer sent the wrong
             link by mistake should find out here, not after submitting. */}
@@ -123,9 +133,10 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
           </div>
         )}
 
-        <p className="mt-6 text-center text-[12px] text-paper-dim">
-          Nothing is confirmed until we&apos;ve checked the payment. This page never shows your balance or your account.
-        </p>
+          <p className="mt-6 text-center text-[12px] text-paper-dim">
+            Nothing is confirmed until we&apos;ve checked the payment. This page never shows your balance or your account.
+          </p>
+        </main>
       </div>
     </div>
   )
@@ -135,7 +146,11 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
 // who has never seen this product before and has no legend to consult.
 function StatusWord({ status }: { status: string }) {
   const label = status === 'pending' ? 'Waiting for us' : status === 'accepted' ? 'Confirmed' : 'Not accepted'
-  const tone = status === 'pending' ? 'text-brass' : status === 'accepted' ? 'text-jade' : 'text-clay-bright'
+  // brass-bright, not brass. #a8710a on white is 4.17:1 — under the 4.5 AA
+  // floor — and "Waiting for us" is the status word every pending request
+  // carries, read on a phone in daylight by someone outside the company.
+  // #8a5d08 is 5.75:1 and is the same token the app's own pending states use.
+  const tone = status === 'pending' ? 'text-brass-bright' : status === 'accepted' ? 'text-jade' : 'text-clay-bright'
   return <span className={`shrink-0 text-[13px] font-semibold ${tone}`}>{label}</span>
 }
 
@@ -143,11 +158,13 @@ function LinkNotActive() {
   return (
     <div className="grid min-h-screen place-items-center bg-canvas px-4 py-10">
       <div className="w-full max-w-[400px]">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
+        {/* Same landmarks as the live version of this page above. A dead link
+            is the more likely of the two to be opened by a stranger. */}
+        <header className="mb-6 flex items-center justify-center gap-2.5">
           <LogoMark className="h-8 w-8" />
           <span className="text-[17px] font-semibold tracking-[-0.02em] text-paper">Vibe456</span>
-        </div>
-        <div className="app-card p-7 text-center">
+        </header>
+        <main className="app-card p-7 text-center">
           <h1 className="text-[20px] font-semibold tracking-[-0.02em] text-paper">This link isn&apos;t active</h1>
           {/* One sentence for a token that never existed and one whose dealer
               has been switched off. Saying which would let anyone guessing
@@ -155,7 +172,7 @@ function LinkNotActive() {
           <p className="mt-2 text-[13px] leading-relaxed text-paper-dim">
             It may have been replaced, or the account may have changed. WhatsApp us and we&apos;ll send you a new one.
           </p>
-        </div>
+        </main>
       </div>
     </div>
   )

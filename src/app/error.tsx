@@ -4,10 +4,13 @@ import { LogoMark } from './(app)/icons'
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="grid min-h-screen place-items-center bg-canvas px-4">
+    // <main> and <h1> for the same reason as not-found.tsx: this replaces the
+    // app shell, so without them the error screen has no main landmark and no
+    // level-one heading.
+    <main className="grid min-h-screen place-items-center bg-canvas px-4">
       <div className="w-full max-w-sm text-center">
         <LogoMark className="mx-auto mb-5 h-11 w-11" />
-        <p className="text-base font-semibold text-paper">Something went wrong</p>
+        <h1 className="text-base font-semibold text-paper">Something went wrong</h1>
         <p className="mt-1.5 text-sm text-paper-dim">
           That&apos;s on us — nothing you did caused this. Try again, and it should be back to normal.
         </p>
@@ -23,6 +26,6 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           </p>
         )}
       </div>
-    </div>
+    </main>
   )
 }

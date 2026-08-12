@@ -95,7 +95,12 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                   numbers line up, so the worst row is found by scanning
                   straight down instead of reading every cell. */}
               <th className="th text-right">Waiting</th>
-              <th className="th">Action</th>
+              {/* Right-aligned, like the Action column on Transactions and
+                  like the last column of every table in the app. Left-aligned
+                  it put the button in the middle of a 100px cell and left 51px
+                  of blank between the row's last ink and the table's edge —
+                  the "旁边的空位" complaint, measured by qa-probe-ink.mjs. */}
+              <th className="th text-right">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -171,7 +176,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                     '—'
                   )}
                 </td>
-                <td className="td">
+                <td className="td text-right">
                   {row.delivery_status === 'pending' ? (
                     <form action={markDelivered}>
                       <input type="hidden" name="id" value={row.id} />

@@ -148,7 +148,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             scrolling back down into each table's own ScrollFade, where it
             belongs. */}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:min-h-0 lg:pl-[248px]">
-          <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 lg:hidden">
+          {/* <header>, not a bare <div>. Below lg this bar is the only thing
+              above <main>, and as a plain div its brand wordmark sat outside
+              every landmark — axe's `region` rule, firing on every page in
+              the app at phone width and nowhere else, which is why it had
+              never shown up in an audit run at 1440. */}
+          <header className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 lg:hidden">
             <Link href="/dashboard" className="flex items-center gap-3">
               <LogoMark className="h-8 w-8 shrink-0" />
               <span className="text-sm font-semibold text-paper">Vibe456</span>
@@ -165,7 +170,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 isFinance ? { available: creditBalance.available, low: creditBalance.available < LOW_BALANCE_THRESHOLD } : undefined
               }
             />
-          </div>
+          </header>
 
           {/* No desktop header bar at all. It only ever held the credit
               balance, and a full-width strip for one small chip in the far

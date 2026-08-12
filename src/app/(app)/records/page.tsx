@@ -10,7 +10,6 @@ import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } fr
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { RowActions } from './row-actions'
 import { BulkVerifyBar, RowSelect } from './bulk-verify'
-import { UnsignedCorrections } from './unsigned-corrections'
 import { IconPaperclip, IconSearch, IconChevronDown } from '../icons'
 import { DatePicker } from '../date-picker'
 import { FilterForm } from './filter-form'
@@ -58,16 +57,6 @@ type TxRow = {
   flag_reason: string | null
   receipt_url: string | null
   recorded_by: string | null
-  dealers: { company_name: string } | { company_name: string }[] | null
-}
-
-type AwaitingRow = {
-  id: string
-  points: number
-  money_rm: number
-  note: string | null
-  recorded_by: string | null
-  created_at: string
   dealers: { company_name: string } | { company_name: string }[] | null
 }
 
@@ -231,7 +220,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     { count: pendingCount },
     { count: verifiedCount },
     { count: flaggedCount },
-    { data: awaitingRows },
     { data: staffProfiles },
     { data: justDealerRow },
   ] = await Promise.all([
@@ -239,15 +227,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
     statusCountQuery('pending'),
     statusCountQuery('verified'),
     statusCountQuery('flagged'),
-    // Deliberately outside every filter above — see UnsignedCorrections.
-    // Oldest first: the one that has been waiting longest is the one the
-    // ledger has been wrong about longest.
-    supabase
-      .from('transactions')
-      .select('id, points, money_rm, note, recorded_by, created_at, dealers(company_name)')
-      .eq('status', 'pending')
-      .eq('type', 'adjustment')
-      .order('created_at', { ascending: true }),
     // staff_directory, not profiles: profiles' RLS is own-row-only for
     // anyone who is not the master, so joining it here rendered every
     // colleague's name as a dash for the accountant. See migration 0035.
@@ -265,23 +244,6 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
 
   const staffNameById = new Map((staffProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
-  const unsignedCorrections = ((awaitingRows ?? []) as unknown as AwaitingRow[]).map((r) => {
-    const rel = Array.isArray(r.dealers) ? r.dealers[0] : r.dealers
-    return {
-      id: r.id,
-      dealerName: rel?.company_name ?? '—',
-      points: Number(r.points),
-      moneyRm: Number(r.money_rm),
-      note: r.note,
-      postedByName: r.recorded_by ? (staffNameById.get(r.recorded_by) ?? '—') : '—',
-      // daysSince, not Date.now() arithmetic in the render body — same reason
-      // as /reconcile: it counts in the Malaysia calendar like every other
-      // "N days ago" here, and keeps the clock read out of render.
-      daysWaiting: daysSince(String(r.created_at).slice(0, 10)),
-      postedByYou: r.recorded_by === user.id,
-    }
-  })
-
   const totalCount = count ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
   const rangeStart = totalCount === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
@@ -434,12 +396,20 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Above the ledger, not inside it. A correction stuck at pending is the
-          most consequential thing this page can be carrying — it means a
-          figure in the reports is knowingly wrong — and it must not be
-          something you have to filter your way to. Renders nothing when there
-          are none. */}
-      <UnsignedCorrections items={unsignedCorrections} />
+      {/* The band that used to sit here — "N corrections not signed off yet",
+          with a row and a Verify button for each — is gone, on instruction.
+          It printed the same transaction twice on one page: once in the band
+          and once in the ledger 200px below, down to the same VerifyButton
+          component. The warning it carried has moved onto the row itself, in
+          the ledger, where the transaction actually lives: a brass stripe down
+          the left edge and a status that says "Not signed off" rather than
+          "Pending". See the row below.
+
+          Known cost, accepted when this was chosen: the band was deliberately
+          outside every filter, so it caught a June correction while you were
+          looking at July. A marked row can only be seen when the filters and
+          the page happen to include it. Nothing else in the app watches for
+          unsigned corrections today. */}
 
       {/* The ledger is the page — no card. Same two-row toolbar as /dealers,
           so the two biggest lists in the app are operated identically: view
@@ -655,13 +625,48 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                   tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
                 const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
                 const pendingStale = tx.status === 'pending' && pendingDays >= PENDING_REVIEW_STALE_DAYS
+                // The one kind of pending that is not just "not counted yet".
+                // Every other pending row is a figure the reports have never
+                // seen; an unsigned correction is a figure the reports are
+                // *actively showing the wrong version of*, because the entry
+                // it corrects is already verified and counted. That is what
+                // the deleted band existed to say, and it now gets said here.
+                const unsignedCorrection = tx.status === 'pending' && tx.type === 'adjustment'
                 const statusLabel =
-                  tx.status === 'verified' ? 'Verified' : tx.status === 'flagged' ? 'Flagged' : pendingStale ? `Pending·${pendingDays}d` : 'Pending'
+                  tx.status === 'verified'
+                    ? 'Verified'
+                    : tx.status === 'flagged'
+                      ? 'Flagged'
+                      : unsignedCorrection
+                        ? // "Unsigned", not "Not signed off". Measured: the
+                          // full phrase needs 132px and the column is 108px,
+                          // so it wrapped onto a second line and this row
+                          // alone stood taller than every other status cell.
+                          // The whole sentence is on the cell's title.
+                          pendingStale
+                          ? `Unsigned·${pendingDays}d`
+                          : 'Unsigned'
+                        : pendingStale
+                          ? `Pending·${pendingDays}d`
+                          : 'Pending'
                 const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
                 return (
                   <tr key={tx.id} className="tr-row relative h-16">
-                    <td className="td pin-start">{tx.status === 'pending' && <RowSelect id={tx.id} />}</td>
+                    {/* The stripe. An inset shadow rather than a border-left,
+                        because this cell is 44px in a table-fixed layout and a
+                        3px border would push the checkbox 3px right of every
+                        other row's — the uneven-geometry complaint this table
+                        has already been through once. The shadow paints inside
+                        the cell's own background, which .pin-start needs to
+                        keep opaque anyway while it is frozen. */}
+                    <td
+                      className={`td pin-start ${
+                        unsignedCorrection ? 'shadow-[inset_3px_0_0_var(--color-brass-bright)]' : ''
+                      }`}
+                    >
+                      {tx.status === 'pending' && <RowSelect id={tx.id} />}
+                    </td>
                     <td className="td pin-name pin-after-select">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar name={dealerName ?? '?'} size={24} />
@@ -738,7 +743,14 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         <span className="text-paper-dim/50">—</span>
                       )}
                     </td>
-                    <td className="td">
+                    <td
+                      className="td"
+                      title={
+                        unsignedCorrection
+                          ? 'Not signed off — the reports still show the figure this correction was meant to correct.'
+                          : undefined
+                      }
+                    >
                       <StatusDot color={statusColor} label={statusLabel} pulse={tx.status === 'pending'} />
                       {tx.status === 'flagged' && tx.flag_reason && (
                         <div className="mt-0.5 max-w-[140px] truncate text-[12px] text-paper-dim" title={tx.flag_reason}>

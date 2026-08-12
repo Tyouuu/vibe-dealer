@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
 import { packageCardEconomics } from '@/lib/sim-stock'
 import { createTransaction, findRecentDuplicate, type RecentMatch } from './actions'
-import { IconCoin, IconUpload, IconChevronDown, IconUsers } from '../icons'
+import { IconCoin, IconUpload, IconChevronDown, IconUsers, IconPaperclip } from '../icons'
 import { Avatar } from '../avatar'
 import { Combobox } from '../combobox'
 import { Listbox } from '../listbox'
@@ -572,19 +572,24 @@ export function EntryForm({
               This dealer has no package or rate yet — buy them a package first.
             </p>
           ) : null}
-          {/* Folded. NN/g: disclose up front what people frequently need so the
-              secondary display is reached only on rare occasions. Both fields
-              are labelled optional by the product itself, and across the
-              transactions on record a receipt appears on none and a note on
-              roughly one in ten. One level only, never nested, and the label
-              names what is inside rather than saying "More" so the
-              progression carries information scent. */}
-          <details className="group mt-2">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold text-paper-dim hover:text-paper">
-              <IconChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
-              Add a receipt or note
-            </summary>
-          <div className="form-grid mt-3">
+          {/* Unfolded, on instruction: "都是要放receipt的". It was folded on the
+              evidence that no transaction on record carries a receipt and only
+              one in ten carries a note — but that evidence is a reading of the
+              past, and the past is a system where this field did not exist.
+              The intent going forward is that money in carries its paper, and
+              a field you have to go looking for is a field that stays empty.
+              It is a section head now rather than an open <details>, because
+              every other group on this form is one, and because the receipt
+              row sits inline and unfolded on Log Purchase and Log SIM Stock —
+              this form was the only place it hid. */}
+          <div className="form-section-head">
+            <span className="tile">
+              <IconPaperclip />
+            </span>
+            <span>Receipt and note</span>
+            <span className="rule" />
+          </div>
+          <div className="form-grid">
             {/* One rule, every form: the last row is Note on the left and
                 the invoice or receipt on the right, at the same width.
                 Measured before this existed — the upload box sat in the right
@@ -638,7 +643,6 @@ export function EntryForm({
               </label>
             </div>
           </div>
-          </details>
           {/* The submit lived in the right-hand card, above the live totals.
               Someone filling this form works top-to-bottom down the left
               column, so on reaching the last field the action was off in

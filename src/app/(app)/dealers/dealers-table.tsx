@@ -19,6 +19,9 @@ export type DealerRow = {
   region: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
+  /** 'active' | 'inactive'. /entry offers active dealers only, so the
+      No Package view filters on it — see the note in page.tsx. */
+  status: string | null
   submitToken: string | null
   /** RM1.50 a card on everything their packages entitled them to. */
   cardEarningsRm: number

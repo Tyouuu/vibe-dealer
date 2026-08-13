@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
   // an unrelated active dealer into the export if two dealers ever share a name.
   let query = supabase
     .from(user.role === 'cs' ? 'dealers_directory' : 'dealers')
-    .select(['id', ...COLUMNS].join(', '))
+    // status is fetched but not exported — the No Package view filters on it
+    // (see the note in dealers/page.tsx) and the file has to match the list.
+    .select(['id', 'status', ...COLUMNS].join(', '))
     .order('company_name', { ascending: true })
 
   if (q) {
@@ -38,7 +40,10 @@ export async function GET(request: NextRequest) {
 
   const { data: rows } = await query
 
-  let filtered = (rows ?? []) as unknown as (Record<(typeof COLUMNS)[number], string | number | null> & { id: string })[]
+  let filtered = (rows ?? []) as unknown as (Record<(typeof COLUMNS)[number], string | number | null> & {
+    id: string
+    status: string | null
+  })[]
   if (view === 'inactive') {
     const { getDealerActivityMap } = await import('@/lib/dealer-activity')
     const activityMap = await getDealerActivityMap(supabase)
@@ -48,7 +53,7 @@ export async function GET(request: NextRequest) {
   // button on that view would hand back the whole roster — a file that
   // silently disagrees with the list it was exported from.
   if (view === 'nopackage') {
-    filtered = filtered.filter((r) => !r.package)
+    filtered = filtered.filter((r) => !r.package && r.status === 'active')
   }
 
   const lines = [COLUMNS.map(csvCell).join(',')]

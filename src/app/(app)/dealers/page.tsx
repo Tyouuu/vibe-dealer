@@ -32,6 +32,8 @@ type Dealer = {
   region: string | null
   package: 'A' | 'B' | 'C' | null
   rate: number | null
+  /** 'active' | 'inactive' — /entry offers active dealers only. */
+  status: string | null
   submit_token: string | null
 }
 
@@ -106,8 +108,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
     // the role that fields "how do I send my order in" all day — gets it too.
     .select(
       showRate
-        ? 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, rate, submit_token'
-        : 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, submit_token',
+        ? 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, rate, status, submit_token'
+        : 'id, company_name, company_no, contact_person, phone, whatsapp, region, package, status, submit_token',
       { count: 'exact' }
     )
 
@@ -194,8 +196,16 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // roster who cannot trade at all. On production that is 242 of 284, and
   // until now the only way to find them was to read the Package column down
   // the whole list. The dashboard links straight here.
+  //
+  // Active only, which is the one view here that filters on status — caught
+  // by opening the deployed page: the dashboard band counted 4 and this list
+  // showed 5, the extra being an inactive dealer. Every other view can
+  // legitimately show one, but this view's question is "who needs a package
+  // so they can start trading", and /entry offers active dealers only. Giving
+  // an inactive dealer a package would not let them trade, so counting them
+  // here would send someone to do work that changes nothing.
   if (view === 'nopackage') {
-    rows = rows.filter((r) => !r.package)
+    rows = rows.filter((r) => !r.package && r.status === 'active')
   }
 
   // Pinned first, then the volume order below. A pin is the reader saying
@@ -218,6 +228,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // showing the same `count` there would visibly contradict the table
   // sitting right below it (and the "Needs Follow-up" KPI card that links here).
   const displayCount = view === 'inactive' || view === 'nopackage' ? rows.length : (count ?? 0)
+
+  // "4 across 10 regions" was wrong for the same reason displayCount exists:
+  // `regions` is every region in the table — it has to be, it fills the region
+  // filter — while a client-side view has already cut the list. The four
+  // dealers with no package sit in two regions, not ten.
+  const shownRegionCount =
+    view === 'inactive' || view === 'nopackage'
+      ? new Set(rows.map((r) => r.region).filter(Boolean)).size
+      : regions.length
 
   // Summary figures for the header. Derived from `rows` — the set matching the
   // current filters — rather than from the whole table, so the summary can
@@ -313,7 +332,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
                 : 'Dealers'
         }
         value={displayCount.toLocaleString()}
-        chgSuffix={regions.length ? `across ${regions.length} region${regions.length === 1 ? '' : 's'}` : undefined}
+        chgSuffix={shownRegionCount ? `across ${shownRegionCount} region${shownRegionCount === 1 ? '' : 's'}` : undefined}
         href="/dealers"
         stats={[
           {

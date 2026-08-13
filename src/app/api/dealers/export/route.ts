@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
     const activityMap = await getDealerActivityMap(supabase)
     filtered = filtered.filter((r) => activityMap.get(r.id)?.isInactive)
   }
+  // The No Package view, same filter as the page. Without this the Export
+  // button on that view would hand back the whole roster — a file that
+  // silently disagrees with the list it was exported from.
+  if (view === 'nopackage') {
+    filtered = filtered.filter((r) => !r.package)
+  }
 
   const lines = [COLUMNS.map(csvCell).join(',')]
   for (const r of filtered) {

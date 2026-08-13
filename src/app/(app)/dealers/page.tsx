@@ -35,7 +35,7 @@ type Dealer = {
   submit_token: string | null
 }
 
-type View = 'all' | 'region' | 'inactive'
+type View = 'all' | 'region' | 'inactive' | 'nopackage'
 
 const PAGE_SIZE = 50
 
@@ -68,7 +68,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     import_error: importError,
     page,
   } = await searchParams
-  const view: View = rawView === 'region' || rawView === 'inactive' ? rawView : 'all'
+  const view: View = rawView === 'region' || rawView === 'inactive' || rawView === 'nopackage' ? rawView : 'all'
   const canManage = user.role === 'cs' || user.role === 'master'
   // rate is a commission figure (PROJECT_SPEC.md section 4: "CS 看不到财务") —
   // strip it from the data sent to the client, not just hide it in the UI.
@@ -189,6 +189,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
     rows = rows.filter((r) => r.isInactive)
   }
 
+  // A dealer with no package has no rate, and the credit-balance guard on
+  // /entry refuses a top-up it cannot price — so these are dealers on the
+  // roster who cannot trade at all. On production that is 242 of 284, and
+  // until now the only way to find them was to read the Package column down
+  // the whole list. The dashboard links straight here.
+  if (view === 'nopackage') {
+    rows = rows.filter((r) => !r.package)
+  }
+
   // Pinned first, then the volume order below. A pin is the reader saying
   // which dealers are theirs, and that has to outrank a global measure of who
   // is biggest — otherwise pinning changes nothing for anyone whose dealers
@@ -208,7 +217,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // 'all'/'region', but the inactive view filters client-side afterward —
   // showing the same `count` there would visibly contradict the table
   // sitting right below it (and the "Needs Follow-up" KPI card that links here).
-  const displayCount = view === 'inactive' ? rows.length : (count ?? 0)
+  const displayCount = view === 'inactive' || view === 'nopackage' ? rows.length : (count ?? 0)
 
   // Summary figures for the header. Derived from `rows` — the set matching the
   // current filters — rather than from the whole table, so the summary can
@@ -294,7 +303,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
       />
 
       <HeroCard
-        label={view === 'inactive' ? 'Dealers needing follow-up' : q || region !== 'all' ? 'Dealers matching this filter' : 'Dealers'}
+        label={
+          view === 'inactive'
+            ? 'Dealers needing follow-up'
+            : view === 'nopackage'
+              ? 'Dealers with no package'
+              : q || region !== 'all'
+                ? 'Dealers matching this filter'
+                : 'Dealers'
+        }
         value={displayCount.toLocaleString()}
         chgSuffix={regions.length ? `across ${regions.length} region${regions.length === 1 ? '' : 's'}` : undefined}
         href="/dealers"
@@ -364,6 +381,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
               title="Dealers with no verified top-up in 30+ days — independent of the top-up ranking above"
             >
               Needs Follow-up
+            </Link>
+            <Link
+              href={viewHref('nopackage')}
+              className={`segmented-btn ${view === 'nopackage' ? 'active' : ''}`}
+              title="Dealers with no package, so no rate — a top-up would be refused"
+            >
+              No Package
             </Link>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -453,6 +477,13 @@ export default async function DealersPage({ searchParams }: PageProps) {
             icon={<IconSearch className="h-5 w-5" />}
             title="Nobody needs a follow-up"
             description="Every dealer has had a verified top-up in the last 30 days."
+          />
+        ) : view === 'nopackage' ? (
+          <EmptyState
+            variant="cleared"
+            icon={<IconSearch className="h-5 w-5" />}
+            title="Every dealer can trade"
+            description="All of them have a package, so all of them have a rate."
           />
         ) : (
           <EmptyState

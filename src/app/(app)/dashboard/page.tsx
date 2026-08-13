@@ -11,12 +11,11 @@ import {
   PENDING_REVIEW_STALE_DAYS,
 } from '@/lib/dealer-activity'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
-import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import Link from 'next/link'
-import { StatTiles, Leaderboard, RegionBars, GhostEmpty } from './elements'
+import { Leaderboard, GhostEmpty } from './elements'
 import { MonthChart, RegionStrip } from './chart'
 import { PeriodSwitcher } from './period-switcher'
-import { balanceSeries, dealersTradingSeries, resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
+import { resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
 import { pctChange, HeroCard } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
@@ -140,21 +139,11 @@ function topDealers(monthTx: { dealer_id: string; points: number | string; deale
     .map((d) => ({ ...d, href: `/dealers/${d.id}` }))
 }
 
-// Six trailing monthly totals for a sparkline, oldest first.
-function monthlySeries(
-  tx: { tx_date: string; points: number | string; commission_rm?: number | string }[],
-  months: { key: string }[],
-  field: 'points' | 'commission_rm',
-) {
-  return months.map(({ key }) =>
-    tx.filter((t) => t.tx_date.slice(0, 7) === key).reduce((sum, t) => sum + Number(t[field] ?? 0), 0),
-  )
-}
-
 /**
  * The same transactions, summed by DAY instead of by month.
  *
- * monthlySeries above gives six numbers for six months, which is why the
+ * monthlySeries — six numbers for six months, deleted with the last
+ * sparkline that consumed it — is why the
  * headline chart was a six-point zigzag — "那条线可以更加细节一点". Every row
  * in `trendTx` carries its own tx_date, so the resolution was always there
  * and was being thrown away. This returns a running total, one entry per
@@ -227,8 +216,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // transaction of any status across six months, and every credit purchase
   // across six months. See the note further down for why they went with the
   // sparklines rather than staying behind them.
-  const [{ count: dealerCount }, { data: trendTx }, { data: simOrders }, creditBalance, alerts] = await Promise.all([
-    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+  const [{ data: dealerRows }, { data: trendTx }, { data: simOrders }, creditBalance, alerts] = await Promise.all([
+    // Was a head-only count. It now returns the roster's package column too,
+    // which is the same round trip and answers a question the count could
+    // not: how many of these dealers can actually trade. See the "Can't
+    // trade yet" band below.
+    supabase.from('dealers_directory').select('id, company_name, region, package, status'),
     // The one read the whole page is built on. Every verified transaction in
     // the six-month window, each with its own tx_date — which is what makes
     // the day-resolution chart possible without asking for anything new.
@@ -311,6 +304,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   //
   // No new query: trendTx already spans six months, so both sides of this
   // comparison are in memory.
+  // ---- who cannot buy at all -------------------------------------------
+  // A dealer with no package has no rate, and /entry's guard refuses a
+  // top-up it cannot price. So these are not slow dealers — they are
+  // dealers the system will not let trade, and nothing in the app said how
+  // many there were. On production that is 242 of 284, which is the largest
+  // single fact about the business right now and it was only visible by
+  // reading the Package column down a five-page table.
+  //
+  // No new query: the roster read that produced "34 dealers" now returns the
+  // package column with it.
+  const dealerCount = dealerRows?.length ?? 0
+  const noPackage = (dealerRows ?? []).filter((d) => !d.package && d.status === 'active')
+
   const activeThisPeriod = new Set(monthTx.map((t) => t.dealer_id))
   const wentQuiet = topDealers(prevMonthTx)
     .filter((d) => !activeThisPeriod.has(d.id))
@@ -497,7 +503,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <Link href="/dealers" className="figure font-semibold text-paper hover:underline">
                   {dealersTrading}
                 </Link>{' '}
-                / {dealerCount ?? 0} dealers traded
+                / {dealerCount} dealers traded
               </span>
               <span>
                 Credit{' '}
@@ -544,7 +550,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <p className="text-[12px] text-paper-dim">Ranked by what they topped up this month.</p>
           </div>
           <Link href="/dealers" className="text-[12px] font-semibold text-primary hover:underline">
-            All {dealerCount ?? 0} dealers →
+            All {dealerCount} dealers →
           </Link>
         </div>
 
@@ -643,6 +649,60 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {/* Who cannot buy at all.
+          =================================================================
+          Paired with Went quiet directly above on purpose: one is the
+          business that stopped, the other is the business that has never
+          been able to start. Same row shape, same cap, same "and N more".
+
+          A dealer with no package has no rate, so /entry's credit guard
+          refuses the top-up — this is not a slow dealer, it is a dealer the
+          system will not let trade. Production has 242 of them against 284
+          on the roster, and until now the only way to see that was to read
+          the Package column down five pages of /dealers. The link goes to
+          that list, filtered, rather than to the roster.
+
+          Absent when everybody can trade, same as Went quiet. */}
+      {noPackage.length > 0 && (
+        <div className="page-band">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <div>
+              <h3 className="text-sm font-semibold text-paper">Can&rsquo;t trade yet</h3>
+              <p className="text-[12px] text-paper-dim">No package, so no rate — a top-up would be refused.</p>
+            </div>
+            <Link href="/dealers?view=nopackage" className="text-[12px] font-semibold text-primary hover:underline">
+              Set packages →
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap items-baseline gap-x-2.5">
+            <span className="figure-points text-[26px] leading-none tracking-[-.03em] text-paper">{noPackage.length}</span>
+            <span className="text-[12px] text-paper-dim">
+              of <b className="figure font-semibold text-paper">{dealerCount}</b> dealers on the roster
+            </span>
+          </div>
+
+          <ul className="mt-3 flex flex-col">
+            {[...noPackage]
+              .sort((a, b) => (a.company_name ?? '').localeCompare(b.company_name ?? ''))
+              .slice(0, 5)
+              .map((d) => (
+                <li key={d.id} className="border-t border-ink-800">
+                  <Link href={`/dealers/${d.id}`} className="group flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5">
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-paper group-hover:underline" title={d.company_name ?? ''}>
+                      {d.company_name}
+                    </span>
+                    <span className="whitespace-nowrap text-[12px] text-paper-dim">{d.region || 'No region'}</span>
+                  </Link>
+                </li>
+              ))}
+            {noPackage.length > 5 && (
+              <li className="border-t border-ink-800 py-2.5 text-[12px] text-paper-dim">and {noPackage.length - 5} more</li>
+            )}
+          </ul>
+        </div>
+      )}
+
       {/* Recent Transactions is gone.
           =================================================================
           It was the tallest block on the page at 605px — 37% of it — and its
@@ -670,31 +730,30 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ data: pendingRows }, creditBalance, { data: statements }, { data: trendTx }, { data: recentTxRows }, alerts, { data: windowRows }, { data: purchaseRows }] =
-    await Promise.all([
-      supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
-      getAvailablePointsBalance(supabase),
-      // Every statement in the window, not just this month's — the period
-      // switcher can point at any of them.
-      supabase.from('company_statements').select('month, reconciled').gte('month', trendStart),
-      // The dealers_directory read went with the trend chart's region filter,
-      // the only thing that consumed it. dealer_id is added below so the
-      // leaderboard can group without a second query.
-      supabase
-        .from('transactions')
-        .select('dealer_id, tx_date, points, dealers(region, company_name)')
-        .eq('status', 'verified')
-        .gte('tx_date', trendStart)
-        .lte('tx_date', today),
-      supabase
-        .from('transactions')
-        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
-        .order('created_at', { ascending: false })
-        .limit(10),
-      getNotifications(userId, 'accountant'),
-      supabase.from('transactions').select('tx_date, points, status').gte('tx_date', trendStart).lte('tx_date', today),
-      supabase.from('credit_purchases').select('purchase_date, points').gte('purchase_date', trendStart),
-    ])
+  // Five reads, down from eight, and the page is the same shape master's is.
+  //
+  // What went, and why:
+  //   the last ten transactions   Recent Transactions — /records with fewer
+  //                               rows and one filter, same as on master
+  //   six months of any-status    fed one sparkline (pending per month)
+  //   six months of purchases     fed one sparkline (the balance line)
+  //   every statement in window   the Reconciliation band, which repeated an
+  //                               alert sitting 200px above it
+  const [{ data: pendingRows }, creditBalance, { data: trendTx }, { count: dealerCount }, alerts] = await Promise.all([
+    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
+    getAvailablePointsBalance(supabase),
+    // The one read the page is built on — every verified transaction in the
+    // window with its own tx_date, which is what makes the day-resolution
+    // chart possible without asking for anything new.
+    supabase
+      .from('transactions')
+      .select('dealer_id, tx_date, points, dealers(region, company_name)')
+      .eq('status', 'verified')
+      .gte('tx_date', trendStart)
+      .lte('tx_date', today),
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+    getNotifications(userId, 'accountant'),
+  ])
 
   const pendingCount = pendingRows?.length ?? 0
   const oldestPendingDays = pendingCount ? Math.max(...pendingRows!.map((t) => daysSince(t.tx_date))) : 0
@@ -708,7 +767,6 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   const prevMonthKey = periodIdx > 0 ? trendMonths[periodIdx - 1].key : null
   const prevMonthLabel = prevMonthKey ? formatMonthLabel(prevMonthKey) : null
 
-  const windowTx = (windowRows ?? []) as { tx_date: string; points: number | string; status: string }[]
   const monthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === periodKey)
   const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
 
@@ -726,33 +784,21 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   const leaders = topDealers(monthTx)
 
   const prevMonthTx = prevMonthKey ? (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey) : []
-  const prevMonthPoints = prevMonthTx.reduce((sum, t) => sum + Number(t.points), 0)
   const ghostLeaders = topDealers(prevMonthTx)
-  const ghostRegions = buildRegionGrowth(prevMonthTx, prevMonthPoints)
-
-  const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
-  const tradingSeries = dealersTradingSeries(trendTx ?? [], trendMonths)
-  const pendingSeries = trendMonths.map(({ key }) => windowTx.filter((t) => t.tx_date.slice(0, 7) === key && t.status === 'pending').length)
-  const balances = balanceSeries(creditBalance.available, purchaseRows ?? [], windowTx.filter((t) => t.status !== 'flagged'), trendMonths)
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
 
-  const statement = (statements ?? []).find((s) => (s.month as string).slice(0, 7) === periodKey)
-
-  const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
-    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
-    const dealerRel = Array.isArray(rel) ? rel[0] : rel
-    return {
-      id: t.id,
-      tx_date: t.tx_date,
-      type: t.type as 'package' | 'topup' | 'adjustment',
-      package: t.package as string | null,
-      points: Number(t.points),
-      money_rm: Number(t.money_rm),
-      status: t.status as 'pending' | 'verified' | 'flagged',
-      dealerName: dealerRel?.company_name ?? '—',
-      dealerId: t.dealer_id as string | null,
-    }
-  })
+  // The same chart master has, on the figure an accountant actually works in.
+  // Points, not ringgit: this role records and verifies volume, and the
+  // commission the business keeps is master's question.
+  const elapsed = periodComplete ? daysInPeriod : dayOfMonth
+  const dailyPoints = dailyCumulative(trendTx ?? [], periodKey, daysInPeriod, 'points', elapsed)
+  const prevDaysInMonth = prevMonthKey
+    ? new Date(Date.UTC(Number(prevMonthKey.slice(0, 4)), Number(prevMonthKey.slice(5, 7)), 0)).getUTCDate()
+    : 0
+  const prevDailyRaw = prevMonthKey ? dailyCumulative(trendTx ?? [], prevMonthKey, prevDaysInMonth, 'points') : []
+  const prevDaily = prevDailyRaw.slice(0, Math.min(elapsed, prevDailyRaw.length))
+  const prevMonthPointsTotal = prevDailyRaw.length ? prevDailyRaw[prevDailyRaw.length - 1] : 0
+  const runwayDays = creditRunwayDays(creditBalance.available, totalPoints, elapsed)
 
   return (
     <div className="flex flex-col gap-8">
@@ -773,96 +819,147 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
           business keeps. */}
       <NeedsAttention items={alerts} />
 
-      <div className="page-band">
-        <StatTiles
-          stats={[
-            {
-              label: `Top-up — ${periodLabel}`,
-              value: `${totalPoints.toLocaleString()} pts`,
-              href: `/records?status=verified&month=${periodKey}`,
-              chg: pointsChg,
-              spark: pointsSeries,
-              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod} · on track for ${projectedPoints.toLocaleString()} pts`,
-            },
-            {
-              label: 'Pending review',
-              value: String(pendingCount),
-              href: '/records?status=pending',
-              spark: pendingSeries,
-              sub: pendingCount && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS ? `oldest waiting ${oldestPendingDays}d` : 'nothing waiting',
-            },
-            {
-              label: 'Dealers trading',
-              value: String(dealersTrading),
-              href: '/dealers',
-              spark: tradingSeries,
-              sub: `recorded a verified top-up in ${periodLabel}`,
-            },
-            {
-              label: 'Credit balance',
-              value: `${creditBalance.available.toLocaleString()} pts`,
-              href: '/purchases',
-              spark: balances,
-              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
-            },
-          ]}
-        />
-      </div>
+      {/* One figure and a real chart, in place of four tiles and four 46px
+          sparklines.
+          =================================================================
+          The four tiles were Top-up / Pending review / Dealers trading /
+          Credit balance, all at 22px, so — exactly as on master before the
+          rebuild — the largest text on the accountant's dashboard was the
+          word "Dashboard". Three of the four are facts you read once and act
+          on elsewhere; only the volume has a shape worth drawing, and it now
+          gets 31 points instead of a stub. The other three keep their
+          numbers on the line under the chart.
 
+          The Reconciliation band is gone with them. It printed a dot and the
+          word "Open" linking to /reconcile, while the alert card 200px above
+          it already said "2026-08 statement not reconciled · Go to
+          Reconciliation →" — the same fact, twice, and the alert is the one
+          that also tells you it is late. Its one loss is honest: for a PAST
+          period the band could say whether that month was closed, and now
+          that question belongs to /reconcile, which is where it is answered
+          properly. */}
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">Reconciliation {periodKey}</h3>
-        <p className="mb-3 text-[12px] text-paper-dim">Until this is closed, the month is not final.</p>
-        <Link href="/reconcile" className="inline-flex items-center gap-2 text-[14px] font-semibold hover:underline">
-          <span className={`h-2 w-2 rounded-full ${statement?.reconciled ? 'bg-jade' : 'bg-clay'}`} />
-          <span className={statement?.reconciled ? 'text-jade-bright' : 'text-clay-bright'}>{statement?.reconciled ? 'Closed' : 'Open'}</span>
-        </Link>
-      </div>
+        <div>
+          <Link href={`/records?status=verified&month=${periodKey}`} className="group inline-block">
+            <div className="text-[12px] text-paper-dim">Top-up recorded — {periodLabel}</div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
+              <span className="figure-points text-[38px] leading-none tracking-[-.03em] group-hover:underline">
+                {totalPoints.toLocaleString()}
+              </span>
+              <span className="text-[13px] text-paper-dim">pts</span>
+              {pointsChg != null && (
+                <span className={`chg text-[14px] ${pointsChg === 0 ? 'chg-warn' : pointsChg > 0 ? 'chg-up' : 'chg-down'}`}>
+                  {pointsChg === 0 ? '→' : pointsChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(pointsChg * 10) / 10).toFixed(1)}%
+                </span>
+              )}
+              {prevSpanPoints > 0 && prevMonthLabel && (
+                <span className="text-[12px] text-paper-dim">
+                  {prevMonthLabel} same span {prevSpanPoints.toLocaleString()} pts
+                </span>
+              )}
+            </div>
+          </Link>
 
-      {/* Three sections became one — see the note in the master branch. */}
-      <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
-        <p className="mb-5 text-[12px] text-paper-dim">Who bought, and where it came from.</p>
-        <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
-            {leaders.length ? (
-              <Leaderboard rows={leaders} />
-            ) : ghostLeaders.length ? (
-              <GhostEmpty
-                note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
-                action={
-                  prevMonthKey ? (
-                    <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
-                      Open {prevMonthLabel} →
-                    </Link>
-                  ) : null
-                }
-              >
-                <Leaderboard rows={ghostLeaders} />
-              </GhostEmpty>
-            ) : (
-              <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
-            )}
-          </div>
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By region</h4>
-            {regionGrowth.length ? (
-              <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
-            ) : ghostRegions.length ? (
-              <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
-                <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
-              </GhostEmpty>
-            ) : (
-              <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
-            )}
+          <MonthChart
+            id="acct-month"
+            daily={dailyPoints}
+            ghost={prevDaily.length > 1 ? prevDaily : undefined}
+            days={daysInPeriod}
+            projected={periodComplete ? undefined : projectedPoints}
+            ghostLabel={prevDaily.length > 1 && prevMonthLabel ? prevMonthLabel : undefined}
+            targetLabel={[
+              prevMonthPointsTotal > 0 ? `finished at ${prevMonthPointsTotal.toLocaleString()} pts` : null,
+              periodComplete ? null : `day ${dayOfMonth} of ${daysInPeriod} · at this rate ${projectedPoints.toLocaleString()} pts by month end`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
+
+          <div className="mt-4 border-t border-ink-800 pt-3.5">
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 text-[12px] text-paper-dim">
+              <span>
+                Pending review{' '}
+                <Link href="/records?status=pending" className="figure font-semibold text-paper hover:underline">
+                  {pendingCount}
+                </Link>
+                {pendingCount > 0 && oldestPendingDays >= PENDING_REVIEW_STALE_DAYS && (
+                  <span className="ml-1.5 font-semibold text-brass-bright">oldest waiting {oldestPendingDays}d</span>
+                )}
+              </span>
+              <span>
+                <Link href="/dealers" className="figure font-semibold text-paper hover:underline">
+                  {dealersTrading}
+                </Link>{' '}
+                / {dealerCount ?? 0} dealers traded
+              </span>
+              <span>
+                Credit{' '}
+                <Link href="/purchases" className="figure font-semibold text-paper hover:underline">
+                  {creditBalance.available.toLocaleString()}
+                </Link>{' '}
+                pts
+                {runwayDays != null && (
+                  <span
+                    className={`ml-1.5 font-semibold ${runwayDays < 15 ? 'text-clay-bright' : runwayDays < 45 ? 'text-brass-bright' : 'text-jade-bright'}`}
+                  >
+                    ~{runwayDays} days left at this rate
+                  </span>
+                )}
+                {runwayDays == null && creditBalance.available < LOW_BALANCE_THRESHOLD && (
+                  <span className="ml-1.5 font-semibold text-brass-bright">below the low-balance threshold</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Five names and one stacked strip, same as master — and for the same
+          reason: two eight-row bar lists side by side read as one object, and
+          a region is a share of a whole where a dealer is not. */}
       <div className="page-band">
-        <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
-        <RecentTransactionsTable rows={recentTransactions} />
+        <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div>
+            <h3 className="text-sm font-semibold text-paper">Who bought — {periodLabel}</h3>
+            <p className="text-[12px] text-paper-dim">Ranked by what they topped up this month.</p>
+          </div>
+          <Link href="/dealers" className="text-[12px] font-semibold text-primary hover:underline">
+            All {dealerCount ?? 0} dealers →
+          </Link>
+        </div>
+
+        {leaders.length ? (
+          <Leaderboard rows={leaders.slice(0, 5)} />
+        ) : ghostLeaders.length ? (
+          <GhostEmpty
+            note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
+            action={
+              prevMonthKey ? (
+                <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
+                  Open {prevMonthLabel} →
+                </Link>
+              ) : null
+            }
+          >
+            <Leaderboard rows={ghostLeaders.slice(0, 5)} />
+          </GhostEmpty>
+        ) : (
+          <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
+        )}
+
+        {regionGrowth.length > 0 && (
+          <div className="mt-4 border-t border-ink-800 pt-3.5">
+            <p className="mb-2 text-[12px] font-semibold text-paper">By region</p>
+            <RegionStrip rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+          </div>
+        )}
       </div>
+
+      {/* No "Went quiet" and no "Can't trade yet" here, though master has
+          both. Chasing a dealer who stopped buying is a sales job, and
+          setting a package is one an accountant cannot do — canManage on
+          /dealers is cs and master. A block whose action the reader is not
+          allowed to take is a block that only makes the page longer. */}
     </div>
   )
 }

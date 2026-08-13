@@ -11,104 +11,23 @@ import { IconChevronDown } from '../icons'
 // balance, cohorts rather than a headcount, a leaderboard because 249 dealers
 // were never once named on this page.
 
-/* ---------------------------------------------------------------- sparkline
-   Area fill, one hue, emphasised endpoint.
+/* StatTiles and its Sparkline were here, and both are gone.
+   =========================================================================
+   Four 22px figures in a row, each with a 46px trailing spark. Master lost
+   them in the rebuild; the accountant kept them one release longer, which is
+   why this file still had them. Two of master's four drew the same series —
+   commission is 2% of top-up, so normalised their paths were byte-identical
+   — and on the accountant's page the same four figures were the four things
+   you read once and act on elsewhere. Both dashboards now lead with one
+   figure and one real chart at day resolution (chart.tsx), and the other
+   figures live as text on the line beneath it.
 
-   The previous sparklines were a 1px stroke floating in white with no fill,
-   no baseline and no endpoint — nothing to read at 40px tall — in four
-   different hues that encoded nothing. Direction is carried by the ± figure
-   beside the number instead, which is text and survives Geist's "never rely
-   on colour alone".
+   Nothing else imported either of them, so they are deleted rather than left
+   for a future page to pick up: a component nobody renders is a component
+   nobody maintains, and this one encoded a layout the client has now
+   rejected on both pages that used it.
 
-   No preserveAspectRatio override: that is what was stretching the stroke
-   horizontally and making the weight look uneven. */
-const SW = 200
-const SH = 46
-const SP = 3
-
-function sparkPath(values: number[]) {
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const span = max - min || 1
-  return values.map((v, i) => [
-    SP + i * ((SW - SP * 2) / Math.max(1, values.length - 1)),
-    SP + (SH - SP * 2) * (1 - (v - min) / span),
-  ] as const)
-}
-
-function Sparkline({ values, id }: { values: number[]; id: string }) {
-  if (values.length < 2) return null
-
-  // Nothing at all is not the same as nothing changed. Six months of zero drew
-  // a dead-straight rule the full width of the tile, with a dot on the end —
-  // on a phone, four of them down the page, each reading as a stray horizontal
-  // line rather than a chart. A trend line implies there is a trend. Before
-  // any real transaction exists there is no history to draw, so draw none.
-  // A flat series that is not zero still draws: that genuinely is "nothing
-  // changed", which is worth seeing.
-  if (values.every((v) => v === 0)) return null
-
-  const pts = sparkPath(values)
-  const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
-  const [lx, ly] = pts[pts.length - 1]
-  return (
-    <svg viewBox={`0 0 ${SW} ${SH}`} height={SH} className="mt-2.5 block w-full" aria-hidden="true">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--color-primary)" stopOpacity="0.22" />
-          <stop offset="1" stopColor="var(--color-primary)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${d} L ${SW - SP} ${SH} L ${SP} ${SH} Z`} fill={`url(#${id})`} />
-      <path d={d} fill="none" stroke="var(--color-primary)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={lx.toFixed(1)} cy={ly.toFixed(1)} r="3" fill="var(--color-ink-900)" stroke="var(--color-primary)" strokeWidth="1.6" />
-    </svg>
-  )
-}
-
-export type Stat = {
-  label: string
-  value: string
-  href: string
-  /** Percent change vs the prior period. null when there is no baseline. */
-  chg?: number | null
-  /** Six trailing values, oldest first. Omit where there is no series. */
-  spark?: number[]
-  /** One short line under the figure — a caveat, not a second number. */
-  sub?: string
-}
-
-// Four figures in a row, on the canvas rather than in four little cards.
-//
-// The page now opens with one card — the alerts — and that card is the
-// anchor. Four more cards immediately under it made the top of the page
-// read as two rows of boxes, which is the "four boxes is not composition"
-// complaint arriving by a different route. One surface per page, at the
-// top; everything below it is flat and separated by rule and space.
-export function StatTiles({ stats }: { stats: Stat[] }) {
-  return (
-    <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((s, i) => {
-        const r = s.chg == null ? null : Math.round(s.chg * 10) / 10
-        return (
-          <Link key={s.label} href={s.href} className="group block">
-            <div className="text-[12px] text-paper-dim">{s.label}</div>
-            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-              <span className="figure-points text-[22px] leading-tight tracking-[-.026em] group-hover:underline">{s.value}</span>
-              {r != null && (
-                <span className={`chg text-[12px] ${r === 0 ? 'chg-warn' : r > 0 ? 'chg-up' : 'chg-down'}`}>
-                  {r === 0 ? '→' : r > 0 ? '↑' : '↓'} {Math.abs(r).toFixed(1)}%
-                </span>
-              )}
-            </div>
-            {s.sub && <div className="mt-0.5 text-[12px] leading-snug text-paper-dim">{s.sub}</div>}
-            {s.spark && <Sparkline values={s.spark} id={`sp${i}`} />}
-          </Link>
-        )
-      })}
-    </div>
-  )
-}
+   hero-card.tsx has its own Sparkline, still in use, and is unaffected. */
 
 /* ------------------------------------------------------------ ghost empty
    The empty state that is not a dead pixel.
@@ -239,9 +158,7 @@ export function Leaderboard({ rows }: { rows: { id: string; name: string; points
   return <BarList moreNoun="dealers" rows={rows.map((r) => ({ key: r.id, label: r.name, value: r.points, href: r.href }))} />
 }
 
-/* Top-up by region. The same shape as the leaderboard above by construction,
-   not by two people happening to write it the same way. */
-export function RegionBars({ rows }: { rows: { region: string; points: number }[] }) {
-  if (!rows.length) return <p className="text-[13px] text-paper-dim">No verified transactions this month yet.</p>
-  return <BarList moreNoun="regions" rows={rows.map((r) => ({ key: r.region, label: r.region, value: r.points }))} />
-}
+/* RegionBars was here. Both dashboards draw regions as one stacked strip now
+   (RegionStrip in chart.tsx) — a region is a share of a whole where a dealer
+   is not, and a second bar list beside the first is what made the two read as
+   a single object in two columns. */

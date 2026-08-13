@@ -45,7 +45,19 @@ function byUrgency(a: BuiltNotification, b: BuiltNotification) {
 // glanced at, /notifications is worked through. So the dashboard answers "what
 // is the single most urgent thing right now" and hands off the rest, and the
 // full list has one home instead of one and a half.
-const DASHBOARD_PREVIEW_COUNT = 1
+// Three, not one.
+//
+// The band announced "4 things need you" and then showed one of them, with a
+// link to the other three — a heading and a route-out wrapped around a single
+// row. One was defensible when this card sat above four stat tiles, a
+// two-column leaderboard and a ten-row table and had to stay out of their
+// way; it is not defensible now that those are gone and the whole page fits
+// a screen. Three rows cost about 90px and remove a trip to /notifications
+// on the mornings that matter.
+//
+// Still capped, and the cap still sorts by urgency first: the point is a
+// preview of what is blocking, not the whole list. That list has a page.
+const DASHBOARD_PREVIEW_COUNT = 3
 
 export function NeedsAttention({ items, flat }: { items: BuiltNotification[]; flat?: boolean }) {
   const shown = [...items].sort(byUrgency).slice(0, DASHBOARD_PREVIEW_COUNT)

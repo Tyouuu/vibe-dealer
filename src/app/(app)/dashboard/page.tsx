@@ -14,6 +14,7 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { RecentTransactionsTable, type RecentTxRow } from './recent-transactions-table'
 import Link from 'next/link'
 import { StatTiles, Leaderboard, RegionBars, GhostEmpty } from './elements'
+import { MonthChart, RegionStrip } from './chart'
 import { PeriodSwitcher } from './period-switcher'
 import { balanceSeries, dealersTradingSeries, resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
@@ -150,6 +151,62 @@ function monthlySeries(
   )
 }
 
+/**
+ * The same transactions, summed by DAY instead of by month.
+ *
+ * monthlySeries above gives six numbers for six months, which is why the
+ * headline chart was a six-point zigzag — "那条线可以更加细节一点". Every row
+ * in `trendTx` carries its own tx_date, so the resolution was always there
+ * and was being thrown away. This returns a running total, one entry per
+ * day, because a cumulative line is what makes two months comparable: their
+ * daily totals are noise, their running totals are a race.
+ *
+ * `upto` caps it at today for a month still in progress — the point of
+ * stopping the line is that the empty right-hand side reads as "not yet"
+ * rather than as a collapse to zero.
+ */
+function dailyCumulative(
+  tx: { tx_date: string; points: number | string; commission_rm?: number | string }[],
+  monthKey: string,
+  daysInMonth: number,
+  field: 'points' | 'commission_rm',
+  upto?: number,
+): number[] {
+  const perDay = new Array<number>(daysInMonth).fill(0)
+  for (const t of tx) {
+    if (t.tx_date.slice(0, 7) !== monthKey) continue
+    const d = Number(t.tx_date.slice(8, 10))
+    if (d >= 1 && d <= daysInMonth) perDay[d - 1] += Number(t[field] ?? 0)
+  }
+  const end = Math.max(1, Math.min(upto ?? daysInMonth, daysInMonth))
+  const out: number[] = []
+  let run = 0
+  for (let i = 0; i < end; i++) {
+    run += perDay[i]
+    out.push(run)
+  }
+  return out
+}
+
+/**
+ * How long the credit on hand lasts at the rate it is being sold.
+ *
+ * Nothing in this app answers "when do I need to buy from Vibe again" — the
+ * balance is printed on three pages and the burn rate on none, so the owner
+ * does the division in his head. Both numbers were already on this page.
+ *
+ * Returns null when there is nothing to divide by, and that matters: on
+ * production today there are zero transactions, so a runway would be either
+ * a crash or a meaningless infinity. A figure that cannot exist yet does not
+ * get a placeholder — the same rule Reconciliation is built on.
+ */
+function creditRunwayDays(available: number, soldThisPeriod: number, elapsedDays: number): number | null {
+  if (available <= 0 || soldThisPeriod <= 0 || elapsedDays <= 0) return null
+  const perDay = soldThisPeriod / elapsedDays
+  if (!Number.isFinite(perDay) || perDay <= 0) return null
+  return Math.floor(available / perDay)
+}
+
 type PageProps = { searchParams: Promise<{ month?: string }> }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
@@ -165,36 +222,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const trendMonths = monthsBack(6)
   const trendStart = `${trendMonths[0].key}-01`
 
-  const [{ count: dealerCount }, { data: trendTx }, { data: recentTxRows }, creditBalance, alerts, { data: windowRows }, { data: purchaseRows }] =
-    await Promise.all([
-      supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
-      // The full dealer list went with the trend chart's region filter — the
-      // only thing that consumed it. This page no longer reads 249 rows on
-      // every load to populate a dropdown it does not have.
-      supabase
-        .from('transactions')
-        .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
-        .eq('status', 'verified')
-        .gte('tx_date', trendStart)
-        .lte('tx_date', today),
-      supabase
-        .from('transactions')
-        .select('id, dealer_id, tx_date, type, package, points, money_rm, status, dealers(company_name)')
-        .order('created_at', { ascending: false })
-        .limit(10),
-      getAvailablePointsBalance(supabase),
-      // Same list the bell and /notifications show — getNotifications is
-      // request-cached, so this doesn't re-run the layout's queries.
-      getNotifications(user.id, 'master'),
-      // Every transaction in the charted window, any status. Two things read
-      // it: the status split for whichever month is selected, and the credit
-      // balance series, which needs pending as well as verified because a
-      // pending sale is already committed against the balance. It replaces
-      // the old this-month-only status query rather than adding to it, so
-      // changing period costs no extra round trip.
-      supabase.from('transactions').select('tx_date, points, status').gte('tx_date', trendStart).lte('tx_date', today),
-      supabase.from('credit_purchases').select('purchase_date, points').gte('purchase_date', trendStart),
-    ])
+  // Four reads, down from seven. The three that went were the ones feeding
+  // blocks this page no longer has: the last ten transactions, every
+  // transaction of any status across six months, and every credit purchase
+  // across six months. See the note further down for why they went with the
+  // sparklines rather than staying behind them.
+  const [{ count: dealerCount }, { data: trendTx }, creditBalance, alerts] = await Promise.all([
+    supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
+    // The one read the whole page is built on. Every verified transaction in
+    // the six-month window, each with its own tx_date — which is what makes
+    // the day-resolution chart possible without asking for anything new.
+    supabase
+      .from('transactions')
+      .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
+      .eq('status', 'verified')
+      .gte('tx_date', trendStart)
+      .lte('tx_date', today),
+    getAvailablePointsBalance(supabase),
+    // Same list the bell and /notifications show — getNotifications is
+    // request-cached, so this doesn't re-run the layout's queries.
+    getNotifications(user.id, 'master'),
+  ])
 
   // ---- which month the page is showing ---------------------------------
   const monthsWithData = new Set((trendTx ?? []).map((t) => t.tx_date.slice(0, 7)))
@@ -204,7 +252,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const periodIdx = trendMonths.findIndex((m) => m.key === periodKey)
   const prevMonthKey = periodIdx > 0 ? trendMonths[periodIdx - 1].key : null
 
-  const windowTx = (windowRows ?? []) as { tx_date: string; points: number | string; status: string }[]
   const monthTx = (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === periodKey)
 
   const totalPoints = monthTx.reduce((sum, t) => sum + Number(t.points), 0)
@@ -231,43 +278,50 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // ---- what to show in place of an empty month -------------------------
   // Not a line of grey text. The month before, drawn faint, so an empty
   // section still tells you what belongs there and how it last looked.
+  // No ghostRegions any more: By region is a stacked strip now, and a strip
+  // of last month's shares standing in for this month's would read as this
+  // month's. The leaderboard's ghost survives because it is a list of names
+  // with a sentence over it saying whose month it is.
   const prevMonthTx = prevMonthKey ? (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey) : []
-  const prevMonthPoints = prevMonthTx.reduce((sum, t) => sum + Number(t.points), 0)
   const ghostLeaders = topDealers(prevMonthTx)
-  const ghostRegions = buildRegionGrowth(prevMonthTx, prevMonthPoints)
 
-  const commissionSeries = monthlySeries(trendTx ?? [], trendMonths, 'commission_rm')
-  const pointsSeries = monthlySeries(trendTx ?? [], trendMonths, 'points')
-  const tradingSeries = dealersTradingSeries(trendTx ?? [], trendMonths)
-  // Committed = pending and verified, flagged excluded — the same definition
-  // the live balance uses, or the series would not land on the figure printed
-  // beside it. See computeAvailableBalance.
-  const balances = balanceSeries(
-    creditBalance.available,
-    purchaseRows ?? [],
-    windowTx.filter((t) => t.status !== 'flagged'),
-    trendMonths,
-  )
+  // ---- the headline chart, day by day ----------------------------------
+  // Six monthly totals became one month at day resolution — see
+  // dailyCumulative. Same query, same rows.
+  const elapsed = periodComplete ? daysInPeriod : dayOfMonth
+  const dailyCommission = dailyCumulative(trendTx ?? [], periodKey, daysInPeriod, 'commission_rm', elapsed)
+  const prevDaysInMonth = prevMonthKey
+    ? new Date(Date.UTC(Number(prevMonthKey.slice(0, 4)), Number(prevMonthKey.slice(5, 7)), 0)).getUTCDate()
+    : 0
+  const prevDailyRaw = prevMonthKey ? dailyCumulative(trendTx ?? [], prevMonthKey, prevDaysInMonth, 'commission_rm') : []
+  // Day 1 to day 13 of last month against day 1 to day 13 of this one — the
+  // same span the "↓5.4%" beside it is computed over. An earlier version
+  // stretched the whole of last month across this month's axis, which made
+  // the chart's comparison and the headline's comparison two different
+  // things sitting an inch apart.
+  const prevDaily = prevDailyRaw.slice(0, Math.min(elapsed, prevDailyRaw.length))
+  const prevMonthCommission = prevDailyRaw.length ? prevDailyRaw[prevDailyRaw.length - 1] : 0
+
+  const soldThisPeriod = totalPoints
+  const runwayDays = creditRunwayDays(creditBalance.available, soldThisPeriod, elapsed)
+  // Computed once: pctChange returns null when there is no baseline, and
+  // calling it twice inline made the null-check and the use two separate
+  // expressions that TypeScript could not tie together.
+  const pointsChg = prevSpanPoints > 0 ? pctChange(totalPoints, prevSpanPoints) : null
+
   const dealersTrading = new Set(monthTx.map((t) => t.dealer_id)).size
 
-  // Recent Transactions — last 10 by created_at, any status, and deliberately
-  // not scoped to the selected period: "what happened lately" is not a
-  // question about a calendar month.
-  const recentTransactions: RecentTxRow[] = (recentTxRows ?? []).map((t) => {
-    const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
-    const dealerRel = Array.isArray(rel) ? rel[0] : rel
-    return {
-      id: t.id,
-      tx_date: t.tx_date,
-      type: t.type as 'package' | 'topup' | 'adjustment',
-      package: t.package as string | null,
-      points: Number(t.points),
-      money_rm: Number(t.money_rm),
-      status: t.status as 'pending' | 'verified' | 'flagged',
-      dealerName: dealerRel?.company_name ?? '—',
-      dealerId: t.dealer_id as string | null,
-    }
-  })
+  // Three series and their three queries went with the four sparklines.
+  //
+  // pointsSeries, tradingSeries and balanceSeries each drew a 46px stub on a
+  // tile that no longer exists, and balanceSeries alone needed two of this
+  // page's seven reads — every credit purchase in the window, and every
+  // transaction of any status in the window. Recent Transactions took a
+  // third. Deleting the tiles without deleting the reads would have left the
+  // most-visited page in the app doing three round trips for nothing, which
+  // is the kind of thing that survives a redesign for years.
+  //
+  // Master's dashboard is now four queries instead of seven.
 
   const periodLabel = formatMonthLabel(periodKey)
 
@@ -297,96 +351,171 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           read first gets the surface, and everything after it stays flat. */}
       <NeedsAttention items={alerts} />
 
-      {/* Four figures and the pace, one row. All four carry a trend now:
-          two of them used to have none, and because a grid row is as tall as
-          its tallest cell that left a 100px hole under the other two. */}
-      <div className="page-band">
-        <StatTiles
-          stats={[
-            {
-              label: `Your commission — ${periodLabel}`,
-              value: formatMYR(totalCommission),
-              href: `/records?status=verified&month=${periodKey}`,
-              chg: commissionChg,
-              spark: commissionSeries,
-              // What the removed Pace ring knew and nothing else did: where
-              // this month lands if it carries on at the rate it is going.
-              sub: periodComplete ? undefined : `day ${dayOfMonth} of ${daysInPeriod} · on track for ${formatMYR(projected)}`,
-            },
-            {
-              label: `Top-up — ${periodLabel}`,
-              value: `${totalPoints.toLocaleString()} pts`,
-              href: `/records?status=verified&month=${periodKey}`,
-              chg: prevSpanPoints > 0 ? pctChange(totalPoints, prevSpanPoints) : null,
-              spark: pointsSeries,
-            },
-            {
-              label: 'Dealers trading',
-              value: `${dealersTrading} / ${dealerCount ?? 0}`,
-              href: '/dealers',
-              spark: tradingSeries,
-              sub: `recorded a verified top-up in ${periodLabel}`,
-            },
-            {
-              label: 'Credit balance',
-              value: `${creditBalance.available.toLocaleString()} pts`,
-              href: '/purchases',
-              spark: balances,
-              sub: creditBalance.available < LOW_BALANCE_THRESHOLD ? 'below the low-balance threshold' : 'as it stands today',
-            },
-          ]}
-        />
-      </div>
+      {/* One figure, not four peers.
+          =================================================================
+          This row used to be four 22px numbers with four sparklines, and the
+          largest text on the page was the word "Dashboard" at 24px — so the
+          one page everybody lands on was the only page in the app that did
+          not lead with an answer. Every other page does: Dealers opens on
+          38px "34", Transactions on 38px "22", Monthly Report on 38px
+          "RM 2,008.80".
 
-      {/* Three sections became one. Top dealers, status split and region
-          ranking are three cuts of the same question — how did this month
-          sell — and each carried its own heading, its own description and,
-          on an empty month, its own line of "nothing yet". One heading, one
-          empty state, three columns. */}
+          Two of the four were also the same series. Commission is 2% of
+          top-up by definition, so normalised into equal boxes their paths
+          were byte-identical — measured, not guessed: both drew
+          "M3.0 43.0 L41.8 43.0 … L197.0 30.6". Half the chart row carried
+          one fact. Top-up is now a figure in the line under the headline,
+          which is the only place it was adding anything.
+
+          The other two keep their numbers and lose their sparklines. That is
+          the trade the client accepted: the trend that matters daily is the
+          money, and it now gets a real chart instead of a 46px stub. */}
       <div className="page-band">
-        <h3 className="mb-1 text-sm font-semibold text-paper">{periodLabel}</h3>
-        <p className="mb-5 text-[12px] text-paper-dim">Who bought, and where it came from.</p>
-        <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">Top dealers</h4>
-            {leaders.length ? (
-              <Leaderboard rows={leaders} />
-            ) : ghostLeaders.length ? (
-              <GhostEmpty
-                note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
-                action={
-                  prevMonthKey ? (
-                    <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
-                      Open {prevMonthLabel} →
-                    </Link>
-                  ) : null
-                }
-              >
-                <Leaderboard rows={ghostLeaders} />
-              </GhostEmpty>
-            ) : (
-              <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
-            )}
-          </div>
-          <div>
-            <h4 className="mb-2.5 text-[12px] font-semibold text-paper">By region</h4>
-            {regionGrowth.length ? (
-              <RegionBars rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
-            ) : ghostRegions.length ? (
-              <GhostEmpty note={`Regions light up as top-ups are verified. ${prevMonthLabel} looked like this:`}>
-                <RegionBars rows={ghostRegions.map((r) => ({ region: r.region, points: r.points }))} />
-              </GhostEmpty>
-            ) : (
-              <p className="text-[13px] text-paper-dim">No verified transactions on record yet.</p>
-            )}
+        <div>
+          <Link href={`/records?status=verified&month=${periodKey}`} className="group inline-block">
+            <div className="text-[12px] text-paper-dim">Your commission — {periodLabel}</div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
+              <span className="figure-money text-[38px] leading-none tracking-[-.03em] group-hover:underline">{formatMYR(totalCommission)}</span>
+              {commissionChg != null && (
+                <span className={`chg text-[14px] ${commissionChg === 0 ? 'chg-warn' : commissionChg > 0 ? 'chg-up' : 'chg-down'}`}>
+                  {commissionChg === 0 ? '→' : commissionChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(commissionChg * 10) / 10).toFixed(1)}%
+                </span>
+              )}
+              {prevSpanCommission > 0 && prevMonthLabel && (
+                <span className="text-[12px] text-paper-dim">
+                  {prevMonthLabel} same span {formatMYR(prevSpanCommission)}
+                </span>
+              )}
+            </div>
+          </Link>
+
+          <MonthChart
+            id="dash-month"
+            daily={dailyCommission}
+            ghost={prevDaily.length > 1 ? prevDaily : undefined}
+            days={daysInPeriod}
+            projected={periodComplete ? undefined : projected}
+            ghostLabel={prevDaily.length > 1 && prevMonthLabel ? prevMonthLabel : undefined}
+            targetLabel={[
+              // Not "July 2026 finished at…" — the key swatch beside it
+              // already says July 2026, and printing the month twice on one
+              // 11px line is the same duplication this page just lost four
+              // sparklines over.
+              prevMonthCommission > 0 ? `finished at ${formatMYR(prevMonthCommission)}` : null,
+              periodComplete ? null : `day ${dayOfMonth} of ${daysInPeriod} · at this rate ${formatMYR(projected)} by month end`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
+
+          <div className="mt-4 border-t border-ink-800 pt-3.5">
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2 text-[12px] text-paper-dim">
+              <span>
+                Sold{' '}
+                <Link href={`/records?status=verified&month=${periodKey}`} className="figure font-semibold text-paper hover:underline">
+                  {totalPoints.toLocaleString()}
+                </Link>{' '}
+                pts
+                {pointsChg != null && (
+                  <span className="ml-1.5">
+                    ({pointsChg >= 0 ? '+' : ''}
+                    {Math.round(pointsChg * 10) / 10}%)
+                  </span>
+                )}
+              </span>
+              <span>
+                <Link href="/dealers" className="figure font-semibold text-paper hover:underline">
+                  {dealersTrading}
+                </Link>{' '}
+                / {dealerCount ?? 0} dealers traded
+              </span>
+              <span>
+                Credit{' '}
+                <Link href="/purchases" className="figure font-semibold text-paper hover:underline">
+                  {creditBalance.available.toLocaleString()}
+                </Link>{' '}
+                pts
+                {/* Only when it can be worked out. On a month with no sales
+                    the divisor is zero, and production has exactly that
+                    today — so this whole clause is absent rather than
+                    showing an infinity or a dash. */}
+                {runwayDays != null && (
+                  <span
+                    className={`ml-1.5 font-semibold ${runwayDays < 15 ? 'text-clay-bright' : runwayDays < 45 ? 'text-brass-bright' : 'text-jade-bright'}`}
+                  >
+                    ~{runwayDays} days left at this rate
+                  </span>
+                )}
+                {runwayDays == null && creditBalance.available < LOW_BALANCE_THRESHOLD && (
+                  <span className="ml-1.5 font-semibold text-brass-bright">below the low-balance threshold</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Top five, and the regions as one band.
+          =================================================================
+          Two eight-row bar lists side by side came to 486px — 29% of the
+          page — for a question /dealers already answers with a ranked table
+          and a podium. Not redundant enough to delete: /dealers ranks by
+          CUMULATIVE top-up and has no region cut at all, while this is "who
+          bought THIS month". But it does not need to be a second
+          leaderboard.
+
+          Five names instead of eight-plus-a-disclosure, and By region
+          collapses to one stacked strip — the right shape for it anyway,
+          because a region is a share of a whole and a dealer is not. */}
       <div className="page-band">
-        <h3 className="mb-3.5 text-sm font-semibold text-paper">Recent Transactions</h3>
-        <RecentTransactionsTable rows={recentTransactions} />
+        <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div>
+            <h3 className="text-sm font-semibold text-paper">Who bought — {periodLabel}</h3>
+            <p className="text-[12px] text-paper-dim">Ranked by what they topped up this month.</p>
+          </div>
+          <Link href="/dealers" className="text-[12px] font-semibold text-primary hover:underline">
+            All {dealerCount ?? 0} dealers →
+          </Link>
+        </div>
+
+        {leaders.length ? (
+          <Leaderboard rows={leaders.slice(0, 5)} />
+        ) : ghostLeaders.length ? (
+          <GhostEmpty
+            note={`Nothing verified in ${periodLabel} yet. This is how ${prevMonthLabel} finished:`}
+            action={
+              prevMonthKey ? (
+                <Link href={`/dashboard?month=${prevMonthKey}`} className="font-semibold text-primary hover:underline">
+                  Open {prevMonthLabel} →
+                </Link>
+              ) : null
+            }
+          >
+            <Leaderboard rows={ghostLeaders.slice(0, 5)} />
+          </GhostEmpty>
+        ) : (
+          <p className="text-[13px] text-paper-dim">No verified top-ups on record yet.</p>
+        )}
+
+        {regionGrowth.length > 0 && (
+          <div className="mt-4 border-t border-ink-800 pt-3.5">
+            <p className="mb-2 text-[12px] font-semibold text-paper">By region</p>
+            <RegionStrip rows={regionGrowth.map((r) => ({ region: r.region, points: r.points }))} />
+          </div>
+        )}
       </div>
+
+      {/* Recent Transactions is gone.
+          =================================================================
+          It was the tallest block on the page at 605px — 37% of it — and its
+          columns were Txn Id / Date / Dealer / Type / Status / Points /
+          Amount: /records with fewer rows and one filter instead of seven.
+          Seeing a row here that needed handling still meant going to
+          /records to handle it, so it was a detour rather than a
+          destination, and the rail already carries the only number it was
+          really delivering — the pending count.
+
+          1,649px to roughly 940px, which is one screen. */}
     </div>
   )
 }

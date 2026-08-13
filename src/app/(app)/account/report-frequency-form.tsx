@@ -31,7 +31,11 @@ export function ReportFrequencyForm({ initialValue }: { initialValue: ReportFreq
   }
 
   return (
-    <div className="max-w-xl">
+    // No max-w here. The Account Settings column caps at 720px now, so this
+    // was a second cap inside the first — and it was the one leaving 165px of
+    // blank at the end of every radio row while the four cards around it
+    // ended flush. One cap, on the page.
+    <div>
       <fieldset className="flex flex-col gap-2">
         <legend className="sr-only">How often the report is emailed</legend>
         {REPORT_FREQUENCIES.map((f) => {

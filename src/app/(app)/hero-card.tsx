@@ -57,8 +57,14 @@ export function HeroCard({
   /** e.g. "vs last month" — says what the change is measured against. */
   chgSuffix?: string
   /** The supporting figures. Deliberately capped at 3: past that this stops
-      being a hierarchy and becomes the tile row again. */
-  stats: {
+      being a hierarchy and becomes the tile row again.
+   *
+   *  Optional, because a hero over a number small enough to count does not
+   *  need one. Dealer Requests printed "Top-ups 2 / Packages 0" under a
+   *  figure of 2 — the total restated as its own parts, in a block that
+   *  doubled the card and pushed the first request off the first screen. When
+   *  the split fits in a clause, it belongs in chgSuffix. */
+  stats?: {
     label: string
     value: string
     href: string
@@ -138,7 +144,11 @@ export function HeroCard({
           then the trailing chart. That order now. */}
       {!chart && spark && spark.length > 1 && <Sparkline values={spark} label={sparkLabel} />}
 
+      {/* No stats, no rule and no row — an empty grid under a hairline is a
+          card that looks like it failed to load its second half. */}
+      {(stats?.length || footnote) && (
       <div>
+        {stats?.length ? (
         <div className="grid grid-cols-1 gap-3 border-t border-ink-800 pt-4 sm:grid-cols-3">
           {stats.map((s) => (
             <Link key={s.label} href={s.href} className="group min-w-0">
@@ -157,8 +167,10 @@ export function HeroCard({
             </Link>
           ))}
         </div>
+        ) : null}
         {footnote && <div className="mt-3 text-[12px] leading-relaxed text-paper-dim">{footnote}</div>}
       </div>
+      )}
 
       {chart}
     </div>

@@ -227,7 +227,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // transaction of any status across six months, and every credit purchase
   // across six months. See the note further down for why they went with the
   // sparklines rather than staying behind them.
-  const [{ count: dealerCount }, { data: trendTx }, creditBalance, alerts] = await Promise.all([
+  const [{ count: dealerCount }, { data: trendTx }, { data: simOrders }, creditBalance, alerts] = await Promise.all([
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     // The one read the whole page is built on. Every verified transaction in
     // the six-month window, each with its own tx_date — which is what makes
@@ -238,6 +238,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       .eq('status', 'verified')
       .gte('tx_date', trendStart)
       .lte('tx_date', today),
+    // The second revenue line, which this page had never shown.
+    //
+    // Monthly Report leads with "What you made — August 2026 · RM 2,008.80";
+    // this page led with "Your commission · RM 1,949.30". The RM 59.50
+    // between them is the margin on SIM cards, and the owner reading both in
+    // the same minute has no way to know that. Same figure on both pages
+    // now, built the same way — see marginOf in reports/page.tsx: net of
+    // shipping, because the fee is what was paid to send them.
+    supabase.from('sim_orders').select('order_date, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', trendStart).lte('order_date', today),
     getAvailablePointsBalance(supabase),
     // Same list the bell and /notifications show — getNotifications is
     // request-cached, so this doesn't re-run the layout's queries.
@@ -269,8 +278,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const prevSpanCommission = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'commission_rm') : 0
   const prevSpanPoints = prevMonthKey ? sameSpanTotal(trendTx ?? [], prevMonthKey, spanDays, 'points') : 0
   const prevMonthLabel = prevMonthKey ? formatMonthLabel(prevMonthKey) : null
-  const commissionChg = prevSpanCommission > 0 ? pctChange(totalCommission, prevSpanCommission) : null
-  const projected = periodComplete || dayOfMonth === 0 ? totalCommission : (totalCommission / dayOfMonth) * daysInPeriod
+  // The commission-only change and projection went with the commission-only
+  // headline. Both now live as earnedChg / projectedEarned further down,
+  // computed over commission PLUS SIM margin — because that is what the
+  // figure above them says, and two of them would be two answers to "how is
+  // the month going".
 
   const regionGrowth = buildRegionGrowth(monthTx, totalPoints)
   const leaders = topDealers(monthTx)
@@ -285,15 +297,56 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const prevMonthTx = prevMonthKey ? (trendTx ?? []).filter((t) => t.tx_date.slice(0, 7) === prevMonthKey) : []
   const ghostLeaders = topDealers(prevMonthTx)
 
+  // ---- who stopped buying ----------------------------------------------
+  // Dealers who bought last month and have bought nothing this month,
+  // ranked by how much business went quiet rather than by how long they have
+  // been silent.
+  //
+  // That ordering is the whole point. The notification builder already
+  // watches for inactivity, but on a 30-day threshold — so on the demo month
+  // it names Klang Valley Reload Centre (3,000 pts in July) and says nothing
+  // about Teluk Intan Mobile Hub, which bought 36,000 pts in July and has
+  // bought nothing since. A twelve-fold difference in what is at stake, and
+  // the quiet one is the one that gets mentioned.
+  //
+  // No new query: trendTx already spans six months, so both sides of this
+  // comparison are in memory.
+  const activeThisPeriod = new Set(monthTx.map((t) => t.dealer_id))
+  const wentQuiet = topDealers(prevMonthTx)
+    .filter((d) => !activeThisPeriod.has(d.id))
+    .slice(0, 5)
+  const wentQuietTotal = topDealers(prevMonthTx)
+    .filter((d) => !activeThisPeriod.has(d.id))
+    .reduce((s, d) => s + d.points, 0)
+  const wentQuietCount = topDealers(prevMonthTx).filter((d) => !activeThisPeriod.has(d.id)).length
+
   // ---- the headline chart, day by day ----------------------------------
   // Six monthly totals became one month at day resolution — see
   // dailyCumulative. Same query, same rows.
   const elapsed = periodComplete ? daysInPeriod : dayOfMonth
-  const dailyCommission = dailyCumulative(trendTx ?? [], periodKey, daysInPeriod, 'commission_rm', elapsed)
+
+  // SIM margin, shaped like a transaction so the same day-summing code works
+  // on both. margin = quantity × (price − cost) − shipping, net of the fee
+  // paid to send them, which is how reports/page.tsx computes it.
+  const simAsTx = (simOrders ?? []).map((o) => ({
+    tx_date: o.order_date as string,
+    points: 0,
+    commission_rm:
+      Number(o.quantity) * (Number(o.unit_price_rm) - Number(o.unit_cost_rm)) - Number(o.shipping_fee_rm ?? 0),
+  }))
+  const earnedTx = [...(trendTx ?? []).map((t) => ({ tx_date: t.tx_date, points: 0, commission_rm: Number(t.commission_rm) })), ...simAsTx]
+  const simMarginPeriod = simAsTx.filter((o) => o.tx_date.slice(0, 7) === periodKey).reduce((s, o) => s + o.commission_rm, 0)
+  const totalEarned = totalCommission + simMarginPeriod
+  const prevSpanSim = prevMonthKey ? sameSpanTotal(simAsTx, prevMonthKey, spanDays, 'commission_rm') : 0
+  const prevSpanEarned = prevSpanCommission + prevSpanSim
+  const earnedChg = prevSpanEarned > 0 ? pctChange(totalEarned, prevSpanEarned) : null
+  const projectedEarned = periodComplete || dayOfMonth === 0 ? totalEarned : (totalEarned / dayOfMonth) * daysInPeriod
+
+  const dailyCommission = dailyCumulative(earnedTx, periodKey, daysInPeriod, 'commission_rm', elapsed)
   const prevDaysInMonth = prevMonthKey
     ? new Date(Date.UTC(Number(prevMonthKey.slice(0, 4)), Number(prevMonthKey.slice(5, 7)), 0)).getUTCDate()
     : 0
-  const prevDailyRaw = prevMonthKey ? dailyCumulative(trendTx ?? [], prevMonthKey, prevDaysInMonth, 'commission_rm') : []
+  const prevDailyRaw = prevMonthKey ? dailyCumulative(earnedTx, prevMonthKey, prevDaysInMonth, 'commission_rm') : []
   // Day 1 to day 13 of last month against day 1 to day 13 of this one — the
   // same span the "↓5.4%" beside it is computed over. An earlier version
   // stretched the whole of last month across this month's axis, which made
@@ -372,29 +425,46 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           money, and it now gets a real chart instead of a 46px stub. */}
       <div className="page-band">
         <div>
-          <Link href={`/records?status=verified&month=${periodKey}`} className="group inline-block">
-            <div className="text-[12px] text-paper-dim">Your commission — {periodLabel}</div>
+          {/* "What you made", and both lines of it.
+              ===========================================================
+              This said "Your commission" and printed RM 1,949.30 while
+              Monthly Report, one click away, said "What you made — August
+              2026 · RM 2,008.80". The RM 59.50 between them is the margin on
+              SIM cards — a whole revenue stream this page had never named —
+              and nothing told the reader that. Same figure, same wording,
+              same arithmetic on both pages now, with the split on the line
+              underneath so the headline stays one number. */}
+          <Link href={`/reports?month=${periodKey}`} className="group inline-block">
+            <div className="text-[12px] text-paper-dim">What you made — {periodLabel}</div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
-              <span className="figure-money text-[38px] leading-none tracking-[-.03em] group-hover:underline">{formatMYR(totalCommission)}</span>
-              {commissionChg != null && (
-                <span className={`chg text-[14px] ${commissionChg === 0 ? 'chg-warn' : commissionChg > 0 ? 'chg-up' : 'chg-down'}`}>
-                  {commissionChg === 0 ? '→' : commissionChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(commissionChg * 10) / 10).toFixed(1)}%
+              <span className="figure-money text-[38px] leading-none tracking-[-.03em] group-hover:underline">{formatMYR(totalEarned)}</span>
+              {earnedChg != null && (
+                <span className={`chg text-[14px] ${earnedChg === 0 ? 'chg-warn' : earnedChg > 0 ? 'chg-up' : 'chg-down'}`}>
+                  {earnedChg === 0 ? '→' : earnedChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(earnedChg * 10) / 10).toFixed(1)}%
                 </span>
               )}
-              {prevSpanCommission > 0 && prevMonthLabel && (
+              {prevSpanEarned > 0 && prevMonthLabel && (
                 <span className="text-[12px] text-paper-dim">
-                  {prevMonthLabel} same span {formatMYR(prevSpanCommission)}
+                  {prevMonthLabel} same span {formatMYR(prevSpanEarned)}
                 </span>
               )}
             </div>
           </Link>
+          <div className="mt-1 text-[12px] text-paper-dim">
+            Points 2% <b className="figure font-semibold text-paper">{formatMYR(totalCommission)}</b>
+            {simMarginPeriod !== 0 && (
+              <>
+                {' · '}SIM cards <b className="figure font-semibold text-paper">{formatMYR(simMarginPeriod)}</b> margin
+              </>
+            )}
+          </div>
 
           <MonthChart
             id="dash-month"
             daily={dailyCommission}
             ghost={prevDaily.length > 1 ? prevDaily : undefined}
             days={daysInPeriod}
-            projected={periodComplete ? undefined : projected}
+            projected={periodComplete ? undefined : projectedEarned}
             ghostLabel={prevDaily.length > 1 && prevMonthLabel ? prevMonthLabel : undefined}
             targetLabel={[
               // Not "July 2026 finished at…" — the key swatch beside it
@@ -402,7 +472,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               // 11px line is the same duplication this page just lost four
               // sparklines over.
               prevMonthCommission > 0 ? `finished at ${formatMYR(prevMonthCommission)}` : null,
-              periodComplete ? null : `day ${dayOfMonth} of ${daysInPeriod} · at this rate ${formatMYR(projected)} by month end`,
+              periodComplete ? null : `day ${dayOfMonth} of ${daysInPeriod} · at this rate ${formatMYR(projectedEarned)} by month end`,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -504,6 +574,74 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </div>
         )}
       </div>
+
+      {/* Who stopped buying.
+          =================================================================
+          The one block on this page that is not a smaller copy of another
+          page. /dealers ranks who is biggest; nothing anywhere answers "who
+          was buying last month and has gone quiet", which for a business
+          with 34 trading dealers is the question that costs money.
+
+          Ranked by what went quiet, not by how long they have been silent.
+          The notification builder already watches inactivity on a 30-day
+          threshold, and on this month's data that makes it name Klang Valley
+          Reload Centre — 3,000 pts in July — while saying nothing about
+          Teluk Intan Mobile Hub, which bought 36,000 pts in July and has
+          bought nothing since. Twelve times the money, no mention.
+
+          Rows, not bars. "Who bought" directly above is already a bar list,
+          and two bar lists on one page is exactly what made Top dealers and
+          By region read as one thing in two columns.
+
+          Absent, not empty, when nobody has gone quiet — which is the
+          healthy state and should take no room at all. */}
+      {wentQuiet.length > 0 && prevMonthLabel && (
+        <div className="page-band">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <div>
+              <h3 className="text-sm font-semibold text-paper">Went quiet</h3>
+              <p className="text-[12px] text-paper-dim">
+                Bought in {prevMonthLabel}, nothing yet in {periodLabel}.
+              </p>
+            </div>
+            <Link href="/dealers?view=inactive" className="text-[12px] font-semibold text-primary hover:underline">
+              All dealers →
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap items-baseline gap-x-2.5">
+            <span className="figure-points text-[26px] leading-none tracking-[-.03em] text-paper">{wentQuietCount}</span>
+            <span className="text-[12px] text-paper-dim">
+              {wentQuietCount === 1 ? 'dealer' : 'dealers'} · <b className="figure font-semibold text-paper">{wentQuietTotal.toLocaleString()}</b> pts of{' '}
+              {prevMonthLabel} business
+            </span>
+          </div>
+
+          <ul className="mt-3 flex flex-col">
+            {wentQuiet.map((d) => (
+              <li key={d.id} className="border-t border-ink-800">
+                <Link href={d.href} className="group flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-paper group-hover:underline" title={d.name}>
+                    {d.name}
+                  </span>
+                  {/* No "in July 2026" on the row — the line above the list
+                      already says which month these figures are from, and
+                      repeating it four times is the same duplication this
+                      page lost four sparklines over. */}
+                  <span className="whitespace-nowrap text-[12px] text-paper-dim">
+                    <b className="figure font-semibold text-paper">{d.points.toLocaleString()}</b> pts
+                  </span>
+                </Link>
+              </li>
+            ))}
+            {wentQuietCount > wentQuiet.length && (
+              <li className="border-t border-ink-800 py-2.5 text-[12px] text-paper-dim">
+                and {wentQuietCount - wentQuiet.length} more
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {/* Recent Transactions is gone.
           =================================================================

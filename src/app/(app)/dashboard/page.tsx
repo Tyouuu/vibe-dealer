@@ -22,6 +22,8 @@ import { getNotifications } from '@/lib/notifications/build'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
+import { PACKAGE_SIM_CARDS, SIM_MARGIN_RM } from '@/lib/sim-stock'
+import type { PackageCode } from '@/lib/packages'
 
 export const metadata: Metadata = {
   title: 'Dashboard — Vibe456',
@@ -216,7 +218,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // transaction of any status across six months, and every credit purchase
   // across six months. See the note further down for why they went with the
   // sparklines rather than staying behind them.
-  const [{ data: dealerRows }, { data: trendTx }, { data: simOrders }, creditBalance, alerts] = await Promise.all([
+  const [{ data: dealerRows }, { data: trendTx }, creditBalance, alerts] = await Promise.all([
     // Was a head-only count. It now returns the roster's package column too,
     // which is the same round trip and answers a question the count could
     // not: how many of these dealers can actually trade. See the "Can't
@@ -227,19 +229,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     // the day-resolution chart possible without asking for anything new.
     supabase
       .from('transactions')
-      .select('dealer_id, tx_date, points, commission_rm, dealers(company_name, region)')
+      .select('dealer_id, tx_date, type, package, quantity, points, commission_rm, dealers(company_name, region)')
       .eq('status', 'verified')
       .gte('tx_date', trendStart)
       .lte('tx_date', today),
-    // The second revenue line, which this page had never shown.
-    //
-    // Monthly Report leads with "What you made — August 2026 · RM 2,008.80";
-    // this page led with "Your commission · RM 1,949.30". The RM 59.50
-    // between them is the margin on SIM cards, and the owner reading both in
-    // the same minute has no way to know that. Same figure on both pages
-    // now, built the same way — see marginOf in reports/page.tsx: net of
-    // shipping, because the fee is what was paid to send them.
-    supabase.from('sim_orders').select('order_date, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', trendStart).lte('order_date', today),
     getAvailablePointsBalance(supabase),
     // Same list the bell and /notifications show — getNotifications is
     // request-cached, so this doesn't re-run the layout's queries.
@@ -331,15 +324,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // dailyCumulative. Same query, same rows.
   const elapsed = periodComplete ? daysInPeriod : dayOfMonth
 
-  // SIM margin, shaped like a transaction so the same day-summing code works
-  // on both. margin = quantity × (price − cost) − shipping, net of the fee
-  // paid to send them, which is how reports/page.tsx computes it.
-  const simAsTx = (simOrders ?? []).map((o) => ({
-    tx_date: o.order_date as string,
-    points: 0,
-    commission_rm:
-      Number(o.quantity) * (Number(o.unit_price_rm) - Number(o.unit_cost_rm)) - Number(o.shipping_fee_rm ?? 0),
-  }))
+  // Card margin, shaped like a transaction so the same day-summing code works
+  // on both.
+  //
+  // This used to come from `sim_orders` — cards physically shipped — while
+  // /dealers counted what the packages entitled a dealer to. Two screens,
+  // two answers: RM 14,047 here against RM 17,879 there on the same data,
+  // with a different dealer at the top of each list. The owner settled it on
+  // 2026-08-26: the money is earned when the dealer buys the package, not
+  // when the cards are handed over. Undelivered cards are stock owed, and
+  // /sim-stock is where that is tracked.
+  //
+  // Verified rows only, like every other figure on this page. The
+  // `sim_orders` read this replaced is gone rather than left in — it was the
+  // only thing on the page using it, and a query kept "just in case" is a
+  // round trip nobody can later explain.
+  const simAsTx = (trendTx ?? [])
+    .filter((t) => t.type === 'package' && t.package && t.package in PACKAGE_SIM_CARDS)
+    .map((t) => ({
+      tx_date: t.tx_date as string,
+      points: 0,
+      commission_rm:
+        PACKAGE_SIM_CARDS[t.package as PackageCode] * Math.max(1, Number(t.quantity ?? 1)) * SIM_MARGIN_RM,
+    }))
   const earnedTx = [...(trendTx ?? []).map((t) => ({ tx_date: t.tx_date, points: 0, commission_rm: Number(t.commission_rm) })), ...simAsTx]
   const simMarginPeriod = simAsTx.filter((o) => o.tx_date.slice(0, 7) === periodKey).reduce((s, o) => s + o.commission_rm, 0)
   const totalEarned = totalCommission + simMarginPeriod
@@ -460,7 +467,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             Points 2% <b className="figure font-semibold text-paper">{formatMYR(totalCommission)}</b>
             {simMarginPeriod !== 0 && (
               <>
-                {' · '}SIM cards <b className="figure font-semibold text-paper">{formatMYR(simMarginPeriod)}</b> margin
+                {' · '}SIM cards <b className="figure font-semibold text-paper">{formatMYR(simMarginPeriod)}</b> at RM1.50
               </>
             )}
           </div>

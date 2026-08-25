@@ -16,6 +16,10 @@ import { Keepalive } from './keepalive'
 
 const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
+  // Directly under Dashboard because it answers the shorter version of the
+  // same question, and because it is the one page here built to be read on a
+  // phone -- which is where the owner actually looks.
+  { href: '/earnings', label: 'Earnings', roles: ['master', 'accountant'], group: 'Overview' },
   { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Dealers' },
   { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Dealers' },
   // Above New Transaction, because it is where a transaction now often

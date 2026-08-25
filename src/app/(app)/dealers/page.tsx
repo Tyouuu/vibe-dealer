@@ -52,6 +52,8 @@ type PageProps = {
     skipped_dup?: string
     skipped_invalid?: string
     import_error?: string
+    assigned?: string
+    refused?: string
     page?: string
   }>
 }
@@ -68,6 +70,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
     skipped_dup: skippedDup,
     skipped_invalid: skippedInvalid,
     import_error: importError,
+    assigned,
+    refused,
     page,
   } = await searchParams
   const view: View = rawView === 'region' || rawView === 'inactive' || rawView === 'nopackage' ? rawView : 'all'
@@ -364,6 +368,17 @@ export default async function DealersPage({ searchParams }: PageProps) {
         ]}
       />
 
+      {/* Says how many, because the whole point was doing it to hundreds at
+          once — "Saved" would leave you counting rows to find out what
+          happened. Refusals are named rather than hidden: the expected one is
+          a dealer who already had a package by the time the button was
+          pressed, which is not a failure worth stopping for. */}
+      {assigned && (
+        <div className="alert alert-ok">
+          Package set for {assigned} dealer{assigned === '1' ? '' : 's'}. They can trade now.
+          {refused && Number(refused) > 0 ? ` ${refused} were skipped — they already had one.` : ''}
+        </div>
+      )}
       {onboarded && <div className="alert alert-ok">Dealer onboarded successfully.</div>}
       {deleted && <div className="alert alert-ok">Dealer deleted.</div>}
       {imported && (
@@ -452,6 +467,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
             showRate={showRate}
             showRanking={showRanking}
             origin={await siteOrigin()}
+            canAssign={canManage}
+            view={view === 'all' ? '' : view}
           />
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">

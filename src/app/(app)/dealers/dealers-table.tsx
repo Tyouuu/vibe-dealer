@@ -7,7 +7,79 @@ import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, I
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 import { DataGrid } from '../data-grid'
 import { formatMYR } from '@/lib/money'
-import { toggleDealerPin } from './actions'
+import { toggleDealerPin, assignPackages } from './actions'
+import { PACKAGES, type PackageCode } from '@/lib/packages'
+
+// A checkbox, and the bar that appears once anything is ticked.
+//
+// Only dealers with NO package can be ticked. assign_dealer_package (0047)
+// refuses to overwrite one, so offering the checkbox on a dealer who already
+// has Package B would be offering an action that cannot happen — and moving
+// someone from B to C changes what they earn on everything afterwards, which
+// is a conversation, not a checkbox on a list of five hundred.
+function SelectBox({ dealer, checked, onChange }: { dealer: DealerRow; checked: boolean; onChange: (id: string, on: boolean) => void }) {
+  if (dealer.package) {
+    // Not a disabled checkbox: a control you can see and cannot use invites
+    // the question "why not" on every row. The package pill further along the
+    // row already answers it.
+    return <span className="w-4 shrink-0" aria-hidden="true" />
+  }
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(dealer.id, e.target.checked)}
+      aria-label={`Select ${dealer.company_name} to set a package`}
+      className="relative z-10 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+    />
+  )
+}
+
+function AssignBar({ ids, view, onClear }: { ids: string[]; view: string; onClear: () => void }) {
+  const [confirming, setConfirming] = useState<PackageCode | null>(null)
+  if (!ids.length) return null
+
+  return (
+    <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary/40 bg-primary-soft px-4 py-3">
+      <span className="text-[13px] font-semibold text-paper">
+        {ids.length} dealer{ids.length === 1 ? '' : 's'} selected
+      </span>
+
+      {confirming ? (
+        <form action={assignPackages} className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="ids" value={ids.join(',')} />
+          <input type="hidden" name="package" value={confirming} />
+          <input type="hidden" name="view" value={view} />
+          {/* Says what will happen to whom, in numbers, before it happens.
+              Five hundred rate assignments is not something to confirm with
+              the word "OK". */}
+          <span className="text-[13px] text-paper">
+            Give <b className="font-semibold">Package {confirming}</b> — {PACKAGES[confirming].rate}% on every top-up — to{' '}
+            <b className="font-semibold">{ids.length}</b> dealer{ids.length === 1 ? '' : 's'}?
+          </span>
+          <button type="submit" className="btn-primary py-1.5 text-xs">
+            Yes, set {ids.length} package{ids.length === 1 ? '' : 's'}
+          </button>
+          <button type="button" onClick={() => setConfirming(null)} className="text-[12px] font-semibold text-paper-dim hover:text-paper">
+            Back
+          </button>
+        </form>
+      ) : (
+        <>
+          <span className="text-[13px] text-paper-dim">Set package</span>
+          {(Object.keys(PACKAGES) as PackageCode[]).map((code) => (
+            <button key={code} type="button" onClick={() => setConfirming(code)} className="btn-ghost py-1.5 text-xs">
+              {code} · RM{PACKAGES[code].price}
+            </button>
+          ))}
+          <button type="button" onClick={onClear} className="ml-auto text-[12px] font-semibold text-paper-dim hover:text-paper">
+            Clear
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
 
 export type DealerRow = {
   id: string
@@ -174,6 +246,8 @@ export function DealersTable({
   showRate,
   showRanking,
   origin,
+  canAssign = false,
+  view = '',
 }: {
   dealers: DealerRow[]
   groupByRegion: boolean
@@ -181,7 +255,26 @@ export function DealersTable({
   showRanking: boolean
   /** Where the app is served from, resolved server-side — see lib/site-url. */
   origin: string
+  /** cs and master may set a package; accountant may not. */
+  canAssign?: boolean
+  /** Carried back through the action so the redirect lands on the same view. */
+  view?: string
 }) {
+  // Selection lives here rather than in the page, because the page is a
+  // server component and this table is already a client one. Lifting it out
+  // would mean a third component whose only job is to hold a Set.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const toggleOne = (id: string, on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  const assignable = dealers.filter((d) => !d.package)
+  const allPicked = assignable.length > 0 && assignable.every((d) => selected.has(d.id))
+
   if (!dealers.length) {
     return null
   }
@@ -196,7 +289,12 @@ export function DealersTable({
     : [['', dealers] as [string, DealerRow[]]]
 
   return (
-    <DataGrid id="dealers" label="Dealer directory">
+    <>
+      {/* Above the grid, not inside it: the bar is about the selection, not
+          about any one row, and a control that scrolls away with the table
+          is a control you lose halfway down five hundred names. */}
+      {canAssign && <AssignBar ids={[...selected]} view={view} onClear={() => setSelected(new Set())} />}
+      <DataGrid id="dealers" label="Dealer directory">
       {groups.map(([region, rows]) => {
         // A <details> with no <summary> is not an empty disclosure — the
         // browser supplies its own default label, and "Details" was rendering
@@ -233,6 +331,18 @@ export function DealersTable({
                     something a dealer has, not a fact of its own. */}
                 <th className="th pin-name" style={{ width: 264 }}>
                   <span className="inline-flex items-center gap-1.5">
+                    {canAssign && assignable.length > 0 && (
+                      <input
+                        type="checkbox"
+                        checked={allPicked}
+                        onChange={(e) =>
+                          setSelected(e.target.checked ? new Set(assignable.map((d) => d.id)) : new Set())
+                        }
+                        aria-label={`Select all ${assignable.length} dealers on this page that have no package`}
+                        title={`Select the ${assignable.length} on this page with no package`}
+                        className="relative z-10 mr-1 h-4 w-4 cursor-pointer accent-primary"
+                      />
+                    )}
                     <IconBuilding /> Company
                   </span>
                 </th>
@@ -285,6 +395,7 @@ export function DealersTable({
                 <tr key={d.id} className="tr-row group relative h-16">
                   <td className="td pin-name">
                     <div className="flex min-w-0 items-center gap-2.5">
+                      {canAssign && <SelectBox dealer={d} checked={selected.has(d.id)} onChange={toggleOne} />}
                       <PinButton dealer={d} />
                       {showRanking && (
                         <span data-c="rank" className="shrink-0">
@@ -393,6 +504,7 @@ export function DealersTable({
         </Wrapper>
         )
       })}
-    </DataGrid>
+      </DataGrid>
+    </>
   )
 }

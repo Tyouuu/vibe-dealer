@@ -17,6 +17,59 @@ import { friendlyDbError } from '@/lib/db-error'
 const IMPORT_MAX_BYTES = 2 * 1024 * 1024
 const IMPORT_MAX_ROWS = 5000
 
+/**
+ * Give a package to dealers that have none, in one pass.
+ *
+ * 500 of 551 dealers cannot trade because they have no package, so no rate,
+ * so the credit guard on /entry refuses every top-up they place. One at a
+ * time was not a slow route to fixing that — it was no route at all, because
+ * there is no package field on a dealer's page. See 0047 for why the two
+ * existing audited paths could not be reused: one records a sale that never
+ * happened, the other only works on a row being inserted.
+ *
+ * Every dealer goes through assign_dealer_package individually rather than
+ * one bulk UPDATE. It costs a round trip each, and it buys three things a
+ * bulk statement cannot: the rate is derived per dealer from the package, a
+ * dealer who already has one is refused rather than overwritten, and each
+ * gets its own dealer_rate_history row naming who did it. Five hundred round
+ * trips on a job run once is a fair price for an audit trail that is right.
+ */
+export async function assignPackages(formData: FormData) {
+  const user = await requireUser()
+  assertCanManage(user.role)
+
+  const pkg = String(formData.get('package') ?? '').toUpperCase()
+  if (!(pkg in PACKAGES)) {
+    redirect('/dealers?import_error=' + encodeURIComponent('That is not a package we sell.'))
+  }
+  const ids = String(formData.get('ids') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (!ids.length) {
+    redirect('/dealers?import_error=' + encodeURIComponent('Nobody was selected.'))
+  }
+  if (ids.length > 1000) {
+    redirect('/dealers?import_error=' + encodeURIComponent('That is more than 1,000 dealers at once — narrow the filter and do it in parts.'))
+  }
+
+  const supabase = await createClient()
+  let done = 0
+  const refused: string[] = []
+  for (const id of ids) {
+    const { error } = await supabase.rpc('assign_dealer_package', { p_dealer_id: id, p_package: pkg })
+    if (error) refused.push(error.message)
+    else done++
+  }
+
+  revalidatePath('/dealers')
+  revalidatePath('/dashboard')
+
+  // The refusals are counted, not hidden. "Already has a package" is the
+  // expected one — someone else set it between the page rendering and the
+  // button being pressed — and it is not a failure worth stopping for.
+  const view = String(formData.get('view') ?? '')
+  const back = view ? `/dealers?view=${encodeURIComponent(view)}` : '/dealers'
+  redirect(`${back}${back.includes('?') ? '&' : '?'}assigned=${done}${refused.length ? `&refused=${refused.length}` : ''}`)
+}
+
 function assertCanManage(role: string) {
   if (role !== 'cs' && role !== 'master') {
     throw new Error('Not authorized to manage dealers.')

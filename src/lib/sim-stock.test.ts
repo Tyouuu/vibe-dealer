@@ -5,6 +5,7 @@ import {
   cardEarningsRm,
   cardsOwedByDealer,
   packageCardEconomics,
+  packagesBoughtByDealer,
 } from './sim-stock'
 
 describe('cardEarningsRm', () => {
@@ -151,5 +152,89 @@ describe('cardsOwedByDealer', () => {
     expect(r.totalEntitled).toBe(0)
     expect(r.totalOwed).toBe(0)
     expect(r.byDealer.size).toBe(0)
+  })
+})
+
+describe('packagesBoughtByDealer', () => {
+  it('spells out the count that made the money column look wrong', () => {
+    // The complaint, exactly: the dealers list showed "A" beside RM 90.00 and
+    // it read as an error. Three Package As is 60 cards is RM90 — right all
+    // along, and unreadable because nothing said "three".
+    const { label, total } = packagesBoughtByDealer([{ dealer_id: 'd', package: 'A', quantity: 3 }]).get('d')!
+    expect(label).toBe('3 × A')
+    expect(total).toBe(3)
+    expect(cardEarningsRm(PACKAGE_SIM_CARDS.A * 3)).toBe(90)
+  })
+
+  it('adds up rows and quantities together, since both mean the same thing', () => {
+    // Before 0048 three packages were three rows; after it they can be one
+    // row of three. A dealer who bought before and after must not read as
+    // two different dealers.
+    const bought = packagesBoughtByDealer([
+      { dealer_id: 'd', package: 'A' },
+      { dealer_id: 'd', package: 'A' },
+      { dealer_id: 'd', package: 'A', quantity: 1 },
+    ]).get('d')!
+    expect(bought.label).toBe('3 × A')
+    expect(bought.total).toBe(3)
+  })
+
+  it('always names the packages A then B then C, whatever order they were bought in', () => {
+    const bought = packagesBoughtByDealer([
+      { dealer_id: 'd', package: 'C', quantity: 1 },
+      { dealer_id: 'd', package: 'A', quantity: 2 },
+    ]).get('d')!
+    expect(bought.label).toBe('2 × A + 1 × C')
+    expect(bought.total).toBe(3)
+  })
+
+  it('leaves out a dealer who has been given a tier but bought nothing', () => {
+    // 305 of the 344 dealers are in exactly this state after the bulk assign.
+    // A tier is not a purchase, and a "0 × B" on 305 rows would be noise.
+    expect(packagesBoughtByDealer([]).get('d')).toBeUndefined()
+  })
+
+  it('ignores a row that names no package, or one this app does not sell', () => {
+    const bought = packagesBoughtByDealer([
+      { dealer_id: 'd', package: null, quantity: 5 },
+      { dealer_id: 'd', package: 'Z', quantity: 5 },
+      { dealer_id: 'd', package: 'B', quantity: 1 },
+    ]).get('d')!
+    expect(bought.label).toBe('1 × B')
+  })
+
+  it('treats a null or zero quantity as one, not as nothing', () => {
+    // Every row written before 0048 has the column's default of 1, but a
+    // hand-written row or a stale client could still send null — and a
+    // package that entitles nobody to any cards is the wrong reading.
+    const bought = packagesBoughtByDealer([
+      { dealer_id: 'd', package: 'C', quantity: null },
+      { dealer_id: 'd', package: 'C', quantity: 0 },
+    ]).get('d')!
+    expect(bought.total).toBe(2)
+  })
+})
+
+describe('cardsOwedByDealer with a quantity', () => {
+  it('counts one row of forty Package Cs as four thousand cards', () => {
+    // The largest single order the business has seen, and the case that used
+    // to need forty separate rows.
+    const { byDealer } = cardsOwedByDealer([{ dealer_id: 'd', package: 'C', quantity: 40 }], [])
+    expect(byDealer.get('d')!.entitled).toBe(4000)
+    expect(cardEarningsRm(byDealer.get('d')!.entitled)).toBe(6000)
+  })
+
+  it('gives the same answer whether three packages are one row or three', () => {
+    const asOneRow = cardsOwedByDealer([{ dealer_id: 'd', package: 'A', quantity: 3 }], [])
+    const asThreeRows = cardsOwedByDealer(
+      [
+        { dealer_id: 'd', package: 'A' },
+        { dealer_id: 'd', package: 'A' },
+        { dealer_id: 'd', package: 'A' },
+      ],
+      []
+    )
+    expect(asOneRow.totalEntitled).toBe(asThreeRows.totalEntitled)
+    expect(asOneRow.totalEntitled).toBe(60)
   })
 })

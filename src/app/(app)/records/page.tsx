@@ -46,6 +46,8 @@ type TxRow = {
   tx_date: string
   type: 'package' | 'topup' | 'adjustment'
   package: string | null
+  /** How many of that package. 1 on top-ups and corrections (0048). */
+  quantity: number | null
   points: number
   money_rm: number
   rate: number | null
@@ -182,7 +184,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
+      'id, dealer_id, tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
   // Dispatched explicitly rather than as query[op](col, val): Supabase types
@@ -681,7 +683,17 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                     <td className="td whitespace-nowrap text-paper-dim" data-c="date">{formatDateLabel(tx.tx_date)}</td>
                     <td className="td text-paper-dim" data-c="type">
                       <span className="whitespace-nowrap">
-                        {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'}
+                        {/* "3 × Package C", not "Package C". The points and
+                            money on this row are already three packages'
+                            worth, so a row that says one is the row lying
+                            about the only figure anyone checks it against. */}
+                        {tx.type === 'package'
+                          ? Number(tx.quantity ?? 1) > 1
+                            ? `${tx.quantity} × Package ${tx.package}`
+                            : `Package ${tx.package}`
+                          : tx.type === 'adjustment'
+                            ? 'Correction'
+                            : 'Top-up'}
                       </span>
                       {/* title, not wrapping. Measured with real data: 31% of
                           "RM 50.00 as coupon (5×)" was cut at 1440px and 34%

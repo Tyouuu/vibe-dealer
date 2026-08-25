@@ -244,6 +244,18 @@ export function IconTrophy({ className = th }: IconProps) {
 // own margin rather than the dealer's side of the deal. A rounded rectangle
 // with the notched corner every SIM has — not a coin or a banknote, which
 // would say "money" without saying which money.
+// A box, for the Bought column — how many packages a dealer took, as opposed
+// to IconTag beside Package, which is the tier they are on.
+export function IconBox({ className = th }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 8v9.2a1 1 0 0 1-.55.9l-8 3.7a1 1 0 0 1-.9 0l-8-3.7a1 1 0 0 1-.55-.9V8" />
+      <path d="M2.6 7.3 11.6 3.2a1 1 0 0 1 .8 0l9 4.1a.5.5 0 0 1 0 .9l-9 4.1a1 1 0 0 1-.8 0l-9-4.1a.5.5 0 0 1 0-.9z" />
+      <path d="M12 12.4V21" />
+    </svg>
+  )
+}
+
 export function IconCard({ className = th }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>

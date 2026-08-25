@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { PACKAGES, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, type PackageCode } from '@/lib/packages'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
@@ -63,13 +63,24 @@ export async function createTransaction(formData: FormData) {
   let moneyRm: number
   let rate: number
   let pkg: PackageCode | null = null
+  // Only a package is bought in multiples. A top-up is an amount of money and
+  // a correction adjusts one named row, so both stay at one -- the same rule
+  // the check constraint in 0048 enforces underneath.
+  let quantity = 1
 
   if (type === 'package') {
     pkg = formData.get('package') as PackageCode
     if (!pkg || !(pkg in PACKAGES)) fail('Please select a package.')
+    const raw = formData.get('quantity')
+    quantity = raw == null || String(raw).trim() === '' ? 1 : Number(raw)
+    if (!Number.isInteger(quantity) || quantity < 1) fail('How many packages? Enter a whole number, 1 or more.')
+    if (quantity > MAX_PACKAGE_QUANTITY) fail(`That is ${quantity} packages — the most that can go on one row is ${MAX_PACKAGE_QUANTITY}. Split it, or check the number.`)
     const def = PACKAGES[pkg]
-    points = def.reload
-    moneyRm = def.price
+    // Pre-multiplied on purpose: one row for three packages should read on a
+    // statement exactly as three packages, and `quantity` is what lets the
+    // screens explain where the figure came from.
+    points = def.reload * quantity
+    moneyRm = Math.round(def.price * quantity * 100) / 100
     rate = def.rate
   } else {
     if (dealer.rate == null) fail('This dealer has no package/rate yet — buy them a package first.')
@@ -112,6 +123,7 @@ export async function createTransaction(formData: FormData) {
     dealer_id: dealerId,
     type,
     package: pkg,
+    quantity,
     points,
     money_rm: moneyRm,
     rate,

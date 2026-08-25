@@ -11,6 +11,16 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 
 export const COMMISSION_RATE = 0.02
 
+// The most packages that can go on one row. Mirrors the check constraint in
+// migration 0048, which is the real backstop — this copy is here so the form
+// can say so before the database has to.
+//
+// The largest single order the business has seen is 40 of Package C at the
+// Northern launch. 200 leaves five times that headroom and still catches a
+// mistyped 3000, which at Package C would move three million reload points
+// out of the credit balance in one keystroke.
+export const MAX_PACKAGE_QUANTITY = 200
+
 // A package code is a category, not a state. It used to be rendered with the
 // status palette — B in jade, C in brass — which are the colours that mean
 // "verified" and "pending" everywhere else in the app, so a dealer on Package

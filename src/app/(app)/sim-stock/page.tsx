@@ -110,9 +110,9 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   // Package sales carry a card entitlement (20/40/100 by package). Read only
   // for finance — cs has no SELECT on `transactions` at all, so asking as cs
   // would return an empty list and produce a confident "nothing owed".
-  let packageSales: { dealer_id: string; package: string | null }[] = []
+  let packageSales: { dealer_id: string; package: string | null; quantity: number | null }[] = []
   if (isFinance) {
-    const { data } = await supabase.from('transactions').select('dealer_id, package').eq('type', 'package').neq('status', 'flagged')
+    const { data } = await supabase.from('transactions').select('dealer_id, package, quantity').eq('type', 'package').neq('status', 'flagged')
     packageSales = data ?? []
   }
   const cardsOwed = cardsOwedByDealer(packageSales, orders)

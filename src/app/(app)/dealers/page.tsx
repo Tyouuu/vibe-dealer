@@ -16,7 +16,7 @@ import { FilterChips } from '../filter-chips'
 import { siteOrigin } from '@/lib/site-url'
 import { ColumnsMenu } from '../columns-menu'
 import { TABLE_COLUMNS, columnCookieName, parseHiddenColumns } from '@/lib/table-columns'
-import { cardEarningsRm, cardsOwedByDealer } from '@/lib/sim-stock'
+import { cardEarningsRm, cardsOwedByDealer, packagesBoughtByDealer } from '@/lib/sim-stock'
 
 export const metadata: Metadata = {
   title: 'Dealers — Vibe456',
@@ -151,7 +151,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       // figure, not a hidden one. showRate is the same gate the rate column
       // already uses, and card margin is the same kind of number.
       showRate
-        ? supabase.from('transactions').select('dealer_id, package').eq('type', 'package').neq('status', 'flagged')
+        ? supabase.from('transactions').select('dealer_id, package, quantity').eq('type', 'package').neq('status', 'flagged')
         : Promise.resolve({ data: [] }),
       showRate ? supabase.from('sim_orders').select('dealer_id, quantity') : Promise.resolve({ data: [] }),
     ])
@@ -161,10 +161,14 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // Entitled cards against delivered ones, the same reckoning /sim-stock and
   // each dealer's own page already do — done once here so the list can carry
   // the figure without asking per row.
+  const packageSales = (packageSaleRows as { dealer_id: string; package: string | null; quantity: number | null }[] | null) ?? []
   const cards = cardsOwedByDealer(
-    (packageSaleRows as { dealer_id: string; package: string | null }[] | null) ?? [],
+    packageSales,
     (simOrderRows as { dealer_id: string; quantity: number }[] | null) ?? []
   ).byDealer
+  // What each dealer bought, spelled out -- "3 × A" is the middle term that
+  // makes the card-earnings figure beside it readable.
+  const bought = packagesBoughtByDealer(packageSales)
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
 
@@ -182,6 +186,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
       // it rather than picking an answer.
       cardEarningsRm: cardEarningsRm(cards.get(d.id)?.entitled ?? 0),
       cardsOwed: cards.get(d.id)?.owed ?? 0,
+      packagesBought: bought.get(d.id)?.label ?? null,
+      packagesBoughtCount: bought.get(d.id)?.total ?? 0,
       totalPoints: ranking?.totalPoints ?? 0,
       rank: ranking?.rank ?? null,
       isInactive: activity?.isInactive ?? false,

@@ -50,9 +50,25 @@ export const TABLE_COLUMNS: Record<TableId, ColumnSpec[]> = {
   dealers: [
     { key: 'rank', label: 'Rank' },
     { key: 'region', label: 'Region' },
-    { key: 'phone', label: 'Phone' },
-    { key: 'contact', label: 'Contact' },
+    // Both off by default, and the reason is measured rather than felt. At
+    // 1440 the dealers table is 1407px inside a 1136px window, so Bought,
+    // Top-up and Card earnings all sit off the right edge -- Card earnings
+    // was already 142px out before Bought existed. Hiding any ONE column is
+    // not enough (Contact alone leaves 62px over); two are needed, and these
+    // are the two the page can spare. The row already carries a WhatsApp
+    // button, so reaching a dealer is a tap rather than a column, and both
+    // facts are on the dealer's own page and in the ⌘K palette. One click in
+    // the Columns menu brings either back.
+    { key: 'phone', label: 'Phone', hint: 'the row already has a WhatsApp button', hiddenByDefault: true },
+    { key: 'contact', label: 'Contact', hint: 'on the dealer’s own page', hiddenByDefault: true },
     { key: 'package', label: 'Package' },
+    // The tier a dealer holds and what they have actually bought are two
+    // different facts, and the list used to show only the first. 305 of the
+    // 344 dealers were given a package in bulk without buying one, so a
+    // single letter could not stand for both -- and with the count invisible
+    // the card-earnings column looked wrong: "A" beside RM 90.00 is three
+    // Package As, and nothing on the row said so.
+    { key: 'bought', label: 'Bought' },
     { key: 'rate', label: 'Rate', hint: 'the same 6% for every dealer with a package', hiddenByDefault: true },
     { key: 'topup', label: 'Top-up' },
     { key: 'cards', label: 'Card earnings' },
@@ -76,7 +92,13 @@ export const COLUMN_COOKIE_PREFIX = 'cols_'
  */
 const COOKIE_VERSION: Record<TableId, number> = {
   records: 2, // v2: Delivery hidden by default — see the note on that column
-  dealers: 1,
+  // v2: the Bought column. parseHiddenColumns ignores hiddenByDefault once a
+  // cookie exists, and Bought is shown by default -- but a saved cookie from
+  // v1 lists what was hidden then, so the new column would have appeared
+  // anyway. The bump is here because the DEFAULT SET changed and the rule
+  // above says that is when it bumps; it costs whoever had toggled a dealers
+  // column whatever they had toggled, once.
+  dealers: 2,
 }
 
 export function columnCookieName(table: TableId): string {

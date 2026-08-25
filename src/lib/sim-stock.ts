@@ -78,6 +78,40 @@ export function cardEarningsRm(cards: number): number {
 }
 
 /**
+ * What each dealer has actually bought, as "3 x A" or "2 x A + 1 x C".
+ *
+ * The dealers list carried a package letter and a ringgit figure with nothing
+ * between them, so "A" sat beside RM 90.00 and read as an error. It was not:
+ * the 90 is three of Package A. Quantity was the missing middle term, and it
+ * was missing on the screen rather than in the data -- three packages used to
+ * be three rows, and are now one row with a quantity.
+ *
+ * Sorted A, B, C rather than by count, so the same two packages always read
+ * in the same order down the column and the eye can compare rows.
+ */
+export function packagesBoughtByDealer(
+  packageSales: { dealer_id: string; package: string | null; quantity?: number | null }[]
+): Map<string, { counts: Record<PackageCode, number>; total: number; label: string }> {
+  const byDealer = new Map<string, { counts: Record<PackageCode, number>; total: number; label: string }>()
+  for (const sale of packageSales) {
+    const pkg = sale.package
+    if (!pkg || !(pkg in PACKAGE_SIM_CARDS)) continue
+    let r = byDealer.get(sale.dealer_id)
+    if (!r) byDealer.set(sale.dealer_id, (r = { counts: { A: 0, B: 0, C: 0 }, total: 0, label: '' }))
+    const n = Math.max(1, sale.quantity ?? 1)
+    r.counts[pkg as PackageCode] += n
+    r.total += n
+  }
+  for (const r of byDealer.values()) {
+    r.label = (['A', 'B', 'C'] as PackageCode[])
+      .filter((p) => r.counts[p] > 0)
+      .map((p) => `${r.counts[p]} × ${p}`)
+      .join(' + ')
+  }
+  return byDealer
+}
+
+/**
  * Cards a dealer has been sold against cards they have actually been given.
  *
  * The launch event turned this from bookkeeping into a real question. One
@@ -94,7 +128,7 @@ export function cardEarningsRm(cards: number): number {
  * figure at all.
  */
 export function cardsOwedByDealer(
-  packageSales: { dealer_id: string; package: string | null; quantity?: number }[],
+  packageSales: { dealer_id: string; package: string | null; quantity?: number | null }[],
   simOrders: { dealer_id: string; quantity: number }[]
 ): { byDealer: Map<string, { entitled: number; delivered: number; owed: number }>; totalEntitled: number; totalDelivered: number; totalOwed: number } {
   const byDealer = new Map<string, { entitled: number; delivered: number; owed: number }>()
@@ -109,7 +143,7 @@ export function cardsOwedByDealer(
     // A transaction that is not a package sale, or names a package this app
     // does not sell, entitles nobody to anything.
     if (!pkg || !(pkg in PACKAGE_SIM_CARDS)) continue
-    row(sale.dealer_id).entitled += PACKAGE_SIM_CARDS[pkg as PackageCode] * (sale.quantity ?? 1)
+    row(sale.dealer_id).entitled += PACKAGE_SIM_CARDS[pkg as PackageCode] * Math.max(1, sale.quantity ?? 1)
   }
   for (const order of simOrders) row(order.dealer_id).delivered += order.quantity
 

@@ -4,7 +4,7 @@ import { Field } from '../field'
 
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, type PackageCode } from '@/lib/packages'
 import { packageCardEconomics } from '@/lib/sim-stock'
 import { createTransaction, findRecentDuplicate, type RecentMatch } from './actions'
 import { IconCoin, IconUpload, IconChevronDown, IconUsers, IconPaperclip } from '../icons'
@@ -92,6 +92,11 @@ export function EntryForm({
   const [txDate, setTxDate] = useState(fromRequest?.transferDate ?? today)
   const [type, setType] = useState<'topup' | 'package'>(fromRequest?.type ?? 'topup')
   const [pkg, setPkg] = useState<PackageCode>(fromRequest?.package ?? 'A')
+  // How many of that package. A dealer bought forty of Package C at the
+  // Northern launch, so one was never a safe assumption -- it was just the
+  // only number the form could express, and three packages had to be keyed
+  // as three separate transactions.
+  const [packageQty, setPackageQty] = useState('1')
   const [moneyCollected, setMoneyCollected] = useState(fromRequest?.money_rm != null ? String(fromRequest.money_rm) : '')
   const [pointsOverride, setPointsOverride] = useState('')
   const [couponRm, setCouponRm] = useState('')
@@ -126,6 +131,15 @@ export function EntryForm({
     }
   }
 
+  // An empty box while someone is retyping the number reads as one package,
+  // not as zero — every preview below it stays on a real figure instead of
+  // blanking to RM 0.00 mid-keystroke. A number past the ceiling is left
+  // alone rather than clamped: silently rewriting what someone typed hides
+  // the mistake, and the field says the limit out loud instead.
+  const qtyRaw = Number(packageQty)
+  const qty = Number.isInteger(qtyRaw) && qtyRaw >= 1 ? qtyRaw : 1
+  const qtyInvalid = packageQty.trim() !== '' && (!Number.isInteger(qtyRaw) || qtyRaw < 1 || qtyRaw > MAX_PACKAGE_QUANTITY)
+
   // Dealers hand over real money, not a points figure — RM collected is the
   // number CS actually has in hand, so it drives the calculation. Points is
   // derived from it (still editable, for the rare case the dealer and CS
@@ -133,7 +147,13 @@ export function EntryForm({
   const preview = useMemo(() => {
     if (type === 'package') {
       const def = PACKAGES[pkg]
-      return { points: def.reload, rate: def.rate, money: def.price, commission: Math.round(def.reload * COMMISSION_RATE * 100) / 100 }
+      const points = def.reload * qty
+      return {
+        points,
+        rate: def.rate,
+        money: Math.round(def.price * qty * 100) / 100,
+        commission: Math.round(points * COMMISSION_RATE * 100) / 100,
+      }
     }
     const rate = dealer?.rate ?? null
     const collected = Number(moneyCollected) || 0
@@ -141,12 +161,12 @@ export function EntryForm({
     const suggestedPoints = Math.round(collected / (1 - rate / 100))
     const pts = pointsOverride ? Number(pointsOverride) : suggestedPoints
     return { points: pts, rate, money: collected, commission: Math.round(pts * COMMISSION_RATE * 100) / 100 }
-  }, [type, pkg, dealer, moneyCollected, pointsOverride])
+  }, [type, pkg, qty, dealer, moneyCollected, pointsOverride])
 
   // A package also puts SIM cards out of the box, and that margin — RM1.50 a
   // card — is the part of a package sale the master dealer actually keeps.
   // Only packages: a top-up ships nothing.
-  const cards = useMemo(() => (type === 'package' ? packageCardEconomics(pkg) : null), [type, pkg])
+  const cards = useMemo(() => (type === 'package' ? packageCardEconomics(pkg, qty) : null), [type, pkg, qty])
 
   const insufficientBalance = preview != null && preview.points > availableBalance
   // Checked live (not just on submit) — typing past the amount collected
@@ -403,8 +423,14 @@ export function EntryForm({
             <span>Amount</span>
             <span className="rule" />
           </div>
+          {/* The package branch runs three columns rather than the usual two:
+              "which package" and "how many" are one question asked in two
+              boxes, and putting the count on its own row underneath would
+              read as a separate decision. 96px holds three digits — the
+              ceiling is 200 — and anything wider invites the eye to expect a
+              bigger number than the field will take. One column on a phone. */}
           {type === 'package' ? (
-            <div className="form-grid">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)]">
               <div>
                 <label className="field-label">Package</label>
                 <Listbox
@@ -415,6 +441,23 @@ export function EntryForm({
                     value: code,
                     label: `${PACKAGES[code].name} · RM${PACKAGES[code].price} · ${PACKAGES[code].rate}%`,
                   }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="package-qty">How many</label>
+                <input
+                  id="package-qty"
+                  name="quantity"
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  min="1"
+                  max={MAX_PACKAGE_QUANTITY}
+                  value={packageQty}
+                  onChange={(e) => setPackageQty(e.target.value)}
+                  aria-invalid={qtyInvalid || undefined}
+                  aria-describedby={qtyInvalid ? 'package-qty-error' : undefined}
+                  className={`field-input text-right ${qtyInvalid ? 'border-clay-bright' : ''}`}
                 />
               </div>
               <div>
@@ -432,6 +475,11 @@ export function EntryForm({
                   ]}
                 />
               </div>
+              {qtyInvalid && (
+                <span id="package-qty-error" className="hint font-semibold text-clay-bright sm:col-span-3">
+                  How many packages? A whole number between 1 and {MAX_PACKAGE_QUANTITY}.
+                </span>
+              )}
             </div>
           ) : (
             <div className="form-grid">
@@ -661,7 +709,7 @@ export function EntryForm({
             )}
             <button
               type="submit"
-              disabled={uploading || submitting || insufficientBalance || couponExceedsMoney}
+              disabled={uploading || submitting || insufficientBalance || couponExceedsMoney || qtyInvalid}
               className="btn-primary disabled:opacity-60"
             >
               {uploading ? 'Uploading receipt…' : 'Submit for verification'}
@@ -675,7 +723,10 @@ export function EntryForm({
         {preview && (
           <div className="mt-3 flex flex-col text-sm">
             <Row label="Dealer" value={dealer?.company_name ?? '—'} />
-            <Row label="Type" value={type === 'package' ? `Buy Package ${pkg}` : 'Regular Top-up'} />
+            {/* The confirm dialog is the last place anyone can catch a
+                mistyped count, so it says the count rather than leaving it to
+                be inferred from a points figure. */}
+            <Row label="Type" value={type === 'package' ? (qty > 1 ? `Buy ${qty} × Package ${pkg}` : `Buy Package ${pkg}`) : 'Regular Top-up'} />
             <Row label="Amount Collected" value={`${formatMYR(preview.money)}`} unit="money" />
             <Row label={type === 'package' ? 'Package Value' : 'Top-up Value'} value={`${preview.points.toLocaleString()} pts`} unit="points" />
             {/* On the confirmation too, because this is the last screen before

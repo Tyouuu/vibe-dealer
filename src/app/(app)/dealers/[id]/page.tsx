@@ -48,6 +48,8 @@ type TxRow = {
   tx_date: string
   type: 'package' | 'topup' | 'adjustment'
   package: string | null
+  /** How many of that package. 1 on top-ups and corrections (0048). */
+  quantity: number | null
   points: number
   money_rm: number
   rate: number | null
@@ -249,7 +251,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
     // ever truncated.
     const { data } = await supabase
       .from('transactions')
-      .select('id, tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note, receipt_url')
+      .select('id, tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note, receipt_url')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -309,7 +311,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   // finance has `transactions`, cs has only `delivery_queue` (0015). Reading
   // the finance table for both would leave cs looking at a confident zero.
   const packageRowsForCards = isFinance
-    ? txRows.filter((t) => t.type === 'package' && t.status !== 'flagged').map((t) => ({ dealer_id: id, package: t.package }))
+    ? txRows.filter((t) => t.type === 'package' && t.status !== 'flagged').map((t) => ({ dealer_id: id, package: t.package, quantity: t.quantity }))
+    // The delivery view carries no quantity, so cs's copy of this figure
+    // counts one package a row. It is the same list cs has always seen and
+    // it is not a money figure for them -- but it is now capable of being
+    // lower than finance's, so it must not be read as the same number.
     : deliveryRows.filter((d) => d.package).map((d) => ({ dealer_id: id, package: d.package }))
   const cards = cardsOwedByDealer(
     packageRowsForCards,
@@ -533,7 +539,13 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                       <tr key={tx.id} className="tr-row">
                         <td className="td text-paper-dim">{formatDateLabel(tx.tx_date)}</td>
                         <td className="td text-paper-dim">
-                          {tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'}
+                          {tx.type === 'package'
+                            ? Number(tx.quantity ?? 1) > 1
+                              ? `${tx.quantity} × Package ${tx.package}`
+                              : `Package ${tx.package}`
+                            : tx.type === 'adjustment'
+                              ? 'Correction'
+                              : 'Top-up'}
                           {tx.type === 'topup' && tx.coupon_rm > 0 && (
                             <div className="mt-0.5 text-[11px] text-paper-dim">
                               {formatMYR(tx.coupon_rm)} as coupon ({tx.coupon_rm / COUPON_DENOMINATION_RM}×)

@@ -79,7 +79,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     // report now, so it has to be fetched to be named.
     supabase
       .from('transactions')
-      .select('dealer_id, type, package, status, points, money_rm, commission_rm, dealers(company_name)')
+      .select('dealer_id, type, package, quantity, status, points, money_rm, commission_rm, dealers(company_name)')
       .gte('tx_date', start)
       .lte('tx_date', end),
     supabase.from('transactions').select('points, money_rm, commission_rm').eq('status', 'verified').gte('tx_date', prevStart).lte('tx_date', prevEnd),
@@ -102,6 +102,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     dealer_id: string
     type: string
     package: string | null
+    quantity: number | null
     status: string
     points: number | string
     money_rm: number | string
@@ -133,8 +134,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   // Cards this period's package sales entitled dealers to — 20/40/100 by
   // package. Not the same thing as cards shipped, and the gap between the two
   // is the point.
+  // times quantity — one row can now be three packages, and reading it as one
+  // would under-report the cards owed by exactly the amount that matters.
   const cardsFromPackages = rows.reduce(
-    (s, t) => s + (t.type === 'package' && t.package && t.package in PACKAGE_SIM_CARDS ? PACKAGE_SIM_CARDS[t.package as PackageCode] : 0),
+    (s, t) =>
+      s +
+      (t.type === 'package' && t.package && t.package in PACKAGE_SIM_CARDS
+        ? PACKAGE_SIM_CARDS[t.package as PackageCode] * Math.max(1, Number(t.quantity ?? 1))
+        : 0),
     0
   )
 

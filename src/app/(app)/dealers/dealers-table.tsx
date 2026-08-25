@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Avatar } from '../avatar'
-import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend, IconCard, IconTrophy } from '../icons'
+import { IconBuilding, IconMapPin, IconPhone, IconUsers, IconTag, IconTrendUp, IconChevronDown, IconStar, IconSend, IconCard, IconBox, IconTrophy } from '../icons'
 import { PACKAGE_PILL_CLASS } from '@/lib/packages'
 import { DataGrid } from '../data-grid'
 import { formatMYR } from '@/lib/money'
+import { SIM_MARGIN_RM } from '@/lib/sim-stock'
 import { toggleDealerPin, assignPackages } from './actions'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 
@@ -95,6 +96,12 @@ export type DealerRow = {
       No Package view filters on it — see the note in page.tsx. */
   status: string | null
   submitToken: string | null
+  /** What they have actually bought, as "3 × A" or "2 × A + 1 × C". Null
+      until they buy one — which is not the same as having no package, since
+      a dealer can be given a tier in bulk and buy nothing for months. */
+  packagesBought: string | null
+  /** How many packages that adds up to, across all three codes. */
+  packagesBoughtCount: number
   /** RM1.50 a card on everything their packages entitled them to. */
   cardEarningsRm: number
   /** Entitled but not yet handed over. Stock the business still owes them. */
@@ -366,6 +373,19 @@ export function DealersTable({
                     <IconTag /> Package
                   </span>
                 </th>
+                {/* Sits between the tier and the money it earns, because it
+                    is the term that connects them: the tier says what the
+                    dealer is on, this says how many they bought, and the
+                    figure on the right is those two multiplied by RM1.50 a
+                    card. Read left to right the row now explains itself.
+                    116px holds "2 × A + 1 × C", the widest real value. */}
+                {showRate && (
+                  <th className="th" data-c="bought" style={{ width: 116 }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <IconBox className="h-3.5 w-3.5" /> Bought
+                    </span>
+                  </th>
+                )}
                 {showRate && (
                   <th className="th" data-c="rate" style={{ width: 68 }}>
                     Rate
@@ -456,6 +476,22 @@ export function DealersTable({
                       <span className="text-paper-dim/50">—</span>
                     )}
                   </td>
+                  {showRate && (
+                    <td className="td figure whitespace-nowrap text-paper" data-c="bought">
+                      {/* Tabular figures and no wrap, on one line like every
+                          other cell here: a dealer who bought two codes still
+                          gets one row height. The title carries the card
+                          count, which is what turns this into the money on
+                          the right. */}
+                      {d.packagesBought ? (
+                        <span title={`${d.packagesBoughtCount} package${d.packagesBoughtCount === 1 ? '' : 's'} — ${Math.round(d.cardEarningsRm / SIM_MARGIN_RM)} SIM cards at RM${SIM_MARGIN_RM.toFixed(2)} each`}>
+                          {d.packagesBought}
+                        </span>
+                      ) : (
+                        <span className="text-paper-dim/50">—</span>
+                      )}
+                    </td>
+                  )}
                   {showRate && (
                     <td className="td figure whitespace-nowrap font-semibold text-paper" data-c="rate">
                       {d.rate != null ? `${d.rate}%` : '—'}

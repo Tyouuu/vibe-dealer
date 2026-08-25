@@ -11,6 +11,7 @@ type TxRow = {
   tx_date: string
   type: 'package' | 'topup' | 'adjustment'
   package: string | null
+  quantity: number | null
   points: number
   money_rm: number
   rate: number | null
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   let query = supabase
     .from('transactions')
-    .select('tx_date, type, package, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, dealers(company_name)')
+    .select('tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, dealers(company_name)')
     .order('tx_date', { ascending: sortAscending })
     .order('created_at', { ascending: sortAscending })
     .limit(2000)
@@ -99,7 +100,19 @@ export async function GET(request: NextRequest) {
       [
         csvCell(tx.tx_date),
         csvCell(dealerName),
-        csvCell(tx.type === 'package' ? `Package ${tx.package}` : tx.type === 'adjustment' ? 'Correction' : 'Top-up'),
+        // The export is what gets reconciled against the carrier's own
+        // statement, so it has to carry the count too — a spreadsheet row
+        // reading "Package C" against RM3,810 is the same lie the screen used
+        // to tell, and harder to catch once it is out of the app.
+        csvCell(
+          tx.type === 'package'
+            ? Number(tx.quantity ?? 1) > 1
+              ? `${tx.quantity} × Package ${tx.package}`
+              : `Package ${tx.package}`
+            : tx.type === 'adjustment'
+              ? 'Correction'
+              : 'Top-up'
+        ),
         // Number(...) — these arrive over PostgREST as numeric-typed JSON
         // strings, not real numbers, despite TxRow's type claiming otherwise.
         // Passed raw, a negative amount (any adjustment correction) hits

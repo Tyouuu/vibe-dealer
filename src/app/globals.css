@@ -957,6 +957,13 @@ body {
   .rail-balance {
     @apply mb-1 flex items-center gap-2 rounded-lg border border-ink-800 bg-ink-850 px-2.5 py-2 text-[12px] transition-colors hover:border-ink-700 hover:bg-ink-800;
   }
+  /* Sits between the credit chip and the nav, and is styled as the quieter
+     of the two: the chip carries a live figure and a status dot, this
+     carries a verb. Same box so the rail reads as one column of controls
+     rather than three unrelated widgets. */
+  .rail-search {
+    @apply mb-1 flex w-full items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-2.5 py-2 text-[12px] text-paper-dim transition-colors hover:border-ink-700 hover:bg-ink-850 hover:text-paper;
+  }
   .rail-group-label {
     @apply px-2.5 pb-1.5 pt-3.5 text-[12px] font-semibold text-paper-dim first:pt-1;
   }

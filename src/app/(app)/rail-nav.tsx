@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransiti
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { setPreviewRole } from './preview-role-actions'
+import { SearchField } from './search-trigger'
 import { ROLE_LABEL, type Notification } from './types'
 import type { Role } from '@/lib/auth/dal'
 import {
@@ -218,6 +219,8 @@ export function RailNav({
           <span className="text-paper-dim">pts</span>
         </a>
       )}
+
+      <SearchField />
 
       {/* flex-1 + overflow-y-auto — .rail is a fixed h-screen column with no
           scroll of its own, so once the nav groups plus the footer below

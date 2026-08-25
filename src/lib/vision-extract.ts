@@ -15,7 +15,33 @@
 // genuinely identical: file validation, the model call, and how a failure is
 // classified.
 
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
+
+/**
+ * Which model reads the pictures. One constant, because all three callers go
+ * through readImages() below.
+ *
+ * Chosen by measurement, not by reputation — qa-model-bakeoff.mjs put the
+ * same receipt through six of them twice:
+ *
+ *   clean screenshot   every model scored 5/5, including gpt-4.1-nano.
+ *                      On a legible image the choice makes no difference to
+ *                      the answer, only to speed and tokens.
+ *   photo of a screen  every model scored 2/5, including gpt-4.1 and gpt-4o.
+ *                      Amount right, date and reference confidently invented.
+ *                      The limit there is the image; paying for a bigger
+ *                      model buys nothing.
+ *
+ * So the pick is the cheap end of the accurate group. gpt-4o-mini is the trap:
+ * its name says mini but it tiled the same image into 37,172 input tokens
+ * against this model's 1,957 — twenty-five times the cost for an identical
+ * answer. gpt-5-mini took six seconds and spent 374 tokens thinking about a
+ * transcription task.
+ *
+ * The one field that survived every model and both images was the amount,
+ * which is the one the comparison in slip-extract.ts turns into a refusal.
+ */
+const VISION_MODEL = 'gpt-4.1-mini'
 
 export const MAX_BYTES = 10 * 1024 * 1024
 export const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
@@ -72,31 +98,33 @@ export async function readImages<T>(opts: {
   schema: Record<string, unknown>
   maxTokens?: number
 }): Promise<T> {
-  const client = new Anthropic()
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: opts.maxTokens ?? 512,
-    system: opts.system,
+  const client = new OpenAI()
+  const completion = await client.chat.completions.create({
+    model: VISION_MODEL,
+    max_completion_tokens: opts.maxTokens ?? 512,
     messages: [
+      { role: 'system', content: opts.system },
       {
         role: 'user',
         content: [
           ...opts.images.map((img) => ({
-            type: 'image' as const,
-            source: { type: 'base64' as const, media_type: img.media_type as 'image/jpeg', data: img.data },
+            type: 'image_url' as const,
+            image_url: { url: `data:${img.media_type};base64,${img.data}` },
           })),
           { type: 'text' as const, text: opts.prompt },
         ],
       },
     ],
-    output_config: {
-      format: { type: 'json_schema', schema: opts.schema },
-    },
+    // strict mode, so the reply is the schema or the request fails — the
+    // alternative is parsing prose and hoping. Every schema here therefore
+    // lists all its properties in `required` and sets additionalProperties
+    // false, which is what strict demands.
+    response_format: { type: 'json_schema', json_schema: { name: 'extraction', strict: true, schema: opts.schema } },
   })
 
-  const textBlock = message.content.find((b) => b.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') throw new UnreadableImage()
-  return JSON.parse(textBlock.text) as T
+  const text = completion.choices[0]?.message?.content
+  if (!text) throw new UnreadableImage()
+  return JSON.parse(text) as T
 }
 
 /** The model answered, but with nothing usable in it. Not a service problem. */

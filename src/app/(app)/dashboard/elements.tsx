@@ -79,9 +79,9 @@ export function GhostEmpty({ note, action, children }: { note: string; action?: 
    state because it sold the most. One component now, so they cannot drift
    apart again.
 
-   No avatar and no rank number. In a half-page column those cost 60px that
-   the name needs — measured, every dealer here rendered as "ZZZ T…" with
-   them in place. */
+   No avatar. A rank marker there is now — see the note above `cell` for why
+   the old "no rank number" rule stopped applying once this list went full
+   width. */
 function BarList({
   rows,
   cap = 8,
@@ -107,12 +107,34 @@ function BarList({
   // to fill and opened a 300px gap in the middle of every row — the same
   // fault the SIM tables had. A proportional bar is the one thing here that
   // gets better with more width, so it is the one that flexes.
-  const cell = 'grid grid-cols-[minmax(90px,190px)_minmax(0,1fr)_84px] items-center gap-4 border-t border-ink-800 py-2.5'
+  // A rank marker, filled for the top three and outlined after.
+  //
+  // This was refused once, and the reason has since expired: "no avatar and
+  // no rank number — in a half-page column those cost 60px that the name
+  // needs". True when Top dealers and By region were two columns side by
+  // side. The rebuild made this list full width, so the 20px is free, and
+  // the thing it buys is real — four bars of similar length do not tell you
+  // who is first, and the figures are 12px at the far right where nobody
+  // reads them as a ranking.
+  //
+  // Filled/outlined rather than gold/silver/bronze: three medal colours
+  // would be a fourth status palette on a page that already spends its
+  // colour on states. Weight is enough to say "these three".
+  const cell = 'grid grid-cols-[20px_minmax(90px,190px)_minmax(0,1fr)_84px] items-center gap-4 border-t border-ink-800 py-2.5'
   // Bars stay proportional to the whole list's leader, not to whichever slice
   // is on screen — a revealed row must not redraw the eight above it.
-  const row = (r: { key: string; label: string; value: number; href?: string }) => {
+  const row = (r: { key: string; label: string; value: number; href?: string }, rank: number) => {
+    const top = rank <= 3
     const inner = (
       <>
+        <span
+          aria-hidden="true"
+          className={`grid h-5 w-5 place-items-center rounded-full text-[12px] leading-none tabular-nums ${
+            top ? 'bg-paper font-semibold text-white' : 'border border-ink-800 text-paper-dim'
+          }`}
+        >
+          {rank}
+        </span>
         <span className="truncate text-[13px] font-semibold text-paper" title={r.label}>
           {r.label}
         </span>
@@ -135,7 +157,7 @@ function BarList({
 
   return (
     <div className="flex flex-col">
-      {shown.map(row)}
+      {shown.map((r, i) => row(r, i + 1))}
       {rest.length > 0 && (
         <details className="group flex flex-col">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 border-t border-ink-800 py-2.5 text-[12px] font-semibold text-paper-dim hover:text-paper">
@@ -145,7 +167,7 @@ function BarList({
             </span>
             <span className="hidden group-open:inline">Show fewer</span>
           </summary>
-          {rest.map(row)}
+          {rest.map((r, i) => row(r, shown.length + i + 1))}
         </details>
       )}
     </div>

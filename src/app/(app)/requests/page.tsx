@@ -11,6 +11,8 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { IconPaperclip, IconTag } from '../icons'
 import { RejectForm } from './reject-form'
+import { ReadSlipButton } from './read-slip-button'
+import { compareSlip } from '@/lib/slip-extract'
 
 export const metadata: Metadata = {
   title: 'Dealer Requests — Vibe456',
@@ -36,6 +38,15 @@ type RequestRow = {
   transfer_date: string | null
   paid_from: string | null
   sim_type: 'physical' | 'esim' | null
+  // What the attached slip itself says, once somebody has had it read (0046).
+  // slip_read_at set with slip_read_error null means the read succeeded, even
+  // if every field came back null — the model looked and found nothing.
+  slip_amount_rm: string | number | null
+  slip_paid_on: string | null
+  slip_bank: string | null
+  slip_reference: string | null
+  slip_read_at: string | null
+  slip_read_error: string | null
   dealers: { company_name: string; rate: number | null } | null
 }
 
@@ -95,12 +106,12 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   const [{ data: pendingRows }, { data: decidedRows }] = await Promise.all([
     supabase
       .from('topup_requests')
-      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, dealers(company_name, rate)')
+      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, slip_amount_rm, slip_paid_on, slip_bank, slip_reference, slip_read_at, slip_read_error, dealers(company_name, rate)')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
     supabase
       .from('topup_requests')
-      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, dealers(company_name, rate)')
+      .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, slip_amount_rm, slip_paid_on, slip_bank, slip_reference, slip_read_at, slip_read_error, dealers(company_name, rate)')
       .neq('status', 'pending')
       .order('decided_at', { ascending: false })
       .limit(10),
@@ -132,16 +143,37 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   // The FIRST of a pair is left unmarked. It is the one that is probably
   // real; marking both would say "one of these two is wrong" and leave the
   // reader to work out which.
+  //
+  // The reference is taken off the SLIP when the slip has been read, and only
+  // falls back to what the dealer typed when it has not. That swap is the
+  // whole reason 0046 exists: paid_from is a free-text line the dealer fills
+  // in, so a mistyped, blank or deliberately varied reference walked straight
+  // past this check. The number printed on the transfer slip is not theirs to
+  // vary.
   const amountOf = (r: RequestRow) => (r.type === 'topup' ? Number(r.money_rm ?? 0) : (PACKAGES[r.package as PackageCode]?.price ?? 0))
+  //
+  // Every reference a row HAS, not the best one it has. First cut took the
+  // slip's reference when there was one and fell back to the typed line
+  // otherwise — which broke the check the moment one of a pair had been read
+  // and the other had not: the read row keyed on `slip:778812345`, its twin
+  // on `typed:maybank 3:15pm...`, no shared key, no warning. Reading one
+  // receipt made a duplicate invisible, which is the opposite of the point.
+  // A row registers under both and matches on either.
+  const keysOf = (r: RequestRow) => {
+    const parts: string[] = []
+    const fromSlip = (r.slip_reference ?? '').replace(/\D/g, '')
+    if (fromSlip.length >= 4) parts.push(`slip:${fromSlip}`)
+    const typed = (r.paid_from ?? '').trim().toLowerCase()
+    if (typed) parts.push(`typed:${typed}`)
+    return parts.map((p) => `${r.dealer_id}|${amountOf(r)}|${p}`)
+  }
   const dupeOf = new Map<string, RequestRow>()
   const seen = new Map<string, RequestRow>()
   for (const r of pending) {
-    const ref = (r.paid_from ?? '').trim().toLowerCase()
-    if (!ref) continue
-    const key = `${r.dealer_id}|${amountOf(r)}|${ref}`
-    const first = seen.get(key)
+    const keys = keysOf(r)
+    const first = keys.map((k) => seen.get(k)).find(Boolean)
     if (first) dupeOf.set(r.id, first)
-    else seen.set(key, r)
+    for (const k of keys) if (!seen.has(k)) seen.set(k, r)
   }
 
   return (
@@ -222,6 +254,80 @@ export default async function RequestsPage({ searchParams }: PageProps) {
 
                 {r.note && <p className="mt-3 rounded-lg bg-ink-850/60 px-3 py-2 text-[13px] leading-relaxed text-paper">{r.note}</p>}
 
+                {/* What the slip itself says.
+                    =========================================================
+                    Only rendered once somebody has pressed Read the slip —
+                    an unread request looks exactly as it did before, because
+                    a row of empty slip fields would imply the check ran and
+                    found nothing.
+
+                    Findings first and in words, then the raw reading. A
+                    reviewer who sees "Slip says RM 500 — the request is for
+                    RM 5,000" needs no further explanation; one who sees only
+                    two numbers side by side has to do the subtraction. */}
+                {r.slip_read_at && (
+                  <div className="mt-3">
+                    {r.slip_read_error ? (
+                      <p className="text-[12px] text-paper-dim">
+                        The slip could not be read
+                        {r.slip_read_error === 'service unavailable' ? ' — the AI service was unavailable, not the picture.' : ' — open the image and check it yourself.'}
+                      </p>
+                    ) : (
+                      <>
+                        {(() => {
+                          const findings = compareSlip(
+                            {
+                              amountRm: amountOf(r),
+                              paidFrom: r.paid_from,
+                              transferDate: r.transfer_date,
+                              submittedAt: r.created_at,
+                            },
+                            {
+                              amount_rm: r.slip_amount_rm == null ? null : Number(r.slip_amount_rm),
+                              paid_on: r.slip_paid_on,
+                              bank: r.slip_bank,
+                              reference: r.slip_reference,
+                              recipient: null,
+                            },
+                          )
+                          if (!findings.length) return null
+                          // One block, not one box per finding. Three stacked
+                          // full-width alerts for a single request read as
+                          // three separate emergencies and filled half the
+                          // card with tint; the disagreements are one fact
+                          // about one slip, so they get one object, toned by
+                          // the worst of them and ordered with the money
+                          // first.
+                          const worst = findings.some((f) => f.tone === 'bad') ? 'alert-bad' : 'alert-warn'
+                          const ordered = [...findings].sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'bad' ? -1 : 1))
+                          return (
+                            <div className={`alert ${worst} mb-2 block text-[13px]`}>
+                              <p className="font-semibold">The slip does not match this request</p>
+                              <ul className="mt-1.5 flex flex-col gap-1">
+                                {ordered.map((f) => (
+                                  <li key={f.kind} className="flex gap-2">
+                                    <span aria-hidden="true">·</span>
+                                    <span>{f.text}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )
+                        })()}
+                        <dl className="flex flex-wrap gap-x-6 gap-y-1.5 text-[12px]">
+                          {r.slip_amount_rm != null && <Fact label="Slip amount" value={formatMYR(Number(r.slip_amount_rm))} />}
+                          {r.slip_paid_on && <Fact label="Slip date" value={formatDateLabel(r.slip_paid_on)} />}
+                          {r.slip_bank && <Fact label="Slip bank" value={r.slip_bank} />}
+                          {r.slip_reference && <Fact label="Slip ref" value={r.slip_reference} />}
+                          {r.slip_amount_rm == null && !r.slip_paid_on && !r.slip_bank && !r.slip_reference && (
+                            <span className="text-paper-dim">Nothing legible on the slip — open the image and check it yourself.</span>
+                          )}
+                        </dl>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Says what matched, not just that something did. "Looks
                     like a repeat" on its own is a machine's opinion; naming
                     the three things that are identical lets the reader
@@ -272,6 +378,10 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                       Payment slip
                     </a>
                   )}
+                  {/* Beside the link to the image, not instead of it. Reading
+                      it is the shortcut; opening it is still how you settle
+                      an argument with what was read. */}
+                  {r.slip_url && <ReadSlipButton requestId={r.id} alreadyRead={!!r.slip_read_at} />}
                 </div>
               </li>
               )

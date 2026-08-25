@@ -7,6 +7,8 @@ import { getNotifications } from '@/lib/notifications/build'
 import { RailNav, type RailItem } from './rail-nav'
 import { ROLE_LABEL, type Notification } from './types'
 import { MobileNav } from './mobile-nav'
+import { CommandPalette } from './command-palette'
+import { SearchIconButton } from './search-trigger'
 import { NotificationToast } from './notification-toast'
 import { LogoMark } from './icons'
 import { RestoreScroll } from './restore-scroll'
@@ -100,6 +102,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // had weight.
   return (
     <div className="min-h-screen bg-canvas text-paper">
+      {/* Mounted once. Renders nothing until opened, and both triggers reach
+          it through a window event rather than shared React state. */}
+      <CommandPalette navItems={navItems.map((i) => ({ href: i.href, label: i.label, group: i.group }))} />
       <NotificationToast notifications={builtNotifications.map((n) => ({ id: n.id, title: n.title, subtitle: n.subtitle, variant: n.variant }))} />
       {/* The rail appears at lg (1024px), not md (768px). At 768-1023 — an
           iPad in portrait, the single most common tablet size — a permanent
@@ -159,6 +164,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="text-sm font-semibold text-paper">Vibe456</span>
             </Link>
             <div className="flex-1" />
+            {/* On a phone there is no rail to hold the field, and no keyboard
+                to press Ctrl+K on — so the same dialog gets an icon here. */}
+            <SearchIconButton />
             <MobileNav
               items={navItems}
               roleLabel={ROLE_LABEL[user.role]}

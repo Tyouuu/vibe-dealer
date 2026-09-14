@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +19,21 @@ export const metadata: Metadata = {
   description: "Vibe Mobile master dealer bookkeeping + reports + dashboard",
   // Staff-only, no self-signup — this should never turn up in search results.
   robots: { index: false, follow: false },
+  // iOS ignores the web manifest's display:"standalone" on its own — without
+  // this, an icon added to the home screen still opens inside Safari's
+  // chrome (address bar, tab switcher) instead of full-screen like an app.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Vibe456",
+  },
+};
+
+// Split out of `metadata` above because Next deprecated themeColor there in
+// favour of this dedicated export — it tints the browser's own UI (Android
+// Chrome's address bar) and, once installed, the app switcher card.
+export const viewport: Viewport = {
+  themeColor: "#14273d",
 };
 
 export default function RootLayout({

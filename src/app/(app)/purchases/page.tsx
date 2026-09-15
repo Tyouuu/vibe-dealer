@@ -7,6 +7,7 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
+import { formatTimeOfDay } from '@/lib/month'
 import { EmptyState } from '../empty-state'
 
 export const metadata: Metadata = {
@@ -153,6 +154,16 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   const rangeStart = withBalance.length === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
   const rangeEnd = Math.min(pageNum * PAGE_SIZE, withBalance.length)
 
+  // Same day, same description, more than once on this page — e.g. five
+  // "Top-up · Bayan Baru Handphone Centre" rows dated 10 Aug, two of them for
+  // the identical amount. The date column can't tell those apart, so a time
+  // is shown for just that set rather than on every row.
+  const movementDayCounts = new Map<string, number>()
+  for (const m of ledger) {
+    const key = `${m.date}|${m.what}`
+    movementDayCounts.set(key, (movementDayCounts.get(key) ?? 0) + 1)
+  }
+
   return (
     <>
       <PageHeader
@@ -267,10 +278,24 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {ledger.map((m) => (
+                    {ledger.map((m) => {
+                      const sameDayAsAnother = (movementDayCounts.get(`${m.date}|${m.what}`) ?? 0) > 1
+                      const timeOfDay = sameDayAsAnother ? formatTimeOfDay(m.createdAt) : null
+                      return (
                       <tr key={m.key} className="tr-row h-14">
-                        <td className="td whitespace-nowrap text-paper-dim">{m.date}</td>
-                        <td className="td truncate">
+                        <td className="td whitespace-nowrap text-paper-dim">
+                          {timeOfDay ? (
+                            <span
+                              className="underline decoration-dotted decoration-paper-dim/40 underline-offset-4"
+                              title={`More than one of these on this day — this one was recorded at ${timeOfDay}.`}
+                            >
+                              {m.date}
+                            </span>
+                          ) : (
+                            m.date
+                          )}
+                        </td>
+                        <td className="td truncate" title={m.detail ? `${m.what} — ${m.detail}` : m.what}>
                           <span className="font-semibold text-paper">{m.what}</span>
                           {m.detail && <span className="ml-2 text-[12px] text-paper-dim">{m.detail}</span>}
                         </td>
@@ -286,7 +311,8 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                         </td>
                         <td className="td figure-points whitespace-nowrap text-right font-semibold">{m.after.toLocaleString()}</td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </ScrollFade>

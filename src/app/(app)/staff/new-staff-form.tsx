@@ -23,6 +23,18 @@ function suggestPassword() {
 export function NewStaffForm() {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('accountant')
+  const [copied, setCopied] = useState(false)
+
+  async function copyPassword() {
+    try {
+      await navigator.clipboard.writeText(password)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be blocked; the field itself is still selectable.
+      setCopied(false)
+    }
+  }
 
   return (
     <div className="page-band">
@@ -84,6 +96,14 @@ export function NewStaffForm() {
             />
             <button type="button" onClick={() => setPassword(suggestPassword())} className="btn-ghost shrink-0 py-2">
               Suggest
+            </button>
+            <button
+              type="button"
+              onClick={copyPassword}
+              disabled={!password}
+              className="btn-ghost shrink-0 py-2 disabled:opacity-40"
+            >
+              {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
           <p className="mt-1.5 text-[12px] leading-relaxed text-paper-dim">

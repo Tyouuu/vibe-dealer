@@ -451,6 +451,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <div className="text-[12px] text-paper-dim">What you made — {periodLabel}</div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3">
               <span className="figure-money text-[38px] leading-none tracking-[-.03em] group-hover:underline">{formatMYR(totalEarned)}</span>
+              {period.auto && (
+                <span
+                  className="pill pill-neutral"
+                  title={`Nothing verified yet in ${formatMonthLabel(currentMonthStr)} — this is ${periodLabel} instead.`}
+                >
+                  {periodLabel}
+                </span>
+              )}
               {earnedChg != null && (
                 <span className={`chg text-[14px] ${earnedChg === 0 ? 'chg-warn' : earnedChg > 0 ? 'chg-up' : 'chg-down'}`}>
                   {earnedChg === 0 ? '→' : earnedChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(earnedChg * 10) / 10).toFixed(1)}%
@@ -854,6 +862,14 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
                 {totalPoints.toLocaleString()}
               </span>
               <span className="text-[13px] text-paper-dim">pts</span>
+              {period.auto && (
+                <span
+                  className="pill pill-neutral"
+                  title={`Nothing verified yet in ${formatMonthLabel(currentMonthStr)} — this is ${periodLabel} instead.`}
+                >
+                  {periodLabel}
+                </span>
+              )}
               {pointsChg != null && (
                 <span className={`chg text-[14px] ${pointsChg === 0 ? 'chg-warn' : pointsChg > 0 ? 'chg-up' : 'chg-down'}`}>
                   {pointsChg === 0 ? '→' : pointsChg > 0 ? '↑' : '↓'} {Math.abs(Math.round(pointsChg * 10) / 10).toFixed(1)}%

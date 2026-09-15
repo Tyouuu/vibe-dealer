@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
-import { monthRange, todayInMalaysia, formatMonthLabel, formatDateLabel } from '@/lib/month'
+import { monthRange, todayInMalaysia, formatMonthLabel, formatDateLabel, formatTimeOfDay } from '@/lib/month'
 import { sanitizeSearchTerm } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
@@ -44,6 +44,7 @@ type TxRow = {
   id: string
   dealer_id: string
   tx_date: string
+  created_at: string
   type: 'package' | 'topup' | 'adjustment'
   package: string | null
   /** How many of that package. 1 on top-ups and corrections (0048). */
@@ -184,7 +185,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
+      'id, dealer_id, tx_date, created_at, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
   // Dispatched explicitly rather than as query[op](col, val): Supabase types
@@ -244,6 +245,18 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   const justDealer = (justDealerRow as { id: string; company_name: string } | null) ?? null
   const pageRows = (rows as unknown as TxRow[] | null) ?? []
   const pageCommission = pageRows.reduce((s, r) => s + Number(r.commission_rm), 0)
+
+  // Same dealer, same day, more than once on this page — the date column
+  // alone can't tell those rows apart (two rows for Bayan Baru Handphone
+  // Centre on 10 Aug can even carry the identical amount). Flag only that
+  // set, rather than showing a time on every row: most days only have one
+  // entry per dealer, and a time nobody needs would just be noise.
+  const sameDayCounts = new Map<string, number>()
+  for (const r of pageRows) {
+    const key = `${r.dealer_id}|${r.tx_date}`
+    sameDayCounts.set(key, (sameDayCounts.get(key) ?? 0) + 1)
+  }
+  const ambiguousDateKeys = new Set([...sameDayCounts.entries()].filter(([, n]) => n > 1).map(([k]) => k))
 
   const staffNameById = new Map((staffProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
   const totalCount = count ?? 0
@@ -653,6 +666,8 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                           : 'Pending'
                 const deliveryDays = tx.delivery_status === 'pending' ? daysSince(tx.tx_date) : 0
                 const deliveryWarn = tx.delivery_status === 'pending' && deliveryDays >= DELIVERY_WARN_DAYS_THRESHOLD
+                const sameDayAsAnother = ambiguousDateKeys.has(`${tx.dealer_id}|${tx.tx_date}`)
+                const timeOfDay = sameDayAsAnother ? formatTimeOfDay(tx.created_at) : null
                 return (
                   <tr key={tx.id} className="tr-row relative h-16">
                     {/* The stripe. An inset shadow rather than a border-left,
@@ -680,7 +695,18 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                         </a>
                       </div>
                     </td>
-                    <td className="td whitespace-nowrap text-paper-dim" data-c="date">{formatDateLabel(tx.tx_date)}</td>
+                    <td className="td whitespace-nowrap text-paper-dim" data-c="date">
+                      {timeOfDay ? (
+                        <span
+                          className="underline decoration-dotted decoration-paper-dim/40 underline-offset-4"
+                          title={`${dealerName ?? 'This dealer'} has more than one entry on this day — this one was recorded at ${timeOfDay}.`}
+                        >
+                          {formatDateLabel(tx.tx_date)}
+                        </span>
+                      ) : (
+                        formatDateLabel(tx.tx_date)
+                      )}
+                    </td>
                     <td className="td text-paper-dim" data-c="type">
                       <span className="whitespace-nowrap">
                         {/* "3 × Package C", not "Package C". The points and

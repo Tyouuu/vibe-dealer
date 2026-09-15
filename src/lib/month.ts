@@ -81,3 +81,16 @@ export function formatDateLabel(dateStr: string | null | undefined): string {
   if (monthIndex < 0 || monthIndex > 11) return s
   return `${Number(d)} ${MONTHS_SHORT[monthIndex]} ${y}`
 }
+
+// "8:53 PM" in Malaysia time, off a transaction's created_at timestamp.
+//
+// Only surfaced where a date alone cannot tell two rows apart — the same
+// dealer, same day, several entries — since the tables that list
+// transactions show the date column on every row already and a time on every
+// one of them would be noise on days that only ever have one entry.
+export function formatTimeOfDay(isoTimestamp: string | null | undefined): string | null {
+  if (!isoTimestamp) return null
+  const d = new Date(isoTimestamp)
+  if (Number.isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kuala_Lumpur' }).format(d)
+}

@@ -10,6 +10,8 @@ import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
 import { friendlyDbError } from '@/lib/db-error'
+import * as Sentry from '@sentry/nextjs'
+import { reportToSentry } from '@/lib/sentry-report'
 
 function fail(message: string): never {
   redirect('/entry?error=' + encodeURIComponent(message))
@@ -183,7 +185,17 @@ export async function createTransaction(formData: FormData) {
       .update({ status: 'accepted', transaction_id: transactionId, decided_by: user.id, decided_at: new Date().toISOString() })
       .eq('id', requestId)
       .eq('status', 'pending')
-    if (linkError) console.error('[entry] could not close dealer request', requestId, linkError.message)
+    if (linkError) {
+      // Deliberately non-fatal — the money is recorded and correct, and a
+      // request stuck showing "waiting" must not turn a saved transaction
+      // into an error page. Silent was the actual bug: nobody but this
+      // console line would ever know the request needs closing by hand.
+      await reportToSentry(() =>
+        Sentry.captureException(new Error(`[entry] could not close dealer request: ${linkError.message}`), {
+          extra: { requestId, transactionId },
+        })
+      )
+    }
     revalidatePath('/requests')
   }
 

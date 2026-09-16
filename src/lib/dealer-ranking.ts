@@ -10,17 +10,17 @@ export type DealerRanking = { totalPoints: number; rank: number }
 // the same thing wherever it's shown. Requires SELECT on transactions
 // (accountant/master only, 0001) — callers must not call this for cs.
 export async function getDealerRankingMap(supabase: SupabaseClient): Promise<Map<string, DealerRanking>> {
-  const { data } = await supabase.from('transactions').select('dealer_id, points').eq('status', 'verified')
-
-  const totalsByDealer = new Map<string, number>()
-  for (const t of data ?? []) {
-    totalsByDealer.set(t.dealer_id, (totalsByDealer.get(t.dealer_id) ?? 0) + Number(t.points))
-  }
+  // get_dealer_points_ranking (0051): the database sums and orders, so this
+  // no longer pulls one row per verified transaction ever recorded just to
+  // add them up in JS — the same fix get_credit_balance() (0016) already
+  // applied on the credit-balance side. Already sorted descending; the rank
+  // is just this result's own position.
+  const { data } = await supabase.rpc('get_dealer_points_ranking')
 
   const map = new Map<string, DealerRanking>()
-  ;[...totalsByDealer.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([dealerId, totalPoints], i) => map.set(dealerId, { totalPoints, rank: i + 1 }))
+  ;(data ?? []).forEach((row: { dealer_id: string; total_points: number }, i: number) =>
+    map.set(row.dealer_id, { totalPoints: Number(row.total_points), rank: i + 1 })
+  )
 
   return map
 }

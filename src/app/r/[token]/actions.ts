@@ -2,10 +2,12 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { ALLOWED_TYPES, MAX_BYTES } from '@/lib/vision-extract'
 import { todayInMalaysia } from '@/lib/month'
+import { reportToSentry } from '@/lib/sentry-report'
 
 // The one write path a dealer has, and the only place in this app where an
 // unauthenticated caller causes a row to exist.
@@ -120,7 +122,12 @@ export async function submitRequest(formData: FormData) {
     const path = `requests/${dealer.id}/${crypto.randomUUID()}.${extension}`
     const { error: uploadError } = await supabase.storage.from('receipts').upload(path, slip, { contentType: slip.type })
     if (uploadError) {
-      console.error('[r/submit] slip upload failed:', uploadError.message)
+      // This path has no signed-in user to notice a toast — a dealer just
+      // sees "try again" and moves on. If this fails often it needs a human,
+      // and the only way one finds out is Sentry.
+      await reportToSentry(() =>
+        Sentry.captureException(new Error(`[r/submit] slip upload failed: ${uploadError.message}`), { extra: { dealerId: dealer.id } })
+      )
       fail(token, "Your image could not be uploaded. Try sending the request without it — we'll still check the bank.")
     }
     slipUrl = path
@@ -142,7 +149,9 @@ export async function submitRequest(formData: FormData) {
     if (error.message.includes('too_many_pending_requests')) {
       fail(token, 'You already have 5 requests waiting for us. Please wait for those to be handled first.')
     }
-    console.error('[r/submit] insert failed:', error.message)
+    await reportToSentry(() =>
+      Sentry.captureException(new Error(`[r/submit] insert failed: ${error.message}`), { extra: { dealerId: dealer.id } })
+    )
     fail(token, "That didn't send. Please try again, or WhatsApp us.")
   }
 

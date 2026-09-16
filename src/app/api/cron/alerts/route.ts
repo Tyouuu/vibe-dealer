@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { todayInMalaysia, previousMonth } from '@/lib/month'
 import { decideAlerts, type AlertKind } from '@/lib/alerts'
+import { reportToSentry } from '@/lib/sentry-report'
 
 // Sends nothing on a good day.
 //
@@ -16,15 +17,6 @@ import { decideAlerts, type AlertKind } from '@/lib/alerts'
 //
 // What it can say, and the reasoning behind each threshold, is in lib/alerts.ts
 // with its tests. This file only gathers the facts and posts the mail.
-
-async function reportToSentry(capture: () => void) {
-  try {
-    capture()
-    await Sentry.flush(2000)
-  } catch {
-    // Monitoring must never be the reason the cron itself fails.
-  }
-}
 
 function isAuthorizedCronRequest(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET

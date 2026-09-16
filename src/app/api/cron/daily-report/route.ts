@@ -6,24 +6,15 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getReportSummary } from '@/lib/reports/daily-summary'
 import { resolveReportPeriod, type ReportFrequency } from '@/lib/reports/report-period'
 import { todayInMalaysia } from '@/lib/month'
+import { reportToSentry } from '@/lib/sentry-report'
 
 // Both failure paths below return a response instead of throwing, which means
 // Next's onRequestError never sees them and Sentry would otherwise hear
 // nothing. That matters more here than on a normal route: nobody is watching a
 // 00:00 cron. The report would just stop arriving, and the first person to
-// notice would be whoever eventually wondered why.
-//
-// flush() is the other half. On a serverless function the runtime can freeze
-// the instance the moment the response is returned, before Sentry's queued
-// event has been sent — so the report is awaited rather than fired off.
-async function reportToSentry(capture: () => void) {
-  try {
-    capture()
-    await Sentry.flush(2000)
-  } catch {
-    // Monitoring must never be the reason the cron itself fails.
-  }
-}
+// notice would be whoever eventually wondered why. reportToSentry (lib/
+// sentry-report.ts) is what awaits Sentry.flush before a serverless instance
+// can freeze mid-send.
 
 function isAuthorizedCronRequest(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET

@@ -13,6 +13,8 @@ import { StatementForm } from './statement-form'
 import { MarkReconciledForm } from './mark-reconciled-form'
 import { ReopenMonthForm } from './reopen-month-form'
 import { OpenVariances } from './open-variances'
+import { GapLeads } from './gap-leads'
+import { findReconciliationGapLeads, type GapTx } from '@/lib/reconcile-gap'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
@@ -141,6 +143,21 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   const gap = diff ?? 0
   const isClosed = Boolean(statement?.reconciled)
 
+  // A deterministic search for which of this month's own transactions could
+  // account for the gap — see lib/reconcile-gap.ts for why this is
+  // arithmetic rather than a model call.
+  const gapTxs: GapTx[] = breakdownRows.map((t) => {
+    const rel = t.dealers
+    return {
+      id: t.id,
+      dealerId: t.dealer_id,
+      dealerName: (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—',
+      points: Number(t.points),
+      txDate: t.tx_date,
+    }
+  })
+  const gapFindings = hasStatement && gap !== 0 ? findReconciliationGapLeads(gapTxs, gap, end) : []
+
   return (
     <div className="flex w-full flex-col gap-8">
       {/* Month is the page's scope, so it belongs in the header rather than
@@ -213,7 +230,17 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
            comment beside the element is a second child with no parent. */
         <div className="app-card">
           <div className="text-[12px] font-medium uppercase tracking-wide text-paper-dim">Your verified total</div>
-          <div className="figure-points mt-1 text-[34px] font-semibold leading-none text-paper">{systemPoints.toLocaleString()} pts</div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="figure-points text-[34px] font-semibold leading-none text-paper">{systemPoints.toLocaleString()} pts</span>
+            {monthAuto && (
+              <span
+                className="pill pill-neutral"
+                title={`Nothing has been verified yet in ${formatMonthLabel(currentMonth())} — this is ${formatMonthLabel(month)} instead.`}
+              >
+                {formatMonthLabel(month)}
+              </span>
+            )}
+          </div>
           {/* Everything the dead three-cell strip used to carry, on one line.
               Of those three cells, one repeated the figure above it verbatim
               and one held the words "Not entered yet" — a whole column spent
@@ -227,11 +254,6 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <div className="mt-1 text-[13px] text-brass-bright">
             Vibe has not sent their {formatMonthLabel(month)} statement yet — nothing can be compared until it is in.
           </div>
-          {monthAuto && (
-            <div className="mt-1 text-[13px] text-brass-bright">
-              Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
-            </div>
-          )}
         </div>
       ) : (
         /* STATE B — statement is in. The difference becomes the anchor and
@@ -244,12 +266,18 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               {/* The number the page exists to produce. The old layout showed
                   your total and Vibe's total side by side and left the reader
                   to subtract them. */}
-              <div
-                className={`figure-points mt-1 text-[34px] font-semibold leading-none ${
-                  gap === 0 ? 'text-jade-bright' : 'text-clay-bright'
-                }`}
-              >
-                {gap === 0 ? '0' : `${gap > 0 ? '+' : ''}${gap.toLocaleString()}`} pts
+              <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className={`figure-points text-[34px] font-semibold leading-none ${gap === 0 ? 'text-jade-bright' : 'text-clay-bright'}`}>
+                  {gap === 0 ? '0' : `${gap > 0 ? '+' : ''}${gap.toLocaleString()}`} pts
+                </span>
+                {monthAuto && (
+                  <span
+                    className="pill pill-neutral"
+                    title={`Nothing has been verified yet in ${formatMonthLabel(currentMonth())} — this is ${formatMonthLabel(month)} instead.`}
+                  >
+                    {formatMonthLabel(month)}
+                  </span>
+                )}
               </div>
               <div className="mt-2 text-[13px] text-paper-dim">
                 {gap === 0
@@ -258,11 +286,6 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
                     ? `Your system records ${Math.abs(gap).toLocaleString()} pts more than Vibe’s statement.`
                     : `Vibe’s statement is ${Math.abs(gap).toLocaleString()} pts higher than your system.`}
               </div>
-              {monthAuto && (
-                <div className="mt-1.5 text-[13px] text-brass-bright">
-                  Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {formatMonthLabel(month)}.
-                </div>
-              )}
             </div>
             <span className={`pill ${gap === 0 ? 'pill-jade' : 'pill-clay'}`}>{gap === 0 ? 'Matched' : 'Mismatch'}</span>
           </div>
@@ -288,6 +311,8 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           most consequential thing this page can be carrying, so it sits above
           the forms rather than below them. Renders nothing when there are
           none. */}
+      <GapLeads findings={gapFindings} />
+
       <OpenVariances items={openVariances} month={month} />
 
       {/* The entry form, once the summary above has said where you stand.

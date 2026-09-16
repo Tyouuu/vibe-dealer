@@ -15,13 +15,15 @@ import type { PackageCode } from '@/lib/packages'
 import { balanceSeries } from '@/lib/dashboard-period'
 import { formatMYR } from '@/lib/money'
 import { EmptyState } from '../empty-state'
+import { computeReportSummaryInputs, hashSummaryInputs } from '@/lib/report-summary'
+import { ReportSummaryCard } from './report-summary-card'
 
 export const metadata: Metadata = {
   title: 'Monthly Report — Vibe456',
 }
 
 type PageProps = {
-  searchParams: Promise<{ month?: string; by?: string; page?: string }>
+  searchParams: Promise<{ month?: string; by?: string; page?: string; summaryError?: string }>
 }
 
 // This page used to run one query — verified transactions — and print the 2%
@@ -46,7 +48,7 @@ type PageProps = {
 // closing balance.
 export default async function ReportsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { month: monthParam, by: byRaw, page } = await searchParams
+  const { month: monthParam, by: byRaw, page, summaryError } = await searchParams
   const by: 'dealer' | 'type' = byRaw === 'type' ? 'type' : 'dealer'
 
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -97,6 +99,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     supabase.from('transactions').select('tx_date, points').neq('status', 'flagged').gte('tx_date', prevStart).lte('tx_date', today),
     getAvailablePointsBalance(supabase),
   ])
+
+  // The AI summary card. Computed from the same shared function the
+  // generate action calls, so "is the cached paragraph stale" is a plain
+  // hash comparison rather than two independently-maintained ideas of what
+  // the month's figures are.
+  const [{ data: cachedSummary }, summaryInputs] = await Promise.all([
+    supabase.from('report_summaries').select('summary, inputs_hash, generated_at').eq('month', `${month}-01`).maybeSingle(),
+    computeReportSummaryInputs(supabase, month),
+  ])
+  const currentInputsHash = hashSummaryInputs(summaryInputs)
+  const summaryIsStale = cachedSummary != null && cachedSummary.inputs_hash !== currentInputsHash
 
   const allTx = (monthTxAll ?? []) as {
     dealer_id: string
@@ -311,28 +324,50 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </span>
           )}
         </div>
-        <p className="mt-2 text-[13px] text-paper-dim">
-          {prevEarned > 0 ? `vs ${formatMYR(prevEarned)} in ${formatMonthLabel(prevMonth)}` : `Nothing earned in ${formatMonthLabel(prevMonth)} to compare against`}
-        </p>
-        {monthAuto && (
-          <p className="mt-1.5 text-[13px] text-brass-bright">
-            Nothing has been verified in {formatMonthLabel(currentMonth())} yet, so this opened on {monthLabel}.
-          </p>
-        )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[13px] text-paper-dim">
+            {prevEarned > 0 ? `vs ${formatMYR(prevEarned)} in ${formatMonthLabel(prevMonth)}` : `Nothing earned in ${formatMonthLabel(prevMonth)} to compare against`}
+          </span>
+          {monthAuto && (
+            <span className="pill pill-neutral" title={`Nothing has been verified yet in ${formatMonthLabel(currentMonth())} — this is ${monthLabel} instead.`}>
+              {monthLabel}
+            </span>
+          )}
+        </div>
 
-        {/* The composition, as a sentence rather than three more figures.
-            These were three cells at 20px under a 38px headline, and the
-            first two of them add up to exactly that headline — so the card
-            printed one fact twice and the eye had four things to land on
-            where there is only one answer. Counting the four in the ledger
-            below, this page carried seven figures at 20px or larger. Every
-            number that was here is still here; none of them is competing
-            with the total any more. */}
-        <p className="mt-4 text-[13px] leading-relaxed text-paper-dim">
-          Points 2% <b className="figure-money font-semibold text-paper">{formatMYR(totalCommission)}</b> over{' '}
-          {totalPoints.toLocaleString()} pts in {rows.length} transaction{rows.length === 1 ? '' : 's'} + SIM cards{' '}
-          <b className="figure-money font-semibold text-paper">{formatMYR(simMargin)}</b> on {simCards.toLocaleString()} card
-          {simCards === 1 ? '' : 's'} over {simThis.length} order{simThis.length === 1 ? '' : 's'}. Money collected{' '}
+        {/* Two revenue lines, not one sentence carrying nine numbers.
+            ===========================================================
+            The comment this replaces explained why this used to be a
+            sentence rather than three 20px cells: two of those cells summed
+            to the headline above them, so the card stated one fact twice at
+            competing weight. That reasoning still holds and this keeps it —
+            every label and figure below stays at 12-14px, well under the
+            headline's 38px, so nothing here competes with "what you made".
+            What changed is that the sentence itself had grown to nine
+            numbers across two unrelated revenue lines (points, SIM cards)
+            plus a third, different concept (gross money collected) — dense
+            enough that reading it required assembling the structure
+            yourself. Splitting the two revenue lines into their own cells
+            keeps that same secondary weight while making the structure
+            visible instead of implied by punctuation. */}
+        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-ink-800 pt-4 sm:grid-cols-2">
+          <div>
+            <div className="text-[12px] font-medium text-paper-dim">Points</div>
+            <div className="mt-0.5 text-[14px] text-paper">
+              <b className="figure-money font-semibold">{formatMYR(totalCommission)}</b> commission on{' '}
+              {totalPoints.toLocaleString()} pts, {rows.length} sale{rows.length === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div>
+            <div className="text-[12px] font-medium text-paper-dim">SIM cards</div>
+            <div className="mt-0.5 text-[14px] text-paper">
+              <b className="figure-money font-semibold">{formatMYR(simMargin)}</b> margin on {simCards.toLocaleString()} card
+              {simCards === 1 ? '' : 's'}, {simThis.length} order{simThis.length === 1 ? '' : 's'}
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-[12px] text-paper-dim">
+          Money collected from dealers{' '}
           <b className="figure-money font-semibold text-paper">{formatMYR(moneyCollected)}</b> — {formatMYR(totalMoney)} points,{' '}
           {formatMYR(simRevenue)} cards.
         </p>
@@ -410,6 +445,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             Purchases: it is walked backwards from the live number by
             balanceSeries, not recomputed. */}
       </div>
+
+      <ReportSummaryCard month={month} summary={cachedSummary?.summary ?? null} stale={summaryIsStale} error={summaryError} />
 
       {/* Its own section, out of the earnings card.
           "What did I make" is a profit-and-loss question; "what credit have I

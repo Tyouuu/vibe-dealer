@@ -6,6 +6,7 @@ import { PACKAGE_SIM_CARDS } from '@/lib/sim-stock'
 import { ACCEPT_ATTR } from '@/lib/vision-extract'
 import { submitRequest } from './actions'
 import { IconUpload } from '../../(app)/icons'
+import { isUnusuallyHigh } from '@/lib/amount-plausibility'
 
 // Written for a phone, held one-handed, by someone who has used this once
 // before. Every control is full-width and thumb-sized, and there is one
@@ -27,6 +28,7 @@ export function RequestForm({
   token,
   rate,
   today,
+  typicalAmountRm,
 }: {
   token: string
   /** null when no package is on file — see below. */
@@ -34,6 +36,10 @@ export function RequestForm({
   /** Today in Malaysia, from the server. Not the phone's clock, which can be
       anything, and this field decides which month a sale lands in. */
   today: string
+  /** This dealer's own median verified top-up, or null under a 3-transaction
+      minimum sample. Powers the "a lot more than usual" nudge below — see
+      lib/amount-plausibility.ts. */
+  typicalAmountRm: number | null
 }) {
   const [type, setType] = useState<'topup' | 'package'>('topup')
   const [money, setMoney] = useState('')
@@ -45,6 +51,11 @@ export function RequestForm({
 
   const amount = Number(money)
   const points = rate != null && Number.isFinite(amount) && amount > 0 ? Math.round(amount / (1 - rate / 100)) : null
+  // A nudge, not a block — a dealer having a genuinely big month is still
+  // allowed to send it in one press. Named after the number they typed
+  // rather than "your usual", so it reads as a fact they can check against
+  // their own memory of what they just transferred.
+  const looksHigh = type === 'topup' && isUnusuallyHigh(amount, typicalAmountRm)
 
   return (
     <form
@@ -107,6 +118,11 @@ export function RequestForm({
                 ? "We'll confirm your rate and work out the points before we credit you."
                 : "We'll work out the points from your rate once you enter the amount."}
           </p>
+          {looksHigh && (
+            <p className="mt-2 text-[12px] font-medium text-brass-bright">
+              That&apos;s a lot more than your usual top-up — worth a quick check before sending.
+            </p>
+          )}
         </div>
       ) : (
         <>

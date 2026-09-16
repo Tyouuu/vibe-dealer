@@ -45,10 +45,16 @@ export function ReadSlipButton({ requestId, alreadyRead }: { requestId: string; 
         type="button"
         onClick={run}
         disabled={busy || pending}
-        className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline disabled:opacity-60"
+        className={`inline-flex items-center gap-1.5 text-[12px] font-semibold hover:underline disabled:opacity-60 ${
+          // Unread carries the same colour "no rate on file" and "looks like a
+          // repeat" already use on this page — a slip nobody has checked yet
+          // is a fact worth the same weight, not a lower-priority version of
+          // "Read it again" in the page's ordinary link colour.
+          alreadyRead || busy || pending ? 'text-primary' : 'text-brass-bright'
+        }`}
       >
         <IconPaperclip className="h-3.5 w-3.5" />
-        {busy || pending ? 'Reading the slip…' : alreadyRead ? 'Read it again' : 'Read the slip'}
+        {busy || pending ? 'Reading the slip…' : alreadyRead ? 'Read it again' : 'Read the slip — not checked yet'}
       </button>
       {error && <span className="text-[12px] text-clay-bright">{error}</span>}
     </>

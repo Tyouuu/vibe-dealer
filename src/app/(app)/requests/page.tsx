@@ -176,6 +176,33 @@ export default async function RequestsPage({ searchParams }: PageProps) {
     for (const k of keys) if (!seen.has(k)) seen.set(k, r)
   }
 
+  // The pair the check above cannot see: same dealer, same bank reference,
+  // but a DIFFERENT amount — because amountOf(r) is baked into every key
+  // above, two requests for the same transfer are invisible to each other
+  // the moment one of them has a typo in it. That is exactly the case worth
+  // surfacing, not excluding: a dealer who sends RM300 by mistake and then
+  // resends the same reference as RM3,000 has told you which one is wrong,
+  // but only if something points both requests out together.
+  const referenceKeysOf = (r: RequestRow) => {
+    const parts: string[] = []
+    const fromSlip = (r.slip_reference ?? '').replace(/\D/g, '')
+    if (fromSlip.length >= 4) parts.push(`slip:${fromSlip}`)
+    const typed = (r.paid_from ?? '').trim().toLowerCase()
+    if (typed) parts.push(`typed:${typed}`)
+    return parts.map((p) => `${r.dealer_id}|${p}`)
+  }
+  const correctionOf = new Map<string, RequestRow>()
+  const seenByRef = new Map<string, RequestRow>()
+  for (const r of pending) {
+    const keys = referenceKeysOf(r)
+    const differentAmount = keys.map((k) => seenByRef.get(k)).find((match) => match && amountOf(match) !== amountOf(r))
+    // Not layered on top of an exact repeat — that pair already has its own
+    // alert, and showing both would say two contradictory things about the
+    // same two rows.
+    if (differentAmount && !dupeOf.has(r.id)) correctionOf.set(r.id, differentAmount)
+    for (const k of keys) if (!seenByRef.has(k)) seenByRef.set(k, r)
+  }
+
   return (
     <>
       <PageHeader
@@ -209,6 +236,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               })(),
           pending.length === 0 ? null : oldestDays === 0 ? 'all came in today' : `oldest has waited ${oldestDays} day${oldestDays === 1 ? '' : 's'}`,
           dupeOf.size > 0 ? `${dupeOf.size} look${dupeOf.size === 1 ? 's' : ''} like a repeat` : null,
+          correctionOf.size > 0 ? `${correctionOf.size} ${correctionOf.size === 1 ? 'has' : 'have'} a mismatched amount` : null,
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -220,14 +248,16 @@ export default async function RequestsPage({ searchParams }: PageProps) {
           <ul className="flex flex-col gap-3">
             {pending.map((r) => {
               const dupe = dupeOf.get(r.id)
+              const correction = correctionOf.get(r.id)
               return (
-              <li key={r.id} className={`app-card p-5 ${dupe ? 'border-brass/40 bg-brass/[0.04]' : ''}`}>
+              <li key={r.id} className={`app-card p-5 ${dupe || correction ? 'border-brass/40 bg-brass/[0.04]' : ''}`}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <Link href={`/dealers/${r.dealer_id}`} className="text-[14px] font-semibold text-paper hover:underline">
                       {r.dealers?.company_name ?? 'Unknown dealer'}
                     </Link>
                     {dupe && <span className="pill pill-brass ml-2 align-middle">Looks like a repeat</span>}
+                    {correction && <span className="pill pill-brass ml-2 align-middle">Different amount, same reference</span>}
                     <p className="mt-0.5 text-[13px] text-paper-dim">{whenInMalaysia(r.created_at)}</p>
                   </div>
                   <div className="text-right">
@@ -343,6 +373,16 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                   </div>
                 )}
 
+                {correction && (
+                  <div className="alert alert-warn mt-3 text-[13px]">
+                    Same dealer and the same bank reference as the request sent at{' '}
+                    <b className="font-semibold">{whenInMalaysia(correction.created_at)}</b>, but for{' '}
+                    <b className="font-semibold">{formatMYR(amountOf(correction))}</b> instead of{' '}
+                    <b className="font-semibold">{formatMYR(amountOf(r))}</b>. One of the two is likely a typo — check which
+                    before accepting either.
+                  </div>
+                )}
+
                 {/* The one thing that stops this being a two-click accept. A
                     top-up cannot be priced without a rate, and 233 dealers
                     have none on file — so the link takes the request anyway
@@ -382,6 +422,14 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                       it is the shortcut; opening it is still how you settle
                       an argument with what was read. */}
                   {r.slip_url && <ReadSlipButton requestId={r.id} alreadyRead={!!r.slip_read_at} />}
+                  {/* Quiet, not an alert — attaching a slip is optional and
+                      the form says so, so most requests are expected to arrive
+                      this way. The point is only that "no slip" and "slip not
+                      checked yet" used to look identical: both rendered
+                      nothing here. Named plainly instead of left blank, so the
+                      absence is a fact you were told rather than one you have
+                      to notice on your own. */}
+                  {!r.slip_url && <span className="text-[12px] text-paper-dim">No slip attached — check the bank directly.</span>}
                 </div>
               </li>
               )

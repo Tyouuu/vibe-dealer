@@ -37,6 +37,27 @@ for (const required of ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   }
 }
 
+// The one check this script did not have, and the reason it needed one: the
+// GitHub Actions secrets pointed at a dead, pre-migration project
+// (xjrgoebelqgariqnahxm) for six-plus weeks after the app was repointed at
+// real production — every nightly run since went green, wrote a complete,
+// well-formed snapshot, and none of it was recoverable, because none of it
+// was production. "Refuse an empty snapshot" a few lines down could not catch
+// this: the stale project still had 284 real dealer rows in it, so the
+// snapshot was never empty, just of the wrong database. Same fix qa-target.mjs
+// already applies to the QA drivers — hardcode the one ref this is allowed to
+// touch and refuse anything else, rather than trusting whatever the secret
+// currently holds.
+const PRODUCTION_REF = 'utgxpyksglayycglofsb'
+const actualRef = new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname.split('.')[0]
+if (actualRef !== PRODUCTION_REF) {
+  console.error(
+    `NEXT_PUBLIC_SUPABASE_URL points at "${actualRef}", not production ("${PRODUCTION_REF}"). ` +
+      `Refusing to back up the wrong project — update the GitHub Actions secret, or this line, if production has genuinely moved.`
+  )
+  process.exit(1)
+}
+
 // Every base table in `public`, in dependency order: a restore has to insert
 // profiles before anything referencing recorded_by, and dealers before any
 // transaction pointing at one. Verified against pg_class rather than guessed

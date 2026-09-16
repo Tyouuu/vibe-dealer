@@ -82,6 +82,12 @@ export async function createSimOrder(formData: FormData) {
   if (!Number.isFinite(quantity) || quantity < 10) failOnLog('Minimum order quantity is 10.')
   if (shippingFeeRaw && (!Number.isFinite(shippingFee) || (shippingFee ?? -1) < 0)) failOnLog('Shipping fee must be zero or more.')
 
+  // A slow network resubmit (or a double-click before the button's disabled
+  // state paints) would otherwise draw down limited physical stock twice —
+  // the same risk createTransaction has always guarded against with its own
+  // idempotency_key. Optional so a call with none behaves exactly as before.
+  const idempotencyKey = String(formData.get('idempotency_key') ?? '').trim() || null
+
   const isPhysical = isPhysicalSimType(simType)
   const supabase = await createClient()
   const { error } = await supabase.rpc('create_sim_order', {
@@ -92,6 +98,7 @@ export async function createSimOrder(formData: FormData) {
     p_shipping_invoice_path: isPhysical ? shippingInvoicePath : null,
     p_sim_type: simType,
     p_esim_codes: isPhysical ? null : esimCodes,
+    p_idempotency_key: idempotencyKey,
   })
 
   // insufficient_sim_stock is rewritten by friendlyDbError, which now owns the
@@ -117,4 +124,81 @@ export async function markSimOrderSent(formData: FormData) {
   if (error) failOnStock(friendlyDbError(error.message))
 
   revalidatePath('/sim-stock')
+}
+
+// The correcting-entry counterpart to recordSimIntake — same shape as
+// adjustCreditPurchase, direct insert rather than an RPC, because intakes
+// already have a plain insert-RLS policy (unlike sim_orders below).
+// enforce_sim_intake_correction_balance (0050) is the trigger-level backstop;
+// this reads the current figures first so the delta and the "nothing
+// changed" refusal both come from a fresh row, not a stale client value.
+export async function adjustSimStockIntake(formData: FormData) {
+  const user = await requireUser()
+  if (user.role !== 'accountant' && user.role !== 'master') failOnStock('You do not have permission to correct a stock intake.')
+
+  const originalId = String(formData.get('original_id') ?? '')
+  const reason = String(formData.get('reason') ?? '').trim()
+  const newQuantity = Number(formData.get('new_quantity'))
+
+  if (!originalId || !reason) failOnStock('A correction needs a reason.')
+  if (!Number.isFinite(newQuantity) || newQuantity < 0) failOnStock('Enter a valid quantity.')
+
+  const supabase = await createClient()
+
+  const { data: original } = await supabase
+    .from('sim_stock_intakes')
+    .select('id, sim_type, quantity, cost_per_unit_rm, adjusts_id')
+    .eq('id', originalId)
+    .single()
+
+  if (!original) failOnStock('Original stock intake not found.')
+  if (original.adjusts_id) failOnStock('This is already a correction — correct the original intake it points to instead.')
+
+  const deltaQuantity = Math.round(newQuantity - Number(original.quantity))
+  if (deltaQuantity === 0) failOnStock('That matches what is already on record — nothing to adjust.')
+
+  const { error } = await supabase.from('sim_stock_intakes').insert({
+    intake_date: todayInMalaysia(),
+    sim_type: original.sim_type,
+    quantity: deltaQuantity,
+    cost_per_unit_rm: original.cost_per_unit_rm,
+    note: reason,
+    adjusts_id: original.id,
+    recorded_by: user.id,
+  })
+
+  if (error) failOnStock(friendlyDbError(error.message))
+
+  revalidatePath('/sim-stock')
+  revalidatePath('/reports')
+}
+
+// The correcting-entry counterpart to create_sim_order. An RPC, not a direct
+// insert — sim_orders has no INSERT policy for anyone (0024), so every write
+// goes through a SECURITY DEFINER function, and a correction is no
+// exception. adjust_sim_order (0050) does the balance-safety check and the
+// "already a correction" / "nothing changed" refusals server-side.
+export async function adjustSimOrder(formData: FormData) {
+  const user = await requireUser()
+  if (user.role !== 'accountant' && user.role !== 'master') failOnStock('You do not have permission to correct a SIM order.')
+
+  const orderId = String(formData.get('order_id') ?? '')
+  const reason = String(formData.get('reason') ?? '').trim()
+  const newQuantity = Number(formData.get('new_quantity'))
+
+  if (!orderId || !reason) failOnStock('A correction needs a reason.')
+  if (!Number.isFinite(newQuantity) || newQuantity < 0) failOnStock('Enter a valid quantity.')
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('adjust_sim_order', {
+    p_order_id: orderId,
+    p_new_quantity: Math.round(newQuantity),
+    p_reason: reason,
+    p_order_date: todayInMalaysia(),
+  })
+
+  if (error) failOnStock(friendlyDbError(error.message))
+
+  revalidatePath('/sim-stock')
+  revalidatePath('/reports')
 }

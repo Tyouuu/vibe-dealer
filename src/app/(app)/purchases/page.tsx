@@ -9,6 +9,7 @@ import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
 import { formatTimeOfDay } from '@/lib/month'
 import { EmptyState } from '../empty-state'
+import { AdjustPurchaseButton } from './adjust-purchase-button'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — Vibe456',
@@ -30,6 +31,11 @@ type Movement = {
   detail: string | null
   points: number
   kind: 'in' | 'out'
+  // Only set for a genuine credit_purchases row that is not itself a
+  // correction — the one case Adjust is offered for. A sale's own correction
+  // path is /records' AdjustButton; stacking a second one here would be two
+  // ways to do the same thing.
+  adjustable: { id: string; currentPoints: number; currentMoneyRm: number } | null
 }
 
 // Walked backwards from the live balance rather than forwards from zero:
@@ -50,12 +56,12 @@ function withRunningBalance(movements: Movement[], closing: number): (Movement &
 }
 
 type PageProps = {
-  searchParams: Promise<{ saved?: string; page?: string }>
+  searchParams: Promise<{ saved?: string; adjusted?: string; error?: string; page?: string }>
 }
 
 export default async function PurchasesPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { saved, page } = await searchParams
+  const { saved, adjusted, error, page } = await searchParams
 
   if (user.role !== 'accountant' && user.role !== 'master') {
     return <PermissionDenied role={user.role} action="view credit purchases" />
@@ -65,7 +71,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   const [{ data: purchaseRows }, { data: saleRows }, { data: profiles }, creditBalance] = await Promise.all([
     supabase
       .from('credit_purchases')
-      .select('id, purchase_date, created_at, money_rm, points, note, receipt_url, recorded_by')
+      .select('id, purchase_date, created_at, money_rm, points, note, receipt_url, recorded_by, adjusts_id')
       .order('purchase_date', { ascending: false }),
     // The other half of the ledger. Credit is drawn down by every transaction
     // that is not flagged — pending counts, because the dealer has already had
@@ -105,15 +111,26 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   // could see the balance but never what had drawn it down. It had half the
   // ledger, which is why it looked like it had almost nothing on it.
   const movements: Movement[] = [
-    ...(purchaseRows ?? []).map((p) => ({
-      key: `p-${p.id}`,
-      date: p.purchase_date as string,
-      createdAt: (p.created_at as string) ?? (p.purchase_date as string),
-      what: 'Bought from Vibe Mobile',
-      detail: (p.note as string | null) || nameById.get(p.recorded_by as string) || null,
-      points: Number(p.points),
-      kind: 'in' as const,
-    })),
+    ...(purchaseRows ?? []).map((p) => {
+      // A correction can carry a negative delta — money handed back because
+      // the original overstated what was bought. Classified by sign, not by
+      // which table the row came from, for the same reason the sale side
+      // below already is: an 'in' of -50000 would otherwise print "+-50,000",
+      // two minus signs in the one column whose job is to say which way the
+      // credit moved.
+      const pts = Number(p.points)
+      const isCorrection = p.adjusts_id != null
+      return {
+        key: `p-${p.id}`,
+        date: p.purchase_date as string,
+        createdAt: (p.created_at as string) ?? (p.purchase_date as string),
+        what: isCorrection ? 'Correction · Bought from Vibe Mobile' : 'Bought from Vibe Mobile',
+        detail: (p.note as string | null) || nameById.get(p.recorded_by as string) || null,
+        points: Math.abs(pts),
+        kind: (pts < 0 ? 'out' : 'in') as 'in' | 'out',
+        adjustable: isCorrection ? null : { id: p.id as string, currentPoints: pts, currentMoneyRm: Number(p.money_rm) },
+      }
+    }),
     ...(saleRows ?? []).map((t) => {
       const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
       const dealer = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
@@ -136,6 +153,9 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         detail: t.status === 'pending' ? 'pending review — already committed' : null,
         points: Math.abs(pts),
         kind: (pts < 0 ? 'in' : 'out') as 'in' | 'out',
+        // A sale's own correction path is /records — this page only offers
+        // Adjust on the purchase side.
+        adjustable: null,
       }
     }),
     // Same day, newest first — purchase_date and tx_date carry no time, so
@@ -172,9 +192,9 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
         action={{ href: '/purchases/new', label: 'Log Purchase' }}
       />
 
-      {/* No error slot: recordCreditPurchase now fails back to /purchases/new,
-          where the form is, so nothing sends an error here any more. */}
       {saved && <div className="alert alert-ok">Purchase recorded.</div>}
+      {adjusted && <div className="alert alert-ok">Correction posted.</div>}
+      {error && <div className="alert alert-bad">{error}</div>}
 
       <div className="stack-loose mt-8 w-full">
         {/* Balance leads because it is the figure that stops work: the New
@@ -260,13 +280,14 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
           {ledger.length ? (
             <>
               <ScrollFade label="Credit ledger">
-                <table className="w-full min-w-[760px] table-fixed border-collapse text-sm">
+                <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
                   <colgroup>
-                    <col className="w-[13%]" />
-                    <col className="w-[39%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[33%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[17%]" />
                     <col className="w-[14%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[20%]" />
                   </colgroup>
                   <thead>
                     <tr>
@@ -275,6 +296,10 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                       <th className="th text-right">In</th>
                       <th className="th text-right">Out</th>
                       <th className="th text-right">Balance after</th>
+                      {/* Empty, not a label — this column exists for the one
+                          action a purchase row can carry, not a category, and
+                          most rows (every sale) leave it blank. */}
+                      <th className="th"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -310,6 +335,15 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                           {m.kind === 'out' ? `−${m.points.toLocaleString()}` : <span className="text-paper-dim/40">—</span>}
                         </td>
                         <td className="td figure-points whitespace-nowrap text-right font-semibold">{m.after.toLocaleString()}</td>
+                        <td className="td text-right">
+                          {m.adjustable && (
+                            <AdjustPurchaseButton
+                              purchaseId={m.adjustable.id}
+                              currentPoints={m.adjustable.currentPoints}
+                              currentMoneyRm={m.adjustable.currentMoneyRm}
+                            />
+                          )}
+                        </td>
                       </tr>
                       )
                     })}

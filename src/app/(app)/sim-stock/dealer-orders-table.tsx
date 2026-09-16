@@ -9,6 +9,7 @@ import { StatusDot } from '../status-dot'
 import { formatMYR } from '@/lib/money'
 import { formatDateLabel } from '@/lib/month'
 import { LOG_COL, LOG_COL_NAME_FLEX } from '@/lib/log-columns'
+import { AdjustOrderButton } from './adjust-order-button'
 
 export type OrderItem = {
   id: string
@@ -21,7 +22,13 @@ export type OrderItem = {
   shipping_fee_rm: number | null
   shipping_invoice_path: string | null
   esim_codes: string | null
-  delivery_status: 'pending' | 'sent'
+  delivery_status: 'pending' | 'sent' | 'na'
+  // 'na' delivery_status is what a correction row carries (it isn't a
+  // shipment), but the flag is passed explicitly rather than inferred from
+  // that string everywhere below — the two happen to coincide today only
+  // because adjust_sim_order is the one thing that ever sets 'na'.
+  isCorrection: boolean
+  note: string | null
 }
 
 // Every cell used to carry two stacked values (SIM Type+Qty, Paid+Margin,
@@ -44,10 +51,12 @@ export function DealerOrdersTable({
   orders,
   isFinance,
   canMarkSent,
+  canAdjust,
 }: {
   orders: OrderItem[]
   isFinance: boolean
   canMarkSent: boolean
+  canAdjust: boolean
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
 
@@ -121,14 +130,21 @@ export function DealerOrdersTable({
               </div>
               {isFinance && (
                 <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right figure-money font-normal text-paper-dim`}>
-                  +{formatMYR(o.margin)}
+                  {o.margin >= 0 ? '+' : ''}
+                  {formatMYR(o.margin)}
                 </div>
               )}
               <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-right figure-money font-normal text-paper-dim`}>
                 {o.shipping_fee_rm != null ? formatMYR(Number(o.shipping_fee_rm)) : <span className="text-paper-dim/50">—</span>}
               </div>
               <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer`}>
-                {o.delivery_status === 'sent' ? <StatusDot color="jade-bright" label="Sent" /> : <StatusDot color="brass-bright" label="Pending" pulse />}
+                {o.isCorrection ? (
+                  <span className="tag pill-neutral max-w-none whitespace-nowrap">Correction</span>
+                ) : o.delivery_status === 'sent' ? (
+                  <StatusDot color="jade-bright" label="Sent" />
+                ) : (
+                  <StatusDot color="brass-bright" label="Pending" pulse />
+                )}
               </div>
               <div onClick={toggle} className={`px-3 py-3.5 cursor-pointer text-paper-dim`}>
                 <svg
@@ -147,43 +163,55 @@ export function DealerOrdersTable({
               {open && (
                 <div style={{ gridColumn: '1 / -1' }} className="pb-4">
                   <div className="rounded-xl border border-ink-800 bg-ink-900/60 p-4">
-                    <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
-                          {isPhysicalSimType(o.sim_type) ? 'Invoice' : 'eSIM Codes'}
-                        </dt>
-                        <dd className="mt-1 text-[13px] font-semibold text-paper">
-                          {isPhysicalSimType(o.sim_type) ? (
-                            o.shipping_invoice_path ? (
-                              <a
-                                href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                View invoice
-                              </a>
+                    {o.isCorrection ? (
+                      // A correction never ships and carries no invoice/code of
+                      // its own — what it has instead is why it exists.
+                      <dl>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">Correction reason</dt>
+                        <dd className="mt-1 text-[13px] font-semibold text-paper">{o.note ?? '—'}</dd>
+                      </dl>
+                    ) : (
+                      <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-paper-dim">
+                            {isPhysicalSimType(o.sim_type) ? 'Invoice' : 'eSIM Codes'}
+                          </dt>
+                          <dd className="mt-1 text-[13px] font-semibold text-paper">
+                            {isPhysicalSimType(o.sim_type) ? (
+                              o.shipping_invoice_path ? (
+                                <a
+                                  href={`/api/sim-stock/invoice?path=${encodeURIComponent(o.shipping_invoice_path)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  View invoice
+                                </a>
+                              ) : (
+                                <span className="font-normal text-paper-dim/50">No invoice</span>
+                              )
+                            ) : o.esim_codes ? (
+                              <span className="block max-w-[220px] truncate" title={o.esim_codes}>
+                                {o.esim_codes}
+                              </span>
                             ) : (
-                              <span className="font-normal text-paper-dim/50">No invoice</span>
-                            )
-                          ) : o.esim_codes ? (
-                            <span className="block max-w-[220px] truncate" title={o.esim_codes}>
-                              {o.esim_codes}
-                            </span>
-                          ) : (
-                            <span className="font-normal text-paper-dim/50">No codes</span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-                    {canMarkSent && o.delivery_status === 'pending' && (
-                      <form action={markSimOrderSent} className="mt-4" onClick={(e) => e.stopPropagation()}>
-                        <input type="hidden" name="id" value={o.id} />
-                        <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this order as shipped? This cannot be undone.">
-                          Mark as sent
-                        </ConfirmSubmitButton>
-                      </form>
+                              <span className="font-normal text-paper-dim/50">No codes</span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
                     )}
+                    <div className="mt-4 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      {canMarkSent && o.delivery_status === 'pending' && (
+                        <form action={markSimOrderSent}>
+                          <input type="hidden" name="id" value={o.id} />
+                          <ConfirmSubmitButton className="btn-jade" confirmMessage="Mark this order as shipped? This cannot be undone.">
+                            Mark as sent
+                          </ConfirmSubmitButton>
+                        </form>
+                      )}
+                      {canAdjust && !o.isCorrection && <AdjustOrderButton orderId={o.id} currentQuantity={o.quantity} />}
+                    </div>
                   </div>
                 </div>
               )}

@@ -18,6 +18,12 @@ function fail(message: string): never {
   redirect('/purchases/new?error=' + encodeURIComponent(message))
 }
 
+// adjustCreditPurchase's modal lives on /purchases itself, not the Log
+// Purchase form — same split, different page.
+function failOnLedger(message: string): never {
+  redirect('/purchases?error=' + encodeURIComponent(message))
+}
+
 export async function recordCreditPurchase(formData: FormData) {
   const user = await requireUser()
   if (user.role !== 'accountant' && user.role !== 'master') {
@@ -70,4 +76,61 @@ export async function recordCreditPurchase(formData: FormData) {
   revalidatePath('/reports')
   // Lands on the ledger, where the new balance and the purchase both appear.
   redirect('/purchases?saved=1')
+}
+
+// The correcting-entry counterpart to Transactions' adjustTransaction
+// (records/actions.ts) and the same research (docs/research-transaction-
+// corrections.md) — a credit purchase has no pending/verified lifecycle to
+// flag instead, so this is the only correction path it needs. Posts a new,
+// linked row carrying only the delta; the original is never touched.
+export async function adjustCreditPurchase(formData: FormData) {
+  const user = await requireUser()
+  if (user.role !== 'accountant' && user.role !== 'master') {
+    failOnLedger('You do not have permission to correct a credit purchase.')
+  }
+
+  const originalId = String(formData.get('original_id') ?? '')
+  const reason = String(formData.get('reason') ?? '').trim()
+  const newPoints = Number(formData.get('new_points'))
+  const newMoneyRm = Number(formData.get('new_money_rm'))
+
+  if (!originalId || !reason) failOnLedger('A correction needs a reason.')
+  if (!Number.isFinite(newPoints) || newPoints < 0) failOnLedger('Enter a valid points value.')
+  if (!Number.isFinite(newMoneyRm) || newMoneyRm < 0) failOnLedger('Enter a valid RM value.')
+
+  const supabase = await createClient()
+
+  const { data: original } = await supabase
+    .from('credit_purchases')
+    .select('id, points, money_rm, adjusts_id')
+    .eq('id', originalId)
+    .single()
+
+  if (!original) failOnLedger('Original purchase not found.')
+  if (original.adjusts_id) failOnLedger('This is already a correction — correct the original purchase it points to instead.')
+
+  const deltaPoints = Math.round((newPoints - Number(original.points)) * 100) / 100
+  const deltaMoneyRm = Math.round((newMoneyRm - Number(original.money_rm)) * 100) / 100
+  if (deltaPoints === 0 && deltaMoneyRm === 0) failOnLedger('That matches what is already on record — nothing to adjust.')
+
+  // Same "today, not backdated" rule adjustTransaction follows: a correction
+  // to a closed month deliberately posts in the currently-open one, so
+  // trg_enforce_period_lock_credit_purchases (0032) normally leaves it alone —
+  // this only trips if the current month has itself been reconciled.
+  const today = todayInMalaysia()
+  const { error } = await supabase.from('credit_purchases').insert({
+    purchase_date: today,
+    money_rm: deltaMoneyRm,
+    points: deltaPoints,
+    note: reason,
+    adjusts_id: original.id,
+    recorded_by: user.id,
+  })
+
+  if (error && isPeriodLockError(error.message)) failOnLedger(periodLockedMessage(today))
+  if (error) failOnLedger(friendlyDbError(error.message))
+
+  revalidatePath('/purchases')
+  revalidatePath('/reports')
+  redirect('/purchases?adjusted=1')
 }

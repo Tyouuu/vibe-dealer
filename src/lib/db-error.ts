@@ -26,9 +26,33 @@ const RULES: Rule[] = [
       `Not enough credit balance: ${Number(m[1]).toLocaleString()} pts available, this needs ${Number(m[2]).toLocaleString()} pts. Log a Credit Purchase first.`,
   },
   {
-    // create_sim_order (0024).
+    // create_sim_order (0024) and adjust_sim_order (0050) — an increase, new
+    // or corrected, that would draw more than the pool has left.
     match: /insufficient_sim_stock:\s*(.+)$/,
     message: (m) => `Not enough stock — ${m[1]}`,
+  },
+  {
+    // enforce_credit_purchase_correction_balance (0050): a correction that
+    // removes more points than the shared pool has left uncommitted — some of
+    // what this purchase paid for has already been resold.
+    match: /insufficient_credit_balance_for_correction:\s*([\d.]+) pts available,\s*([\d.]+) pts would be removed/,
+    message: (m) =>
+      `This correction can't go through: only ${Number(m[1]).toLocaleString()} pts of the credit pool is still uncommitted, but this would remove ${Number(m[2]).toLocaleString()} pts — some of what this purchase paid for has already been resold.`,
+  },
+  {
+    // enforce_sim_intake_correction_balance (0050): same idea, per SIM pool.
+    match: /insufficient_sim_stock_for_correction:\s*(\S+) pool,\s*(\d+) available,\s*(\d+) would be removed/,
+    message: (m) =>
+      `This correction can't go through: only ${Number(m[2]).toLocaleString()} cards of that pool are still on the shelf, but this would remove ${Number(m[3]).toLocaleString()} — some of what this batch brought in has already been sold on.`,
+  },
+  {
+    // adjust_sim_order (0050) — the three plain-English guards it raises
+    // itself, passed through with a capital letter rather than falling to the
+    // generic line below. "not authorized" is already caught app-side by the
+    // action's own role check and should be unreachable in practice; kept
+    // here as the same defence-in-depth the balance checks get.
+    match: /^(not authorized|a correction needs a reason|enter a valid quantity|original order not found|this is already a correction[^.]*|that matches what is already on record[^.]*)$/,
+    message: (m) => m[1].charAt(0).toUpperCase() + m[1].slice(1) + '.',
   },
   {
     // 23505. The one the operator can act on is a duplicate dealer name; the

@@ -61,4 +61,30 @@ describe('friendlyDbError', () => {
     expect(friendlyDbError(null)).toContain('Something went wrong')
     expect(friendlyDbError(undefined)).toContain('Something went wrong')
   })
+
+  it('explains a credit-purchase correction that would push the pool negative', () => {
+    const raw = 'insufficient_credit_balance_for_correction: 517856 pts available, 600000 pts would be removed'
+    const out = friendlyDbError(raw)
+    expect(out).toContain('517,856')
+    expect(out).toContain('600,000')
+    expect(out).not.toContain('insufficient_credit_balance_for_correction')
+  })
+
+  it('explains a SIM stock intake correction that would push a pool negative', () => {
+    const raw = 'insufficient_sim_stock_for_correction: physical pool, 463 available, 700 would be removed'
+    const out = friendlyDbError(raw)
+    expect(out).toContain('463')
+    expect(out).toContain('700')
+    expect(out).not.toContain('insufficient_sim_stock_for_correction')
+  })
+
+  it("capitalizes adjust_sim_order's own plain-English guards", () => {
+    expect(friendlyDbError('this is already a correction — correct the original order it points to instead')).toBe(
+      'This is already a correction — correct the original order it points to instead.'
+    )
+    expect(friendlyDbError('that matches what is already on record — nothing to adjust')).toBe(
+      'That matches what is already on record — nothing to adjust.'
+    )
+    expect(friendlyDbError('original order not found')).toBe('Original order not found.')
+  })
 })

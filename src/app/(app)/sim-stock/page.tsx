@@ -31,6 +31,7 @@ type IntakeRow = {
   cost_per_unit_rm: number
   note: string | null
   recorded_by: string
+  adjusts_id: string | null
 }
 
 type OrderRow = {
@@ -44,7 +45,9 @@ type OrderRow = {
   shipping_fee_rm: number | null
   shipping_invoice_path: string | null
   esim_codes: string | null
-  delivery_status: 'pending' | 'sent'
+  delivery_status: 'pending' | 'sent' | 'na'
+  adjusts_id: string | null
+  note: string | null
   recorded_by: string
   delivered_by: string | null
   dealers?: { company_name: string } | { company_name: string }[] | null
@@ -78,12 +81,12 @@ export default async function SimStockPage({ searchParams }: PageProps) {
       ? supabase
           .from('sim_orders')
           .select(
-            'id, dealer_id, order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, recorded_by, delivered_by, dealers(company_name)'
+            'id, dealer_id, order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by, dealers(company_name)'
           )
           .order('order_date', { ascending: false })
       : supabase
           .from('sim_orders_directory')
-          .select('id, dealer_id, order_date, sim_type, quantity, unit_price_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, recorded_by, delivered_by')
+          .select('id, dealer_id, order_date, sim_type, quantity, unit_price_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by')
           .order('order_date', { ascending: false }),
     supabase.from('staff_directory').select('id, display_name'),
   ])
@@ -102,7 +105,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   if (isFinance) {
     const { data } = await supabase
       .from('sim_stock_intakes')
-      .select('id, intake_date, sim_type, quantity, cost_per_unit_rm, note, recorded_by')
+      .select('id, intake_date, sim_type, quantity, cost_per_unit_rm, note, recorded_by, adjusts_id')
       .order('intake_date', { ascending: false })
     intakes = (data as IntakeRow[] | null) ?? []
   }
@@ -401,6 +404,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     totalCost: r.quantity * Number(r.cost_per_unit_rm),
                     note: r.note,
                     recordedByName: nameById.get(r.recorded_by) ?? '—',
+                    isCorrection: r.adjusts_id != null,
                   }))}
                 />
               ) : (
@@ -478,10 +482,13 @@ export default async function SimStockPage({ searchParams }: PageProps) {
                     shipping_invoice_path: o.shipping_invoice_path,
                     esim_codes: o.esim_codes,
                     delivery_status: o.delivery_status,
+                    isCorrection: o.adjusts_id != null,
+                    note: o.note,
                   }
                 })}
                 isFinance={isFinance}
                 canMarkSent={user.role === 'cs' || user.role === 'master'}
+                canAdjust={isFinance}
               />
             ) : (
               <p className="text-sm text-paper-dim">No orders recorded yet.</p>

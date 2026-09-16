@@ -35,6 +35,12 @@ export function OrderForm({
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  // One id for this mounted form, sent with every attempt — a slow-network
+  // resubmit (or the confirm dialog's own double-click window) then carries
+  // the same key as an already-successful attempt, and create_sim_order
+  // treats that as the existing order rather than a second one. Same pattern
+  // as entry-form.tsx's idempotencyKey.
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -85,6 +91,7 @@ export function OrderForm({
     // intake-form.tsx for why the spans are written natively rather than
     // behind an @apply alias.
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <input type="hidden" name="idempotency_key" value={idempotencyKey} />
       {error && <div className="alert alert-bad">{error}</div>}
         {/* Two across, and the switch takes its own row.
             It was four fields side by side, which spent the page's width — the

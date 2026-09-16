@@ -106,6 +106,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // had weight.
   return (
     <div className="min-h-screen bg-canvas text-paper">
+      {/* First tab stop in the whole app. Sighted mouse users reach any page's
+          content in one click; a keyboard user had to Tab past the entire
+          rail — every nav item, the search trigger, the mobile menu — first,
+          which measured at 27 presses on a deep item like Staff. WCAG 2.4.1. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-ink-950 focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       {/* Mounted once. Renders nothing until opened, and both triggers reach
           it through a window event rather than shared React state. */}
       <CommandPalette navItems={navItems.map((i) => ({ href: i.href, label: i.label, group: i.group }))} />
@@ -213,7 +223,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               horizontal scrollers inside it. On pages that do carry focusable
               content this adds one tab stop at the top of the content pane,
               which is what a scrollable region is supposed to have. */}
-          <main tabIndex={0} className="flex-1 px-4 sm:px-7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary lg:overflow-y-auto">
+          <main
+            id="main-content"
+            tabIndex={0}
+            className="flex-1 px-4 sm:px-7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary lg:overflow-y-auto"
+          >
             {/* No max-width here — the shell above already caps out at 1440px
                 total (md:max-w-[1440px]), so this only needs w-full to use
                 whatever room that leaves past the rail. A redundant narrower

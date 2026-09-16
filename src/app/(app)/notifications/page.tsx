@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { buildNotifications } from '@/lib/notifications/build'
+import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/preferences'
 import { NotificationsList } from './notifications-list'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
@@ -75,7 +76,7 @@ export default async function NotificationsPage() {
             label: 'Categories',
             value: String(new Set(notifications.map((n) => n.category)).size),
             href: '/account',
-            sub: 'of 5 the system checks',
+            sub: `of ${NOTIFICATION_CATEGORIES.length} the system checks`,
           },
         ]}
       />

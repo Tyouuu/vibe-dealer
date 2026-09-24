@@ -27,9 +27,11 @@
 #   2. Re-run the storage bucket/policy statements from migrations 0002, 0019
 #      and 0024 (the storage schema is not in the dump), then upload the files
 #      from the snapshot artifact's storage/ folder.
-#   3. pg_restore --no-owner --exit-on-error -d <new session-pooler url> public.dump
-#      A full restore loads data before it creates triggers, so the ledger's
-#      guard triggers do not fire on the way in.
+#   3. pg_restore -l public.dump | grep -v -E ' SCHEMA - public ' > public.list
+#      pg_restore --no-owner --exit-on-error -L public.list -d <new session-pooler url> public.dump
+#      (the list skips CREATE SCHEMA public, which already exists). A full
+#      restore loads data before it creates triggers, so the ledger's guard
+#      triggers do not fire on the way in.
 #   4. pg_restore --data-only --no-owner -d <same url> auth.dump  (logins, with
 #      their passwords).
 #
@@ -236,7 +238,10 @@ jobs:
         run: |
           set -euo pipefail
           pg_restore --no-owner --exit-on-error --dbname "$DRILL_URL" out/auth.dump
-          pg_restore --no-owner --exit-on-error --dbname "$DRILL_URL" out/public.dump
+          # The dump carries a CREATE SCHEMA public, and public already exists in
+          # any database you would restore into — a fresh Supabase project too.
+          pg_restore -l out/public.dump | grep -v -E ' SCHEMA - public ' > out/public.list
+          pg_restore --no-owner --exit-on-error -L out/public.list --dbname "$DRILL_URL" out/public.dump
 
       - name: Restore drill — same rows back?
         env:

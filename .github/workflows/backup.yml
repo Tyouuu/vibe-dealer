@@ -222,6 +222,11 @@ jobs:
           create role anon nologin;
           create role authenticated nologin;
           create role service_role nologin bypassrls;
+          create role supabase_admin nologin;
+          create role supabase_auth_admin nologin;
+          create role supabase_storage_admin nologin;
+          create role authenticator nologin;
+          create role dashboard_user nologin;
           create schema extensions;
           create extension pgcrypto schema extensions;
           create extension "uuid-ossp" schema extensions;

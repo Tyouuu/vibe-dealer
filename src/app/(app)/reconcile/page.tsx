@@ -15,6 +15,7 @@ import { ReopenMonthForm } from './reopen-month-form'
 import { OpenVariances } from './open-variances'
 import { GapLeads } from './gap-leads'
 import { findReconciliationGapLeads, type GapTx } from '@/lib/reconcile-gap'
+import { fetchAll } from '@/lib/fetch-all'
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { formatMYR } from '@/lib/money'
@@ -59,21 +60,21 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   const { start, end } = monthRange(month)
 
-  const [{ data: verifiedTx }, { data: statement }, { data: openVarianceRows }, { data: varianceProfiles }] = await Promise.all([
-    // No .limit() — systemPoints below is a real sum over every verified row
-    // this month, and Your 2% Due is computed from it. A cap here would
-    // silently under-count both once the month passes that many rows (this
-    // is company-wide, not per-dealer, so 242 dealers gets there fast).
-    // Reports runs the identical unbounded query for the same reason. The
-    // list below (pure display, not an input to any total) is paginated in
-    // memory off this same array instead of a second query.
+  const [{ data: totalsRow }, { data: evidenceData }, { data: statement }, { data: openVarianceRows }, { data: varianceProfiles }] = await Promise.all([
+    // The month's total is summed in the database (0054), not from rows fetched here: the
+    // API returns at most 1,000 rows per request without saying so, so a total added up
+    // from fetched rows is a fraction of the truth once a month passes that — measured
+    // 2,905,470 pts read against a real 12,073,598. The rows below are only the extract.
+    supabase.rpc('verified_month_totals', { p_start: start, p_end: end }).single(),
     supabase
       .from('transactions')
       .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name)')
       .eq('status', 'verified')
       .gte('tx_date', start)
       .lte('tx_date', end)
-      .order('tx_date', { ascending: false }),
+      .order('tx_date', { ascending: false })
+      .order('id')
+      .limit(EVIDENCE_ROWS),
     supabase.from('company_statements').select('*').eq('month', `${month}-01`).maybeSingle(),
     // Every month still open, not just the one on screen — an unanswered
     // variance is outstanding work wherever you happen to be standing.
@@ -81,7 +82,9 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     supabase.from('staff_directory').select('id, display_name'),
   ])
 
-  const breakdownRows = (verifiedTx as BreakdownRow[] | null) ?? []
+  const evidenceRows = (evidenceData as BreakdownRow[] | null) ?? []
+  const totals = totalsRow as { points: number | string; commission: number | string; tx_count: number | string } | null
+  const txCount = Number(totals?.tx_count ?? 0)
   const varianceNameById = new Map((varianceProfiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
   const openVariances = ((openVarianceRows ?? []) as { id: string; month: string; gap_points: number; reason: string; opened_by: string; created_at: string }[]).map((v) => ({
     id: v.id,
@@ -97,12 +100,12 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
     daysOpen: daysSince(v.created_at.slice(0, 10)),
   }))
 
-  const systemPoints = breakdownRows.reduce((s, t) => s + Number(t.points), 0)
+  const systemPoints = Number(totals?.points ?? 0)
   // Sums each row's own commission_rm rather than recomputing points*rate —
   // matches how Reports/Dashboard/dealer-detail all compute "Your 2%", and
   // avoids the two calculations landing a cent apart under fractional
   // adjustment amounts (round(sum) vs sum(round) aren't the same operation).
-  const systemProfit = Math.round(breakdownRows.reduce((s, t) => s + Number(t.commission_rm), 0) * 100) / 100
+  const systemProfit = Math.round(Number(totals?.commission ?? 0) * 100) / 100
   const companyPoints = statement?.company_total_points ?? null
   // Rounded to whole points before comparing — systemPoints is a float sum
   // over potentially many fractional-point adjustment rows, so an
@@ -112,8 +115,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
 
   // An extract, not a page of results. The full list lives on Transactions,
   // which is built for reading a ledger; here it only has to answer "does
-  // this look like my month" before you lock it.
-  const evidenceRows = breakdownRows.slice(0, EVIDENCE_ROWS)
+  // this look like my month" before you lock it. (evidenceRows above.)
 
   // Single column, ordered by the task, and state-driven rather than a fixed
   // layout — the shape research settled on after checking how QuickBooks,
@@ -146,7 +148,23 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
   // A deterministic search for which of this month's own transactions could
   // account for the gap — see lib/reconcile-gap.ts for why this is
   // arithmetic rather than a model call.
-  const gapTxs: GapTx[] = breakdownRows.map((t) => {
+  // Every row of the month, but only when there is a gap to explain — a matching month
+  // has nothing to search, and reading thousands of rows to find nothing is wasted work.
+  // Paged, because the search needs each row and a single request stops at 1,000.
+  const gapRows =
+    hasStatement && gap !== 0
+      ? await fetchAll<BreakdownRow>((from, to) =>
+          supabase
+            .from('transactions')
+            .select('id, dealer_id, tx_date, type, package, points, commission_rm, dealers(company_name)')
+            .eq('status', 'verified')
+            .gte('tx_date', start)
+            .lte('tx_date', end)
+            .order('id')
+            .range(from, to) as unknown as PromiseLike<{ data: BreakdownRow[] | null; error: { message: string } | null }>,
+        )
+      : []
+  const gapTxs: GapTx[] = gapRows.map((t) => {
     const rel = t.dealers
     return {
       id: t.id,
@@ -248,7 +266,7 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
               headline did not already state, so it joins the sentence that
               was there anyway. */}
           <div className="mt-2.5 text-[13px] text-paper-dim">
-            {breakdownRows.length} verified transaction{breakdownRows.length === 1 ? '' : 's'} in {formatMonthLabel(month)} · your 2%{' '}
+            {txCount} verified transaction{txCount === 1 ? '' : 's'} in {formatMonthLabel(month)} · your 2%{' '}
             <b className="figure-money font-semibold text-paper">{formatMYR(systemProfit)}</b>
           </div>
           <div className="mt-1 text-[13px] text-brass-bright">
@@ -451,13 +469,11 @@ export default async function ReconcilePage({ searchParams }: PageProps) {
           <span className="text-[13px] font-semibold text-paper">
             What is behind the {systemPoints.toLocaleString()} pts
             <span className="ml-2 font-normal text-paper-dim">
-              {breakdownRows.length <= EVIDENCE_ROWS
-                ? `all ${breakdownRows.length}`
-                : `most recent ${EVIDENCE_ROWS} of ${breakdownRows.length}`}
+              {txCount <= EVIDENCE_ROWS ? `all ${txCount}` : `most recent ${EVIDENCE_ROWS} of ${txCount}`}
             </span>
           </span>
           <Link href={`/records?month=${month}&status=verified`} className="text-[12px] font-semibold text-primary hover:underline">
-            View all {breakdownRows.length} in Transactions →
+            View all {txCount} in Transactions →
           </Link>
         </div>
         <div>

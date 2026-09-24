@@ -34,29 +34,48 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
   const today = todayInMalaysia()
   const monthStart = `${today.slice(0, 7)}-01`
 
-  const [prefs, { data: dealerRows }, { data: pendingRows }, { data: statement }, activityMap, creditBalance, { data: pendingDeliveryRows }] =
+  // Pending work is a count and an oldest date, not a list of rows: the rows were only ever
+  // counted and scanned for their minimum, and a fetched list stops counting at 1,000.
+  const none = { count: null, data: null }
+  const [
+    prefs,
+    { data: dealerRows },
+    { count: pendingCount },
+    { data: oldestPendingRows },
+    { data: statement },
+    activityMap,
+    creditBalance,
+    { count: pendingDeliveryCount },
+    { data: oldestDeliveryRows },
+  ] =
     await Promise.all([
       getNotificationPrefs(supabase, userId),
       supabase.from('dealers_directory').select('id, company_name'),
-      isFinance ? supabase.from('transactions').select('id, tx_date').eq('status', 'pending') : Promise.resolve({ data: null }),
+      isFinance ? supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending') : Promise.resolve(none),
+      isFinance
+        ? supabase.from('transactions').select('tx_date').eq('status', 'pending').order('tx_date', { ascending: true }).limit(1)
+        : Promise.resolve(none),
       isFinance
         ? supabase.from('company_statements').select('reconciled').eq('month', monthStart).maybeSingle()
         : Promise.resolve({ data: null }),
       getDealerActivityMap(supabase),
       isFinance ? getAvailablePointsBalance(supabase) : Promise.resolve(null),
-      isOps ? supabase.from('delivery_queue').select('id, tx_date').eq('delivery_status', 'pending') : Promise.resolve({ data: null }),
+      isOps ? supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending') : Promise.resolve(none),
+      isOps
+        ? supabase.from('delivery_queue').select('tx_date').eq('delivery_status', 'pending').order('tx_date', { ascending: true }).limit(1)
+        : Promise.resolve(none),
     ])
 
   const list: BuiltNotification[] = []
   if (!prefs.masterEnabled) return list
 
-  if (isFinance && prefs.categories.pending_review && pendingRows?.length) {
-    const oldest = Math.max(...pendingRows.map((t) => daysSince(t.tx_date)))
+  if (isFinance && prefs.categories.pending_review && pendingCount) {
+    const oldest = oldestPendingRows?.[0] ? daysSince(oldestPendingRows[0].tx_date) : 0
     list.push({
       id: 'pending_review',
       category: 'pending_review',
       variant: 'brass',
-      title: `${pendingRows.length} transaction${pendingRows.length === 1 ? '' : 's'} pending review`,
+      title: `${pendingCount} transaction${pendingCount === 1 ? '' : 's'} pending review`,
       subtitle: oldest >= PENDING_REVIEW_STALE_DAYS ? `Oldest is ${oldest}d old` : 'All recently recorded',
       href: '/records?status=pending',
       actionLabel: 'Review transactions',
@@ -109,13 +128,13 @@ export async function buildNotifications(supabase: SupabaseClient, userId: strin
     })
   }
 
-  if (isOps && prefs.categories.deliveries && pendingDeliveryRows?.length) {
-    const oldest = Math.max(...pendingDeliveryRows.map((r) => daysSince(r.tx_date)))
+  if (isOps && prefs.categories.deliveries && pendingDeliveryCount) {
+    const oldest = oldestDeliveryRows?.[0] ? daysSince(oldestDeliveryRows[0].tx_date) : 0
     list.push({
       id: 'deliveries',
       category: 'deliveries',
       variant: 'info',
-      title: `${pendingDeliveryRows.length} SIM ${pendingDeliveryRows.length === 1 ? 'delivery' : 'deliveries'} pending`,
+      title: `${pendingDeliveryCount} SIM ${pendingDeliveryCount === 1 ? 'delivery' : 'deliveries'} pending`,
       subtitle: oldest >= DELIVERY_WARN_DAYS_THRESHOLD ? `Oldest is ${oldest}d old` : 'All recently queued',
       href: '/delivery',
       actionLabel: 'View delivery queue',

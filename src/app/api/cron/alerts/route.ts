@@ -57,14 +57,14 @@ export async function GET(request: NextRequest) {
   // one read, so a run that straddles midnight cannot chase the wrong month.
   const prevMonth = previousMonth(today.slice(0, 7))
 
-  const [balance, { data: statement }, { data: pendingRows }, { data: logRows }, { count: prevMonthCount }] =
+  const [balance, { data: statement }, { count: pendingTotal }, { data: oldestRows }, { data: logRows }, { count: prevMonthCount }] =
     await Promise.all([
     getAvailablePointsBalance(supabase),
     supabase.from('company_statements').select('reconciled').eq('month', `${prevMonth}-01`).maybeSingle(),
-    // Oldest first: the age that matters is the worst one, and the count comes
-    // from the same read rather than a second round trip that could disagree
-    // with it.
-    supabase.from('transactions').select('tx_date').eq('status', 'pending').order('tx_date', { ascending: true }),
+    // The count and the oldest date as two small reads. They used to be one read of
+    // every pending row, whose length was the count — which stops at 1,000.
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('transactions').select('tx_date').eq('status', 'pending').order('tx_date', { ascending: true }).limit(1),
     supabase.from('alert_log').select('kind, last_sent_on'),
     // head+count, so this asks "was there any trading" without dragging a
     // month of rows back to answer it.
@@ -75,8 +75,7 @@ export async function GET(request: NextRequest) {
       .lt('tx_date', `${today.slice(0, 7)}-01`),
   ])
 
-  const pending = pendingRows ?? []
-  const oldest = pending[0]?.tx_date as string | undefined
+  const oldest = oldestRows?.[0]?.tx_date as string | undefined
   const oldestPendingDays = oldest
     ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${oldest}T00:00:00Z`)) / 86_400_000)
     : null
@@ -94,7 +93,7 @@ export async function GET(request: NextRequest) {
       previousMonthHadActivity: (prevMonthCount ?? 0) > 0,
       dayOfMonth: Number(today.slice(8, 10)),
       oldestPendingDays,
-      pendingCount: pending.length,
+      pendingCount: pendingTotal ?? 0,
     },
     lastSentOn,
     today,

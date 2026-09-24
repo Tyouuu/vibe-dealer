@@ -14,6 +14,7 @@ import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 import { Pagination } from '../pagination'
+import { allRows } from '@/lib/fetch-all'
 import { compareDealers, DEALER_SORT_KEYS, nextDealerSort, parseDealerSort } from '@/lib/dealer-sort'
 import { siteOrigin } from '@/lib/site-url'
 import { ColumnsMenu } from '../columns-menu'
@@ -158,10 +159,23 @@ export default async function DealersPage({ searchParams }: PageProps) {
       // back empty and render a confident "RM 0.00" for every dealer — a wrong
       // figure, not a hidden one. showRate is the same gate the rate column
       // already uses, and card margin is the same kind of number.
+      // Every package sale and every SIM order there has ever been, because "cards owed" is
+      // all-time entitlement minus all-time deliveries. Paged: one request stops at 1,000 rows
+      // without an error, and every dealer's owed cards and card earnings would come out low.
       showRate
-        ? supabase.from('transactions').select('dealer_id, package, quantity').eq('type', 'package').neq('status', 'flagged')
+        ? allRows((from, to) =>
+            supabase
+              .from('transactions')
+              .select('dealer_id, package, quantity')
+              .eq('type', 'package')
+              .neq('status', 'flagged')
+              .order('id')
+              .range(from, to),
+          )
         : Promise.resolve({ data: [] }),
-      showRate ? supabase.from('sim_orders').select('dealer_id, quantity') : Promise.resolve({ data: [] }),
+      showRate
+        ? allRows((from, to) => supabase.from('sim_orders').select('dealer_id, quantity').order('id').range(from, to))
+        : Promise.resolve({ data: [] }),
     ])
 
   const pinnedIds = new Set((pinRows ?? []).map((p) => p.dealer_id as string))

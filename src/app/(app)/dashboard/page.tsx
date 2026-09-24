@@ -19,6 +19,7 @@ import { resolvePeriod, sameSpanTotal } from '@/lib/dashboard-period'
 import { NeedsAttention } from './summary'
 import { pctChange, HeroCard } from '../hero-card'
 import { getNotifications } from '@/lib/notifications/build'
+import { allRows } from '@/lib/fetch-all'
 import { DeliveryTable, type DeliveryRow } from '../delivery/delivery-table'
 import { PageHeader } from '../page-header'
 import { formatMYR } from '@/lib/money'
@@ -227,12 +228,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     // The one read the whole page is built on. Every verified transaction in
     // the six-month window, each with its own tx_date — which is what makes
     // the day-resolution chart possible without asking for anything new.
-    supabase
-      .from('transactions')
-      .select('dealer_id, tx_date, type, package, quantity, points, commission_rm, dealers(company_name, region)')
-      .eq('status', 'verified')
-      .gte('tx_date', trendStart)
-      .lte('tx_date', today),
+    // Paged: six months of verified sales is thousands of rows, and a single request
+    // stops at 1,000 without saying so — every figure below would read a fraction of
+    // the truth. Ordered by id so the pages cannot repeat or skip a row.
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, tx_date, type, package, quantity, points, commission_rm, dealers(company_name, region)')
+        .eq('status', 'verified')
+        .gte('tx_date', trendStart)
+        .lte('tx_date', today)
+        .order('id')
+        .range(from, to),
+    ),
     getAvailablePointsBalance(supabase),
     // Same list the bell and /notifications show — getNotifications is
     // request-cached, so this doesn't re-run the layout's queries.
@@ -754,24 +762,31 @@ async function AccountantDashboard({ supabase, userId, monthParam }: { supabase:
   //   six months of purchases     fed one sparkline (the balance line)
   //   every statement in window   the Reconciliation band, which repeated an
   //                               alert sitting 200px above it
-  const [{ data: pendingRows }, creditBalance, { data: trendTx }, { count: dealerCount }, alerts] = await Promise.all([
-    supabase.from('transactions').select('id, tx_date').eq('status', 'pending'),
+  const [{ count: pendingTotal }, { data: oldestPending }, creditBalance, { data: trendTx }, { count: dealerCount }, alerts] = await Promise.all([
+    // A count and the oldest date, not the rows: the rows were only ever counted and
+    // scanned for their minimum, and past 1,000 pending a fetched list stops counting.
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('transactions').select('tx_date').eq('status', 'pending').order('tx_date', { ascending: true }).limit(1),
     getAvailablePointsBalance(supabase),
     // The one read the page is built on — every verified transaction in the
     // window with its own tx_date, which is what makes the day-resolution
     // chart possible without asking for anything new.
-    supabase
-      .from('transactions')
-      .select('dealer_id, tx_date, points, dealers(region, company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', trendStart)
-      .lte('tx_date', today),
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, tx_date, points, dealers(region, company_name)')
+        .eq('status', 'verified')
+        .gte('tx_date', trendStart)
+        .lte('tx_date', today)
+        .order('id')
+        .range(from, to),
+    ),
     supabase.from('dealers_directory').select('id', { count: 'exact', head: true }),
     getNotifications(userId, 'accountant'),
   ])
 
-  const pendingCount = pendingRows?.length ?? 0
-  const oldestPendingDays = pendingCount ? Math.max(...pendingRows!.map((t) => daysSince(t.tx_date))) : 0
+  const pendingCount = pendingTotal ?? 0
+  const oldestPendingDays = oldestPending?.[0] ? daysSince(oldestPending[0].tx_date) : 0
 
   const monthsWithData = new Set((trendTx ?? []).map((t) => t.tx_date.slice(0, 7)))
   const period = resolvePeriod(monthParam, trendMonths, monthsWithData)

@@ -18,6 +18,7 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { monthRange, previousMonth, formatMonthLabel } from '@/lib/month'
 import { formatMYR } from '@/lib/money'
+import { allRows } from '@/lib/fetch-all'
 
 // Same model as vision-extract.ts, for the same reason mini is the pick
 // there: on a small, well-constrained task the larger models buy nothing.
@@ -65,16 +66,33 @@ export async function computeReportSummaryInputs(supabase: SupabaseClient, month
   const prevMonth = previousMonth(month)
   const { start: prevStart, end: prevEnd } = monthRange(prevMonth)
 
-  const [{ data: rows }, { data: prevRows }, { data: simOrders }, { data: prevSimOrders }, { data: statement }, { count: pendingCount }] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select('dealer_id, points, commission_rm, dealers(company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', start)
-      .lte('tx_date', end),
-    supabase.from('transactions').select('commission_rm').eq('status', 'verified').gte('tx_date', prevStart).lte('tx_date', prevEnd),
-    supabase.from('sim_orders').select('quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', start).lte('order_date', end),
-    supabase.from('sim_orders').select('quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', prevStart).lte('order_date', prevEnd),
+  // Every figure below is added up from rows, so the rows have to be ALL of them: the API
+  // returns at most 1,000 per request and stops without an error, and a month passes that.
+  const simOrderRows = (a: string, b: string) =>
+    allRows((from, to) =>
+      supabase
+        .from('sim_orders')
+        .select('quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm')
+        .gte('order_date', a)
+        .lte('order_date', b)
+        .order('id')
+        .range(from, to),
+    )
+  const [{ data: rows }, { data: prevTotals }, { data: simOrders }, { data: prevSimOrders }, { data: statement }, { count: pendingCount }] = await Promise.all([
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, points, commission_rm, dealers(company_name)')
+        .eq('status', 'verified')
+        .gte('tx_date', start)
+        .lte('tx_date', end)
+        .order('id')
+        .range(from, to),
+    ),
+    // Last month contributes one number, so it is a sum in the database (0054).
+    supabase.rpc('verified_month_totals', { p_start: prevStart, p_end: prevEnd }).single(),
+    simOrderRows(start, end),
+    simOrderRows(prevStart, prevEnd),
     supabase.from('company_statements').select('company_total_points').eq('month', `${month}-01`).maybeSingle(),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending').gte('tx_date', start).lte('tx_date', end),
   ])
@@ -86,7 +104,7 @@ export async function computeReportSummaryInputs(supabase: SupabaseClient, month
   const totalCommission = txRows.reduce((s, t) => s + Number(t.commission_rm), 0)
   const simMargin = marginOf(simOrders ?? [])
   const totalEarned = totalCommission + simMargin
-  const prevCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
+  const prevCommission = Number((prevTotals as { commission: number | string } | null)?.commission ?? 0)
   const prevSimMargin = marginOf(prevSimOrders ?? [])
   const prevEarned = prevCommission + prevSimMargin
   const totalPoints = txRows.reduce((s, t) => s + Number(t.points), 0)

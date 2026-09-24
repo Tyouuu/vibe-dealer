@@ -8,6 +8,7 @@ import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
 import { Pagination } from '../pagination'
+import { allRows } from '@/lib/fetch-all'
 import { pctChange } from '../hero-card'
 import { resolveReportMonth } from '@/lib/reporting-month'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
@@ -80,15 +81,31 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   ] = await Promise.all([
     // Every status, not just verified. What was left out is part of the
     // report now, so it has to be fetched to be named.
-    supabase
-      .from('transactions')
-      .select('dealer_id, type, package, quantity, status, points, money_rm, commission_rm, dealers(company_name)')
-      .gte('tx_date', start)
-      .lte('tx_date', end),
-    supabase.from('transactions').select('points, money_rm, commission_rm').eq('status', 'verified').gte('tx_date', prevStart).lte('tx_date', prevEnd),
+    // Paged: a month's transactions can pass the 1,000 rows one request returns, and the
+    // API stops there without an error — every total and ranking below would read a fraction.
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, type, package, quantity, status, points, money_rm, commission_rm, dealers(company_name)')
+        .gte('tx_date', start)
+        .lte('tx_date', end)
+        .order('id')
+        .range(from, to),
+    ),
+    // Only last month's commission is used, for the "vs" percentage — so a sum in the
+    // database (0054), not last month's rows.
+    supabase.rpc('verified_month_totals', { p_start: prevStart, p_end: prevEnd }).single(),
     // Both months in one read — this month's figures and last month's for the
     // comparison the headline makes.
-    supabase.from('sim_orders').select('order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', prevStart).lte('order_date', end),
+    allRows((from, to) =>
+      supabase
+        .from('sim_orders')
+        .select('order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm')
+        .gte('order_date', prevStart)
+        .lte('order_date', end)
+        .order('id')
+        .range(from, to),
+    ),
     supabase.from('sim_stock_intakes').select('quantity, cost_per_unit_rm').gte('intake_date', start).lte('intake_date', end),
     supabase.from('company_statements').select('reconciled, company_total_points, company_profit_rm').eq('month', `${month}-01`).maybeSingle(),
     // A month can be closed and still have an unanswered gap. "Matched" and
@@ -97,7 +114,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     // From the start of the month before through today: what balanceSeries
     // needs to walk the balance backwards from where it stands now.
     supabase.from('credit_purchases').select('purchase_date, money_rm, points').gte('purchase_date', prevStart),
-    supabase.from('transactions').select('tx_date, points').neq('status', 'flagged').gte('tx_date', prevStart).lte('tx_date', today),
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('tx_date, points')
+        .neq('status', 'flagged')
+        .gte('tx_date', prevStart)
+        .lte('tx_date', today)
+        .order('id')
+        .range(from, to),
+    ),
     getAvailablePointsBalance(supabase),
   ])
 
@@ -163,7 +189,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const totalMoney = rows.reduce((s, t) => s + Number(t.money_rm), 0)
   const totalCommission = rows.reduce((s, t) => s + Number(t.commission_rm), 0)
 
-  const prevTotalCommission = (prevRows ?? []).reduce((s, t) => s + Number(t.commission_rm), 0)
+  const prevTotalCommission = Number((prevRows as { commission: number | string } | null)?.commission ?? 0)
 
   const totalEarned = totalCommission + simMargin
   const earnedChg = pctChange(totalEarned, prevTotalCommission + marginOf(simPrev))

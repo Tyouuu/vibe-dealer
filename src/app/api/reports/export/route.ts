@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, currentMonth } from '@/lib/month'
 import { csvCell } from '@/lib/csv'
+import { allRows } from '@/lib/fetch-all'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -18,15 +19,37 @@ export async function GET(request: NextRequest) {
   // This export used to carry the dealer and type tables only, which meant it
   // stated the 2% and nothing else — no SIM margin, no note of what had been
   // excluded, no word on whether the month had been agreed with Vibe.
+  // Paged: a month passes the 1,000 rows one request returns, and the API stops there without
+  // an error — the file would state totals for a fraction of the month.
   const [{ data: rows }, { data: allTx }, { data: simOrders }, { data: statement }] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select('dealer_id, type, package, points, money_rm, commission_rm, dealers(company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', start)
-      .lte('tx_date', end),
-    supabase.from('transactions').select('status, points, money_rm, commission_rm').gte('tx_date', start).lte('tx_date', end),
-    supabase.from('sim_orders').select('sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm').gte('order_date', start).lte('order_date', end),
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, type, package, points, money_rm, commission_rm, dealers(company_name)')
+        .eq('status', 'verified')
+        .gte('tx_date', start)
+        .lte('tx_date', end)
+        .order('id')
+        .range(from, to),
+    ),
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('status, points, money_rm, commission_rm')
+        .gte('tx_date', start)
+        .lte('tx_date', end)
+        .order('id')
+        .range(from, to),
+    ),
+    allRows((from, to) =>
+      supabase
+        .from('sim_orders')
+        .select('sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm')
+        .gte('order_date', start)
+        .lte('order_date', end)
+        .order('id')
+        .range(from, to),
+    ),
     supabase.from('company_statements').select('reconciled, company_total_points').eq('month', `${month}-01`).maybeSingle(),
   ])
 

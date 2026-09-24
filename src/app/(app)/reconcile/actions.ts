@@ -93,19 +93,25 @@ export async function markReconciled(formData: FormData) {
   const overrideReason = String(formData.get('override_reason') ?? '').trim()
   const supabase = await createClient()
 
-  const [{ data: existing }, { data: verifiedTx }] = await Promise.all([
+  const [{ data: existing }, { data: totals, error: totalsError }] = await Promise.all([
     supabase.from('company_statements').select('company_total_points, company_profit_rm').eq('month', monthDate).maybeSingle(),
-    supabase.from('transactions').select('points').eq('status', 'verified').gte('tx_date', start).lte('tx_date', end),
+    // Summed in the database (0054). This used to add up the rows it fetched, and the API
+    // stops at 1,000 rows without saying so: past that the "system total" was a fraction of
+    // the real one, and this is the check that decides whether a month may close.
+    supabase.rpc('verified_month_totals', { p_start: start, p_end: end }).single(),
   ])
 
   if (!existing) fail(month, 'No statement found for this month.')
+  // No total is not the same as a total of zero: closing a month against a number that
+  // failed to load would be closing it against nothing.
+  if (totalsError || !totals) fail(month, 'Could not read this month\'s transactions to check them. Try again.')
 
   // Recomputed server-side from a fresh read rather than trusting a diff the
   // client sends — the whole point of this check is to stop a month closing
   // while the numbers disagree, so it can't itself trust client-supplied numbers.
   // Rounded before comparing — see reconcile/page.tsx for why an honestly-
   // reconciled month could otherwise land on a nonzero floating-point dust value.
-  const systemPoints = (verifiedTx ?? []).reduce((sum, t) => sum + Number(t.points), 0)
+  const systemPoints = Number((totals as { points: number | string }).points)
   const diff = Math.round((systemPoints - Number(existing.company_total_points)) * 100) / 100
 
   if (diff !== 0 && !overrideReason) {

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
@@ -11,6 +12,7 @@ import { formatMYR } from '@/lib/money'
 import { formatTimeOfDay } from '@/lib/month'
 import { EmptyState } from '../empty-state'
 import { AdjustPurchaseButton } from './adjust-purchase-button'
+import { allRows } from '@/lib/fetch-all'
 
 export const metadata: Metadata = {
   title: 'Credit Purchases — Vibe456',
@@ -37,23 +39,27 @@ type Movement = {
   // path is /records' AdjustButton; stacking a second one here would be two
   // ways to do the same thing.
   adjustable: { id: string; currentPoints: number; currentMoneyRm: number } | null
+  /** The balance right after this movement — worked out by the database (0055). */
+  after: number
 }
 
-// Walked backwards from the live balance rather than forwards from zero:
-// forwards would need every row ever written, and the newest row's closing
-// balance is the one figure already known for certain. Same approach as the
-// Monthly Report's points ledger.
-//
-// A module-level function rather than a loop inside the component: the React
-// compiler flags a component-scope `let` that is reassigned while mapping,
-// and it is right to — the accumulator has nothing to do with rendering.
-function withRunningBalance(movements: Movement[], closing: number): (Movement & { after: number })[] {
-  let running = closing
-  return movements.map((m) => {
-    const after = running
-    running -= m.kind === 'in' ? m.points : -m.points
-    return { ...m, after }
-  })
+// One row of the credit_ledger view (0055): a movement plus the total of every movement newer than it.
+type LedgerRow = {
+  key: string
+  mdate: string
+  created_at: string
+  source: 'purchase' | 'sale'
+  ref_id: string
+  delta: number | string
+  purchase_money_rm: number | string | null
+  purchase_note: string | null
+  purchase_recorded_by: string | null
+  purchase_is_correction: boolean
+  sale_type: string | null
+  sale_package: string | null
+  sale_status: string | null
+  sale_dealer: string | null
+  newer_sum: number | string
 }
 
 type PageProps = {
@@ -69,23 +75,35 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   }
 
   const supabase = await createClient()
-  const [{ data: purchaseRows }, { data: saleRows }, { data: profiles }, creditBalance] = await Promise.all([
+  const requestedPage = Math.max(1, Math.trunc(Number(page)) || 1)
+  const [{ data: ledgerRows, count: movementCount }, { data: purchaseCosts }, { data: profiles }, creditBalance] = await Promise.all([
+    // One page of the ledger, worked out by the database (0055). This page used to read every
+    // purchase and every sale there has ever been, merge them here and walk a running balance
+    // down the lot to show fifty rows — thousands of rows a month, and the API stops at 1,000
+    // per request without saying so, so the older pages simply did not exist. Each row now
+    // arrives with the total of every movement newer than it, so its balance needs no other row.
+    // Credit is drawn down by every transaction that is not flagged — pending counts, because
+    // the dealer has already had the credit — the definition the balance itself uses.
     supabase
-      .from('credit_purchases')
-      .select('id, purchase_date, created_at, money_rm, points, note, receipt_url, recorded_by, adjusts_id')
-      .order('purchase_date', { ascending: false }),
-    // The other half of the ledger. Credit is drawn down by every transaction
-    // that is not flagged — pending counts, because the dealer has already had
-    // the credit — which is exactly the definition the balance itself uses.
-    // See computeAvailableBalance.
-    supabase
-      .from('transactions')
-      .select('id, tx_date, created_at, type, package, points, status, dealers(company_name)')
-      .neq('status', 'flagged')
-      .order('tx_date', { ascending: false }),
+      .from('credit_ledger')
+      .select('*', { count: 'exact' })
+      .order('mdate', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('key', { ascending: false })
+      .range((requestedPage - 1) * PAGE_SIZE, requestedPage * PAGE_SIZE - 1),
+    // What everything ever bought cost, for the cost-per-point figure: a handful of rows a year,
+    // paged all the same so it cannot silently stop at 1,000 either.
+    allRows((from, to) => supabase.from('credit_purchases').select('money_rm').order('id').range(from, to)),
     supabase.from('staff_directory').select('id, display_name'),
     getAvailablePointsBalance(supabase),
   ])
+
+  // A page number past the end (a bookmark, a typo, a ledger that shrank) comes back empty:
+  // land on the last page that exists instead of an empty screen.
+  if (requestedPage > 1 && !ledgerRows?.length) {
+    const { count } = await supabase.from('credit_ledger').select('key', { count: 'exact', head: true })
+    redirect(`/purchases?page=${Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))}`)
+  }
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? '—']))
 
@@ -96,7 +114,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   const balance = creditBalance.available
   const totalBought = creditBalance.totalPurchased
   const totalSold = creditBalance.totalCommitted
-  const totalCost = (purchaseRows ?? []).reduce((s, p) => s + Number(p.money_rm), 0)
+  const totalCost = (purchaseCosts ?? []).reduce((s, p) => s + Number(p.money_rm), 0)
   const costPerPoint = totalBought > 0 ? totalCost / totalBought : 0
   const worthAtCost = balance * costPerPoint
   const leftPct = totalBought > 0 ? Math.round((balance / totalBought) * 100) : 0
@@ -111,69 +129,52 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
   // running balance. This page used to read credit_purchases alone, so you
   // could see the balance but never what had drawn it down. It had half the
   // ledger, which is why it looked like it had almost nothing on it.
-  const movements: Movement[] = [
-    ...(purchaseRows ?? []).map((p) => {
-      // A correction can carry a negative delta — money handed back because
-      // the original overstated what was bought. Classified by sign, not by
-      // which table the row came from, for the same reason the sale side
-      // below already is: an 'in' of -50000 would otherwise print "+-50,000",
-      // two minus signs in the one column whose job is to say which way the
-      // credit moved.
-      const pts = Number(p.points)
-      const isCorrection = p.adjusts_id != null
+  const balanceAfter = (r: LedgerRow) => balance - Number(r.newer_sum)
+  const ledger: Movement[] = ((ledgerRows ?? []) as LedgerRow[]).map((r) => {
+    const delta = Number(r.delta)
+    if (r.source === 'purchase') {
+      // A correction can carry a negative delta — money handed back because the original
+      // overstated what was bought. Classified by sign, not by which table the row came from,
+      // for the same reason the sale side is: an 'in' of -50000 would otherwise print
+      // "+-50,000", two minus signs in the one column whose job is to say which way the credit
+      // moved.
+      const isCorrection = r.purchase_is_correction
       return {
-        key: `p-${p.id}`,
-        date: p.purchase_date as string,
-        createdAt: (p.created_at as string) ?? (p.purchase_date as string),
+        key: r.key,
+        date: r.mdate,
+        createdAt: r.created_at,
         what: isCorrection ? 'Correction · Bought from Vibe Mobile' : 'Bought from Vibe Mobile',
-        detail: (p.note as string | null) || nameById.get(p.recorded_by as string) || null,
-        points: Math.abs(pts),
-        kind: (pts < 0 ? 'out' : 'in') as 'in' | 'out',
-        adjustable: isCorrection ? null : { id: p.id as string, currentPoints: pts, currentMoneyRm: Number(p.money_rm) },
+        detail: r.purchase_note || nameById.get(r.purchase_recorded_by ?? '') || null,
+        points: Math.abs(delta),
+        kind: (delta < 0 ? 'out' : 'in') as 'in' | 'out',
+        adjustable: isCorrection ? null : { id: r.ref_id, currentPoints: delta, currentMoneyRm: Number(r.purchase_money_rm) },
+        after: balanceAfter(r),
       }
-    }),
-    ...(saleRows ?? []).map((t) => {
-      const rel = t.dealers as { company_name: string } | { company_name: string }[] | null
-      const dealer = (Array.isArray(rel) ? rel[0]?.company_name : rel?.company_name) ?? '—'
-      const label = t.type === 'package' ? `Package ${t.package}` : t.type === 'adjustment' ? 'Correction' : 'Top-up'
-      // A correction carries a delta, and a downward one is negative: it hands
-      // points back to the pool rather than drawing from it. Treated as an
-      // outflow of a negative number, the Out column rendered "−-80" — two
-      // minus signs, in the column whose entire job is to say which way the
-      // credit went. Classified by the sign instead, so it lands in the In
-      // column as +80, which is what actually happened to the balance.
-      //
-      // withRunningBalance is unaffected: an 'out' of -80 and an 'in' of 80
-      // move the running total by the same amount in the same direction.
-      const pts = Number(t.points)
-      return {
-        key: `t-${t.id}`,
-        date: t.tx_date as string,
-        createdAt: (t.created_at as string) ?? (t.tx_date as string),
-        what: `${label} · ${dealer}`,
-        detail: t.status === 'pending' ? 'pending review — already committed' : null,
-        points: Math.abs(pts),
-        kind: (pts < 0 ? 'in' : 'out') as 'in' | 'out',
-        // A sale's own correction path is /records — this page only offers
-        // Adjust on the purchase side.
-        adjustable: null,
-      }
-    }),
-    // Same day, newest first — purchase_date and tx_date carry no time, so
-    // created_at breaks the tie rather than the order coming out arbitrary.
-  ].sort((a, b) => (b.date === a.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date)))
+    }
+    // A sale's delta is its points taken away, so a correction that hands points back is a
+    // positive delta and lands in the In column as +80 — which is what happened to the
+    // balance — rather than printing "−-80".
+    const label = r.sale_type === 'package' ? `Package ${r.sale_package}` : r.sale_type === 'adjustment' ? 'Correction' : 'Top-up'
+    return {
+      key: r.key,
+      date: r.mdate,
+      createdAt: r.created_at,
+      what: `${label} · ${r.sale_dealer ?? '—'}`,
+      detail: r.sale_status === 'pending' ? 'pending review — already committed' : null,
+      points: Math.abs(delta),
+      kind: (delta >= 0 ? 'in' : 'out') as 'in' | 'out',
+      // A sale's own correction path is /records — this page only offers Adjust on the
+      // purchase side.
+      adjustable: null,
+      after: balanceAfter(r),
+    }
+  })
 
-  // The running balance is computed across the whole ledger first and only
-  // then sliced. It has to be: every row's balance depends on every row after
-  // it, so a page-two figure worked out from page two alone would be wrong by
-  // the entire first page. This is also why the transactions half is no longer
-  // capped — a cap made the oldest visible balance silently incorrect.
-  const withBalance = withRunningBalance(movements, balance)
-  const totalPages = Math.max(1, Math.ceil(withBalance.length / PAGE_SIZE))
-  const pageNum = Math.min(totalPages, Math.max(1, Math.trunc(Number(page)) || 1))
-  const ledger = withBalance.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE)
-  const rangeStart = withBalance.length === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(pageNum * PAGE_SIZE, withBalance.length)
+  const totalMovements = movementCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalMovements / PAGE_SIZE))
+  const pageNum = Math.min(requestedPage, totalPages)
+  const rangeStart = totalMovements === 0 ? 0 : (pageNum - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(pageNum * PAGE_SIZE, totalMovements)
 
   // Same day, same description, more than once on this page — e.g. five
   // "Top-up · Bayan Baru Handphone Centre" rows dated 10 Aug, two of them for
@@ -359,7 +360,7 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                 page={pageNum}
                 totalPages={totalPages}
                 hrefFor={(p) => `/purchases?page=${p}`}
-                summary={`${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} of ${withBalance.length.toLocaleString()} movements`}
+                summary={`${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} of ${totalMovements.toLocaleString()} movements`}
               />
             </>
           ) : (

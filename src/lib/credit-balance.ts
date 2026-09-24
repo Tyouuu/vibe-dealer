@@ -33,12 +33,27 @@ export function computeAvailableBalance(totalPurchased: number, totalCommitted: 
 // size, and it's the same query the DB-level insert trigger enforces the
 // hard-block with (0016), so the app's fast-path check and the real backstop
 // can never quietly disagree.
+//
+// A failed read is an ERROR, never a balance of zero. This used to ignore the error and treat
+// "no data" as 0 — so when the read timed out under load, the dashboard printed "Credit 0 pts",
+// the low-balance alert said "Out of credit — buy from Vibe Mobile", and New Transaction refused
+// sales with "Not enough credit balance: 0 pts available": a false and alarming figure standing
+// in for one we simply could not read. One retry first (a timeout is usually a busy moment, not a
+// broken database), then it throws, which the page's error boundary and Sentry both see.
 export async function getAvailablePointsBalance(supabase: SupabaseClient): Promise<CreditBalance> {
-  const { data } = (await supabase.rpc('get_credit_balance').single()) as {
-    data: { total_purchased: number; total_committed: number; available: number } | null
+  type Row = { total_purchased: number; total_committed: number; available: number }
+  let last = ''
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = (await supabase.rpc('get_credit_balance').single()) as {
+      data: Row | null
+      error: { message: string } | null
+    }
+    if (!error && data) {
+      const totalPurchased = Number(data.total_purchased ?? 0)
+      const totalCommitted = Number(data.total_committed ?? 0)
+      return { available: computeAvailableBalance(totalPurchased, totalCommitted), totalPurchased, totalCommitted }
+    }
+    last = error?.message ?? 'no row returned'
   }
-  const totalPurchased = Number(data?.total_purchased ?? 0)
-  const totalCommitted = Number(data?.total_committed ?? 0)
-
-  return { available: computeAvailableBalance(totalPurchased, totalCommitted), totalPurchased, totalCommitted }
+  throw new Error(`Could not read the credit balance: ${last}`)
 }

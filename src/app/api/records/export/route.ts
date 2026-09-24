@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { monthRange } from '@/lib/month'
 import { csvCell } from '@/lib/csv'
 import { sanitizeSearchTerm } from '@/lib/search'
+import { fetchAll } from '@/lib/fetch-all'
 
 const DELIVERY_LABEL: Record<string, string> = { na: '—', pending: 'Pending', sent: 'Sent' }
 
@@ -51,26 +52,8 @@ export async function GET(request: NextRequest) {
   const recordedBy = /^[0-9a-f-]{36}$/i.test(params.get('by') ?? '') ? params.get('by')! : ''
 
   const supabase = await createClient()
-  let query = supabase
-    .from('transactions')
-    .select('tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, dealers(company_name)')
-    .order('tx_date', { ascending: sortAscending })
-    .order('created_at', { ascending: sortAscending })
-    .limit(2000)
-
-  if (status !== 'all') query = query.eq('status', status)
-  if (txType) query = query.eq('type', txType)
-  if (month) {
-    const { start, end } = monthRange(month)
-    query = query.gte('tx_date', start).lte('tx_date', end)
-  }
-  if (dateFrom) query = query.gte('tx_date', dateFrom)
-  if (dateTo) query = query.lte('tx_date', dateTo)
-  if (minRm != null) query = query.gte('money_rm', minRm)
-  if (maxRm != null) query = query.lte('money_rm', maxRm)
-  if (recordedBy) query = query.eq('recorded_by', recordedBy)
-  if (dealerId) query = query.eq('dealer_id', dealerId)
   const safeQ = sanitizeSearchTerm(q)
+  let searchOr: string | null = null
   if (safeQ) {
     // Matches /records' own search exactly (dealer name OR note OR
     // flag_reason) — previously name-only here, so a search that matched a
@@ -79,16 +62,40 @@ export async function GET(request: NextRequest) {
     const dealerIds = (matchingDealers ?? []).map((d) => d.id)
     const orParts = [`note.ilike.%${safeQ}%`, `flag_reason.ilike.%${safeQ}%`]
     if (dealerIds.length) orParts.push(`dealer_id.in.(${dealerIds.join(',')})`)
-    query = query.or(orParts.join(','))
+    searchOr = orParts.join(',')
   }
 
-  const { data: rows } = await query
-  const txRows = (rows as unknown as TxRow[] | null) ?? []
-  // .limit(2000) with no signal if hit — "export the audit trail" implies
-  // "the whole record," so a silently partial file is a real footgun for
-  // anyone pulling this for a dispute. Not a precise "there are exactly N
-  // more" count, just an honest "this isn't everything, narrow your filter."
-  const truncated = txRows.length === 2000
+  // A fresh query per page: each request is built and sent on its own, and a shared builder
+  // would have its range overwritten by the request racing it.
+  const build = () => {
+    let query = supabase
+      .from('transactions')
+      .select('tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, dealers(company_name)')
+      .order('tx_date', { ascending: sortAscending })
+      .order('created_at', { ascending: sortAscending })
+      .order('id')
+    if (status !== 'all') query = query.eq('status', status)
+    if (txType) query = query.eq('type', txType)
+    if (month) {
+      const { start, end } = monthRange(month)
+      query = query.gte('tx_date', start).lte('tx_date', end)
+    }
+    if (dateFrom) query = query.gte('tx_date', dateFrom)
+    if (dateTo) query = query.lte('tx_date', dateTo)
+    if (minRm != null) query = query.gte('money_rm', minRm)
+    if (maxRm != null) query = query.lte('money_rm', maxRm)
+    if (recordedBy) query = query.eq('recorded_by', recordedBy)
+    if (dealerId) query = query.eq('dealer_id', dealerId)
+    if (searchOr) query = query.or(searchOr)
+    return query
+  }
+
+  // All of it. The old ".limit(2000)" was really 1,000 — the API caps every request there and
+  // says nothing — so `truncated` below could never be true and the file was cut with no
+  // warning: "export the audit trail" quietly meant "the newest third of it". Now paged to the
+  // end; fetchAll refuses (rather than truncates) if a filter somehow matches 200,000 rows.
+  const rows = await fetchAll<TxRow>((from, to) => build().range(from, to) as unknown as PromiseLike<{ data: TxRow[] | null; error: { message: string } | null }>)
+  const txRows = rows
 
   const lines = [
     ['Date', 'Dealer', 'Type', 'In (RM)', 'Out (pts)', 'Rate', 'Your 2%', 'Coupon (RM)', 'Delivery', 'Status'].map(csvCell).join(','),
@@ -127,10 +134,6 @@ export async function GET(request: NextRequest) {
         csvCell(tx.status),
       ].join(',')
     )
-  }
-
-  if (truncated) {
-    lines.push([csvCell('⚠ Hit the 2000-row export cap — this is not the full result set. Narrow your filters and export again to see the rest.')].join(','))
   }
 
   const csv = '﻿' + lines.join('\r\n')

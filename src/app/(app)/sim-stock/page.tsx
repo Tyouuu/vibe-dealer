@@ -16,6 +16,7 @@ import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { PageHeader } from '../page-header'
 import { Pagination } from '../pagination'
+import { allRows } from '@/lib/fetch-all'
 import { ScrollFade } from '../scroll-fade'
 import { BandHeading } from './elements'
 import { formatMYR } from '@/lib/money'
@@ -78,17 +79,28 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const [{ data: balanceRows }, { data: dealers }, { data: orderRows }, { data: profiles }] = await Promise.all([
     supabase.from('sim_stock_balance').select('sim_type, total_intake, total_sold, available'),
     supabase.from('dealers_directory').select('id, company_name, address').order('company_name', { ascending: true }),
+    // Every order, paged: the totals and the shelf reckoning below are added up from these rows,
+    // and one request stops at 1,000 without an error. Newest first, id as the tiebreaker so the
+    // pages cannot repeat or skip a row.
     isFinance
-      ? supabase
-          .from('sim_orders')
-          .select(
-            'id, dealer_id, order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by, dealers(company_name)'
-          )
-          .order('order_date', { ascending: false })
-      : supabase
-          .from('sim_orders_directory')
-          .select('id, dealer_id, order_date, sim_type, quantity, unit_price_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by')
-          .order('order_date', { ascending: false }),
+      ? allRows((from, to) =>
+          supabase
+            .from('sim_orders')
+            .select(
+              'id, dealer_id, order_date, sim_type, quantity, unit_price_rm, unit_cost_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by, dealers(company_name)'
+            )
+            .order('order_date', { ascending: false })
+            .order('id')
+            .range(from, to),
+        )
+      : allRows((from, to) =>
+          supabase
+            .from('sim_orders_directory')
+            .select('id, dealer_id, order_date, sim_type, quantity, unit_price_rm, shipping_fee_rm, shipping_invoice_path, esim_codes, delivery_status, adjusts_id, note, recorded_by, delivered_by')
+            .order('order_date', { ascending: false })
+            .order('id')
+            .range(from, to),
+        ),
     supabase.from('staff_directory').select('id, display_name'),
   ])
 
@@ -104,10 +116,14 @@ export default async function SimStockPage({ searchParams }: PageProps) {
 
   let intakes: IntakeRow[] = []
   if (isFinance) {
-    const { data } = await supabase
-      .from('sim_stock_intakes')
-      .select('id, intake_date, sim_type, quantity, cost_per_unit_rm, note, recorded_by, adjusts_id')
-      .order('intake_date', { ascending: false })
+    const { data } = await allRows((from, to) =>
+      supabase
+        .from('sim_stock_intakes')
+        .select('id, intake_date, sim_type, quantity, cost_per_unit_rm, note, recorded_by, adjusts_id')
+        .order('intake_date', { ascending: false })
+        .order('id')
+        .range(from, to),
+    )
     intakes = (data as IntakeRow[] | null) ?? []
   }
 
@@ -116,7 +132,10 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   // would return an empty list and produce a confident "nothing owed".
   let packageSales: { dealer_id: string; package: string | null; quantity: number | null }[] = []
   if (isFinance) {
-    const { data } = await supabase.from('transactions').select('dealer_id, package, quantity').eq('type', 'package').neq('status', 'flagged')
+    // All-time package sales, paged (see the orders read above).
+    const { data } = await allRows((from, to) =>
+      supabase.from('transactions').select('dealer_id, package, quantity').eq('type', 'package').neq('status', 'flagged').order('id').range(from, to),
+    )
     packageSales = data ?? []
   }
   const cardsOwed = cardsOwedByDealer(packageSales, orders)

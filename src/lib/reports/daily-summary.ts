@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ReportPeriod } from './report-period'
+import { allRows } from '@/lib/fetch-all'
 
 export type DailySummary = {
   /** The period as it is printed in the subject line and the heading. */
@@ -29,12 +30,17 @@ export type DailySummary = {
 // nobody asked.
 export async function getReportSummary(supabase: SupabaseClient, period: ReportPeriod): Promise<DailySummary> {
   const [{ data: tx }, { count: pendingCount }, { count: saleDeliveries }, { count: orderDeliveries }] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select('dealer_id, points, commission_rm, dealers(company_name)')
-      .eq('status', 'verified')
-      .gte('tx_date', period.from)
-      .lte('tx_date', period.to),
+    // Paged: a weekly or monthly report covers more than the 1,000 rows one request returns.
+    allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('dealer_id, points, commission_rm, dealers(company_name)')
+        .eq('status', 'verified')
+        .gte('tx_date', period.from)
+        .lte('tx_date', period.to)
+        .order('id')
+        .range(from, to),
+    ),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     // Read from the tables, not delivery_queue: that view is gated on the signed-in
     // role and this runs from a cron with no user, so it would come back empty. The

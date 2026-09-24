@@ -22,6 +22,7 @@ import { siteOrigin } from '@/lib/site-url'
 import { cardsOwedByDealer } from '@/lib/sim-stock'
 import { safeListPath } from '@/lib/list-context'
 import { deliverySimLabel, deliveryWhat } from '@/lib/delivery-labels'
+import { allRows } from '@/lib/fetch-all'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — Vibe456',
@@ -248,17 +249,21 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const rateHistoryNameById = new Map<string, string>()
 
   if (isFinance) {
-    // No .limit() — the sidebar's Lifetime Top-up/Commission figures are a
-    // real sum over txRows below, and the table above them is genuinely
-    // titled "All Transactions". A cap here would silently under-count both
-    // for any dealer who outlives it, with no indicator that either was
-    // ever truncated.
-    const { data } = await supabase
-      .from('transactions')
-      .select('id, tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note, receipt_url')
-      .eq('dealer_id', id)
-      .order('tx_date', { ascending: false })
-      .order('created_at', { ascending: false })
+    // Every row this dealer has, paged — the sidebar's Lifetime Top-up/Commission figures are a
+    // real sum over txRows below, and the table above them is titled "All Transactions". Leaving
+    // off .limit() is not enough: the API itself stops at 1,000 rows per request and says nothing,
+    // so a dealer past that would have both figures silently under-counted. `id` last keeps the
+    // pages from repeating or skipping a row.
+    const { data } = await allRows((from, to) =>
+      supabase
+        .from('transactions')
+        .select('id, tx_date, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, delivery_status, status, flag_reason, note, receipt_url')
+        .eq('dealer_id', id)
+        .order('tx_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    )
     txRows = (data as TxRow[] | null) ?? []
 
     const { data: rateHistoryData } = await supabase
@@ -285,11 +290,15 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
       rateHistoryNameById.set(p.id, p.display_name ?? '—')
     }
   } else {
-    const { data } = await supabase
-      .from('delivery_queue')
-      .select('id, tx_date, package, sim_type, delivery_status, source, quantity')
-      .eq('dealer_id', id)
-      .order('tx_date', { ascending: false })
+    const { data } = await allRows((from, to) =>
+      supabase
+        .from('delivery_queue')
+        .select('id, tx_date, package, sim_type, delivery_status, source, quantity')
+        .eq('dealer_id', id)
+        .order('tx_date', { ascending: false })
+        .order('id')
+        .range(from, to),
+    )
     deliveryRows = (data as DeliveryRow[] | null) ?? []
   }
 

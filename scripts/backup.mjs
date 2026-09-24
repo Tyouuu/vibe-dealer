@@ -92,6 +92,7 @@ const TABLES = [
 // Views hold no data of their own, so they are not backed up — but they are
 // listed so that a NEW view is a deliberate decision rather than noise.
 const VIEWS = [
+  'credit_ledger',
   'dealer_last_verified_activity',
   'dealers_directory',
   'delivery_queue',

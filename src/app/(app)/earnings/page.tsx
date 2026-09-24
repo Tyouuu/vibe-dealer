@@ -10,6 +10,7 @@ import { formatMYR } from '@/lib/money'
 import { todayInMalaysia, formatMonthLabel } from '@/lib/month'
 import { earningsFrom, isEarningsPeriod, periodRange, PERIOD_LABEL, type EarningsPeriod, type EarningsTx } from '@/lib/earnings'
 import { LiveBadge, CountUp } from './live'
+import { allRows } from '@/lib/fetch-all'
 
 export const metadata: Metadata = {
   title: 'Earnings — Vibe456',
@@ -53,12 +54,17 @@ export default async function EarningsPage({
   const { from, to } = periodRange(period, today)
 
   const supabase = await createClient()
-  let q = supabase
-    .from('transactions')
-    .select('dealer_id, tx_date, type, package, quantity, status, commission_rm, dealers(company_name, region)')
-    .lte('tx_date', to)
-  if (from) q = q.gte('tx_date', from)
-  const { data: rows } = await q
+  // Paged, and a fresh query per page: a month (and certainly "everything") passes the 1,000
+  // rows one request returns, and the API stops there without an error — the hero figure, the
+  // card/commission split and the ranking below would all read a fraction of the truth.
+  const { data: rows } = await allRows((lo, hi) => {
+    let q = supabase
+      .from('transactions')
+      .select('dealer_id, tx_date, type, package, quantity, status, commission_rm, dealers(company_name, region)')
+      .lte('tx_date', to)
+    if (from) q = q.gte('tx_date', from)
+    return q.order('id').range(lo, hi)
+  })
 
   type Row = EarningsTx & { dealers: { company_name: string; region: string | null } | { company_name: string; region: string | null }[] | null }
   const tx = (rows as Row[] | null) ?? []

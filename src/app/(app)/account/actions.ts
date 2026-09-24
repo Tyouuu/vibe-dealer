@@ -5,6 +5,58 @@ import { requireUser } from '@/lib/auth/dal'
 import { REPORT_FREQUENCIES } from '@/lib/reports/report-period'
 import { createClient } from '@/lib/supabase/server'
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
+import { pushConfigured, sendPushToUsers } from '@/lib/push'
+import { testPush } from '@/lib/push-messages'
+
+// ---- phone alerts (0053) -------------------------------------------------------
+
+export async function savePushSubscription(
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  userAgent: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireUser()
+  if (!pushConfigured()) return { ok: false, error: 'Phone alerts are not set up on this server yet.' }
+  const endpoint = sub?.endpoint
+  const p256dh = sub?.keys?.p256dh
+  const auth = sub?.keys?.auth
+  // https only: a push endpoint is always one, and this is the field the server will
+  // later POST to, so it does not get to be an arbitrary address.
+  if (typeof endpoint !== 'string' || !endpoint.startsWith('https://') || endpoint.length > 2048 || !p256dh || !auth) {
+    return { ok: false, error: 'That is not a valid phone subscription.' }
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('save_push_subscription', {
+    p_endpoint: endpoint,
+    p_p256dh: p256dh,
+    p_auth: auth,
+    p_user_agent: userAgent.slice(0, 400),
+  })
+  if (error) return { ok: false, error: 'Could not save this phone. Try again.' }
+  return { ok: true }
+}
+
+export async function removePushSubscription(endpoint: string): Promise<void> {
+  await requireUser()
+  const supabase = await createClient()
+  await supabase.rpc('delete_push_subscription', { p_endpoint: endpoint })
+}
+
+// Whether the server knows this exact phone for the person asking — RLS narrows the
+// read to their own rows, so someone else's endpoint simply comes back false.
+export async function getPushStatus(endpoint: string): Promise<boolean> {
+  await requireUser()
+  const supabase = await createClient()
+  const { data } = await supabase.from('push_subscriptions').select('id').eq('endpoint', endpoint).maybeSingle()
+  return Boolean(data)
+}
+
+export async function sendTestPush(): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser()
+  if (!pushConfigured()) return { ok: false, error: 'Phone alerts are not set up on this server yet.' }
+  const r = await sendPushToUsers([user.id], testPush())
+  if (r.sent === 0) return { ok: false, error: 'No phone is set up for your account yet. Turn it on first.' }
+  return { ok: true }
+}
 
 export async function setNotificationsMasterEnabled(enabled: boolean) {
   await requireUser()

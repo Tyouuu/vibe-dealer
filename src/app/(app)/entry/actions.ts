@@ -2,6 +2,8 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { notifyShipQueue } from '@/lib/push'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, type PackageCode } from '@/lib/packages'
@@ -208,6 +210,14 @@ export async function createTransaction(formData: FormData) {
     const { error: updateError } = await recomputeDealerRate(supabase, dealerId, user.id)
 
     if (updateError) fail('Transaction recorded, but updating the dealer package failed: ' + updateError.message)
+  }
+
+  // A package with a physical SIM is a parcel someone now has to send, the same as a
+  // direct SIM order — so it reaches the same phones. Only when this call actually
+  // created the row: the retry path (23505) returns none and must not announce again.
+  const newTransactionId = inserted?.id
+  if (type === 'package' && simType === 'physical' && newTransactionId && pkg) {
+    after(() => notifyShipQueue({ kind: 'package_sale', refId: newTransactionId, dealerId, actorId: user.id, quantity, pkg }))
   }
 
   revalidatePath('/records')

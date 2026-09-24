@@ -21,6 +21,6 @@ export const config = {
   // shortcut with a generic grey square. Confirmed live: before this line,
   // `curl /manifest.webmanifest` returned a 307, not the manifest.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|monitoring|manifest\\.webmanifest|apple-icon|pwa-icon-\\d+|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|monitoring|manifest\\.webmanifest|sw\\.js|apple-icon|pwa-icon-\\d+|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

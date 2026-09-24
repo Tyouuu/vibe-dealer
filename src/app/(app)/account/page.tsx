@@ -5,6 +5,8 @@ import { getNotificationPrefs, NOTIFICATION_CATEGORIES } from '@/lib/notificatio
 import { parseUserAgent } from '@/lib/auth/login-events'
 import { ChangePasswordForm } from './change-password-form'
 import { NotificationPrefsForm } from './notification-prefs-form'
+import { PhoneNotifications } from './phone-notifications'
+import { pushConfigured } from '@/lib/push'
 import { ReportSenderNameForm } from './report-sender-name-form'
 import { ReportFrequencyForm } from './report-frequency-form'
 import { SessionsPanel, type SignInEvent } from './sessions-panel'
@@ -55,6 +57,10 @@ export default async function AccountPage() {
   const since = latest ? formatSignInTime(latest.created_at) : null
   const pastHistory = history.slice(1)
   const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
+  // Phone alerts carry the Deliveries category, so they only make sense for a role
+  // that has it (master and cs) — an accountant would be offered a switch for a thing
+  // that can never reach them.
+  const showPhoneAlerts = pushConfigured() && visibleCategories.some((c) => c.key === 'deliveries')
 
   const sections = [
     { id: 'profile', label: 'Profile' },
@@ -152,7 +158,7 @@ export default async function AccountPage() {
       <section id="notifications" className="app-card scroll-mt-3">
         <h2 className="form-block-title">Notifications</h2>
         <p className="form-block-desc">
-          Pick which alerts reach you. Switching a category off silences it everywhere — the bell, the toast and the daily email.
+          Pick which alerts reach you. Switching a category off silences it everywhere — the bell, the toast, the daily email and your phone.
         </p>
         {/* Capped. A checkbox at the far right of a 1300px row is a long way
             from the label that says what it does; Fitts's law aside, the eye
@@ -160,6 +166,11 @@ export default async function AccountPage() {
         <div>
           <NotificationPrefsForm masterEnabled={prefs.masterEnabled} categories={prefs.categories} visibleCategories={visibleCategories} />
         </div>
+        {showPhoneAlerts && (
+          <div className="mt-4">
+            <PhoneNotifications publicKey={process.env.VAPID_PUBLIC_KEY ?? ''} />
+          </div>
+        )}
       </section>
 
       <section id="sessions" className="app-card scroll-mt-3">

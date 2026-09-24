@@ -69,6 +69,7 @@ const TABLES = [
   'profiles',
   'dealers',
   'dealer_pins',
+  'push_subscriptions',
   'dealer_rate_history',
   'credit_purchases',
   'transactions',
@@ -84,6 +85,7 @@ const TABLES = [
   // Included so the snapshot is a complete picture of the schema's contents.
   'alert_log',
   'report_summaries',
+  'push_events',
   'rate_limit_hits',
 ]
 

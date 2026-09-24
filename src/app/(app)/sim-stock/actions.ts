@@ -2,6 +2,8 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { notifyShipQueue } from '@/lib/push'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { isSimStockType, isPhysicalSimType } from '@/lib/sim-stock'
@@ -90,7 +92,7 @@ export async function createSimOrder(formData: FormData) {
 
   const isPhysical = isPhysicalSimType(simType)
   const supabase = await createClient()
-  const { error } = await supabase.rpc('create_sim_order', {
+  const { data: orderId, error } = await supabase.rpc('create_sim_order', {
     p_dealer_id: dealerId,
     p_order_date: orderDate,
     p_quantity: quantity,
@@ -105,6 +107,13 @@ export async function createSimOrder(formData: FormData) {
   // prefix-stripping this used to do inline — one place for every raise the
   // database can reach a form with.
   if (error) failOnLog(friendlyDbError(error.message))
+
+  // Tell whoever ships. After the response, so the form never waits on a push
+  // service; and only for cards that physically travel (an eSIM is instant).
+  // notifyShipQueue swallows its own errors and ignores a repeat of the same order.
+  if (isPhysical && typeof orderId === 'string') {
+    after(() => notifyShipQueue({ kind: 'sim_order', refId: orderId, dealerId, actorId: user.id, quantity, simType }))
+  }
 
   revalidatePath('/sim-stock')
   revalidatePath('/delivery')

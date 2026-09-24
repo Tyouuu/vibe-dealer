@@ -241,7 +241,10 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   const activity = (await getDealerActivityMap(supabase)).get(id)
   // Same RLS boundary as the transactions query below — cs has no SELECT on
   // transactions at all, so ranking (derived from it) is finance-only too.
-  const ranking = isFinance ? (await getDealerRankingMap(supabase)).get(id) : undefined
+  const rankingResult = isFinance ? await getDealerRankingMap(supabase) : null
+  const ranking = rankingResult?.map.get(id)
+  // A failed read is not "no top-up yet" — say which it is.
+  const rankingUnavailable = rankingResult?.unavailable ?? false
 
   let txRows: TxRow[] = []
   let deliveryRows: DeliveryRow[] = []
@@ -373,7 +376,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   className={`pill pill-neutral ${ranking && ranking.rank <= 3 ? 'font-semibold text-paper' : ''}`}
                   title={ranking ? `#${ranking.rank} by cumulative top-up` : undefined}
                 >
-                  {ranking ? `#${ranking.rank} by top-up` : 'No top-up yet'}
+                  {ranking ? `#${ranking.rank} by top-up` : rankingUnavailable ? 'Rank unavailable' : 'No top-up yet'}
                 </span>
               )}
               {canManage && (
@@ -478,7 +481,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
               label: 'Rank by top-up',
               value: ranking ? `#${ranking.rank}` : '—',
               href: '/dealers',
-              sub: ranking ? 'across all dealers' : 'nothing recorded yet',
+              sub: ranking ? 'across all dealers' : rankingUnavailable ? 'could not be loaded — refresh' : 'nothing recorded yet',
             },
           ]}
         />

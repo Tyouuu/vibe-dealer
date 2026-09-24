@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { packagePush, simOrderPush, testPush } from './push-messages'
+import { packagePush, simOrderPush, systemCheckPush, systemCheckRefId, testPush } from './push-messages'
 
 describe('simOrderPush', () => {
   it('says who and how many, and opens the delivery queue', () => {
@@ -34,5 +34,36 @@ describe('packagePush', () => {
 describe('testPush', () => {
   it('opens Account, not the queue', () => {
     expect(testPush().url).toBe('/account')
+  })
+})
+
+describe('systemCheckPush', () => {
+  it('says how many rules are broken and opens System Check', () => {
+    expect(systemCheckPush({ day: '2026-09-25', headline: '2 things in the books do not add up' })).toEqual({
+      title: 'System Check',
+      body: '2 things in the books do not add up',
+      url: '/system-check',
+      tag: 'system-check-2026-09-25',
+    })
+  })
+
+  it('never puts a dealer, an amount or a point figure on the lock screen', () => {
+    const p = systemCheckPush({ day: '2026-09-25', headline: 'Today’s system check could not run' })
+    // What is read on the lock screen is the title and the body; the tag is the date, which is not a figure.
+    expect(JSON.stringify({ title: p.title, body: p.body })).not.toMatch(/RM|pts|points|\d{3,}/)
+  })
+})
+
+describe('systemCheckRefId', () => {
+  it('is a uuid, because that is what push_events keys on', () => {
+    expect(systemCheckRefId('2026-09-25')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  })
+
+  it('is the same for the same day, so a second run that morning finds it claimed', () => {
+    expect(systemCheckRefId('2026-09-25')).toBe(systemCheckRefId('2026-09-25'))
+  })
+
+  it('is different on another day, so tomorrow can announce again', () => {
+    expect(systemCheckRefId('2026-09-25')).not.toBe(systemCheckRefId('2026-09-26'))
   })
 })

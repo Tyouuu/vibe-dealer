@@ -57,10 +57,10 @@ export default async function AccountPage() {
   const since = latest ? formatSignInTime(latest.created_at) : null
   const pastHistory = history.slice(1)
   const visibleCategories = NOTIFICATION_CATEGORIES.filter((c) => c.roles.includes(user.role))
-  // Phone alerts carry the Deliveries category, so they only make sense for a role
-  // that has it (master and cs) — an accountant would be offered a switch for a thing
-  // that can never reach them.
-  const showPhoneAlerts = pushConfigured() && visibleCategories.some((c) => c.key === 'deliveries')
+  // Phone alerts carry two categories: Deliveries (a parcel to ship: master and cs) and Credit &
+  // reconciliation (a failed system check: master and accountant). Shown to any role that has one of them —
+  // a role with neither would be offered a switch for a thing that can never reach it.
+  const showPhoneAlerts = pushConfigured() && visibleCategories.some((c) => c.key === 'deliveries' || c.key === 'credit_reconciliation')
 
   const sections = [
     { id: 'profile', label: 'Profile' },

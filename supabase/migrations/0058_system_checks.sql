@@ -292,7 +292,17 @@ begin
     ), '[]'::jsonb)
   from b;
 
-  -- 11. A month that was closed as matching Vibe still matches ----------------------------------
+  -- 11. A closed month is still exactly as it was when it was closed ---------------------------
+  --     Closing a month says "our verified total, less Vibe's statement, is THIS" — nothing when they
+  --     matched, or the gap that was recorded and accepted. Either way the answer must not have moved
+  --     since. A month closed over a gap used to be skipped altogether, which left the one kind of
+  --     month most likely to be wrong unwatched.
+  --
+  --     Which gap was accepted is the variance opened by the LAST close, not just the latest variance:
+  --     a month reopened and closed again clean leaves the older variance behind, and comparing against
+  --     that would blame a correct month. The last close is the latest 'Reconciliation marked complete'
+  --     revision; the variance it opened was written in the same request, a moment before. A month
+  --     with no such revision (older than the audit trail) is compared against its latest variance.
   return query
   with m as (
     select cs.month, cs.company_total_points,
@@ -300,11 +310,25 @@ begin
         select sum(t.points) from transactions t
         where t.status = 'verified' and t.tx_date >= cs.month and t.tx_date < (cs.month + interval '1 month')::date
       ), 0) as sys_pts,
-      exists (select 1 from statement_variances v where v.month = cs.month) as has_variance
+      (
+        select max(r.created_at) from company_statement_revisions r
+        where r.month = cs.month and r.note like 'Reconciliation marked complete%'
+      ) as closed_at
     from company_statements cs
     where cs.reconciled is true
+  ), e as (
+    select m.*,
+      coalesce((
+        select v.gap_points from statement_variances v
+        where v.month = m.month and (m.closed_at is null or v.created_at >= m.closed_at - interval '1 minute')
+        order by v.created_at desc limit 1
+      ), 0) as accepted_gap
+    from m
   ), b as (
-    select m.*, (not m.has_variance and (m.company_total_points is null or m.sys_pts <> m.company_total_points)) as bad from m
+    select e.*,
+      round(e.sys_pts - coalesce(e.company_total_points, 0), 2) as gap_now,
+      (e.company_total_points is null or round(e.sys_pts - e.company_total_points, 2) <> round(e.accepted_gap, 2)) as bad
+    from e
   )
   select
     'closed_months_hold'::text,
@@ -314,9 +338,13 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', null, 'dealer_id', null,
         'label', to_char(s.month, 'FMMonth YYYY'),
-        'detail', case when s.company_total_points is null
-          then 'Closed as reconciled, but no statement total was saved to reconcile against'
-          else format('Closed as matching Vibe''s statement (%s pts), but the verified entries now add up to %s pts', s.company_total_points, s.sys_pts) end))
+        'detail', case
+          when s.company_total_points is null
+            then 'Closed as reconciled, but no statement total was saved to reconcile against'
+          when s.accepted_gap = 0
+            then format('Closed as matching Vibe''s statement (%s pts), but the verified entries now add up to %s pts', s.company_total_points, s.sys_pts)
+          else format('Closed over a recorded gap of %s pts against Vibe''s statement (%s pts), but the gap is now %s pts — the verified entries add up to %s pts',
+            s.accepted_gap, s.company_total_points, s.gap_now, s.sys_pts) end))
       from (select * from b where b.bad order by b.month desc limit 5) s
     ), '[]'::jsonb)
   from b;

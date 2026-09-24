@@ -42,11 +42,23 @@ export async function recordCreditPurchase(formData: FormData) {
   const points = Number(formData.get('points'))
   const note = String(formData.get('note') ?? '').trim() || null
   const reference = String(formData.get('reference') ?? '').trim().slice(0, 80) || null
+  const rawKey = String(formData.get('idempotency_key') ?? '').trim()
+  const idempotencyKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawKey) ? rawKey : null
 
   if (!Number.isFinite(moneyRm) || moneyRm < 0) fail('Please enter a valid amount.')
   if (!Number.isFinite(points) || points <= 0) fail('Please enter a valid points amount.')
 
   const supabase = await createClient()
+
+  // First of all, before anything is uploaded or checked: has THIS form already saved this purchase? A retry
+  // — a weak connection, a second press before the page moved on — carries the same key, and it did work
+  // the first time. Answered as the success it is, not as an error: telling someone their second press
+  // failed sends them off to try a third. It has to come before the reference check below, which would
+  // otherwise find the first attempt's row and refuse the retry as a duplicate.
+  if (idempotencyKey) {
+    const { data: already } = await supabase.from('credit_purchases').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+    if (already) redirect('/purchases?saved=1')
+  }
 
   // The same invoice logged twice puts credit in the ledger that was only ever bought once — credit that
   // does not exist, which is the one error that lets the business sell what it does not have. So a
@@ -81,7 +93,11 @@ export async function recordCreditPurchase(formData: FormData) {
     reference,
     receipt_url: receipt.path,
     recorded_by: user.id,
+    idempotency_key: idempotencyKey,
   })
+
+  // Two presses landing together both passed the check above; the unique index (0060) let one through.
+  if (error?.code === '23505' && idempotencyKey) redirect('/purchases?saved=1')
 
   if (error && isPeriodLockError(error.message)) fail(periodLockedMessage(purchaseDate))
   if (error) fail(friendlyDbError(error.message))

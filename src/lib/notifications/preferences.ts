@@ -13,7 +13,7 @@ export type NotificationCategory = 'pending_review' | 'deliveries' | 'credit_rec
 export const NOTIFICATION_CATEGORIES: { key: NotificationCategory; label: string; description: string; roles: Role[] }[] = [
   { key: 'pending_review', label: 'Pending review', description: 'Transactions waiting on you', roles: ['master', 'accountant'] },
   { key: 'deliveries', label: 'Deliveries', description: 'SIM delivery queue', roles: ['master', 'cs'] },
-  { key: 'credit_reconciliation', label: 'Credit & reconciliation', description: 'Low balance, unreconciled statements', roles: ['master', 'accountant'] },
+  { key: 'credit_reconciliation', label: 'Credit & reconciliation', description: 'Low balance, unreconciled statements, a failed system check', roles: ['master', 'accountant'] },
   { key: 'dealer_activity', label: 'Dealer activity', description: 'Needs-follow-up alerts for quiet dealers', roles: ['master', 'accountant', 'cs'] },
 ]
 

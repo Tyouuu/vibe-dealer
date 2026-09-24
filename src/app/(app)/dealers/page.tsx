@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
-import { getDealerRankingMap, type DealerRanking } from '@/lib/dealer-ranking'
+import { getDealerRankingMap, type DealerRanking, type RankingResult } from '@/lib/dealer-ranking'
 import { dealerMatchNote, dealerSearchFilter, sanitizeSearchTerm } from '@/lib/search'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
@@ -143,12 +143,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
     query = query.eq('region', region)
   }
 
-  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingMap, { data: pinRows }, { data: packageSaleRows }, { data: simOrderRows }] =
+  const [{ data: dealers, count }, { data: regionRows }, activityMap, rankingResult, { data: pinRows }, { data: packageSaleRows }, { data: simOrderRows }] =
     await Promise.all([
       query,
       supabase.from('dealers_directory').select('region').not('region', 'is', null),
       getDealerActivityMap(supabase),
-      showRanking ? getDealerRankingMap(supabase) : Promise.resolve(new Map<string, DealerRanking>()),
+      showRanking ? getDealerRankingMap(supabase) : Promise.resolve<RankingResult>({ map: new Map<string, DealerRanking>(), unavailable: false }),
       // Unfiltered by the query above: a pin has to survive the reader
       // changing region or search, or "pinned first" would only hold on the
       // unfiltered view and quietly stop meaning anything everywhere else.
@@ -193,6 +193,10 @@ export default async function DealersPage({ searchParams }: PageProps) {
   const bought = packagesBoughtByDealer(packageSales)
 
   const regions = Array.from(new Set((regionRows ?? []).map((r) => r.region))).sort() as string[]
+  // The ranking could not be read. Everything derived from it — the Rank and Top-up columns, the volume
+  // order, "Ever topped up" — is MISSING, not zero, and the page says so instead of drawing it.
+  const rankingMap = rankingResult.map
+  const rankingUnavailable = rankingResult.unavailable
 
   let rows: DealerRow[] = ((dealers as (Dealer & { rate?: number | null })[] | null) ?? []).map((d) => {
     const activity = activityMap.get(d.id)
@@ -394,11 +398,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
             // getDealerRankingMap sums every verified transaction ever, not
             // the current month — so this cannot be labelled "this period".
             label: 'Ever topped up',
-            value: sellingCount.toLocaleString(),
+            value: rankingUnavailable ? '—' : sellingCount.toLocaleString(),
             href: '/records?status=verified',
-            tone: neverSoldCount > sellingCount ? 'caution' : 'normal',
-            sub:
-              neverSoldCount > 0
+            tone: !rankingUnavailable && neverSoldCount > sellingCount ? 'caution' : 'normal',
+            sub: rankingUnavailable
+              ? 'could not be loaded — refresh to try again'
+              : neverSoldCount > 0
                 ? `${neverSoldCount.toLocaleString()} on the roster never have`
                 : 'every dealer has verified volume on record',
           },
@@ -442,6 +447,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
         </div>
       )}
       {importError && <div className="alert alert-bad">{importError}</div>}
+      {rankingUnavailable && (
+        <div className="alert alert-warn">
+          The top-up ranking could not be loaded, so the Rank and Top-up columns and &ldquo;Ever topped up&rdquo; are missing — they are not zero. Refresh to try again.
+        </div>
+      )}
 
       {/* The list is the page — no card. See .index-surface in globals.css
           for why, and for the four products that build this screen the same

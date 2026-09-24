@@ -7,6 +7,7 @@ import { todayInMalaysia, previousMonth } from '@/lib/month'
 import { decideAlerts, type AlertKind } from '@/lib/alerts'
 import { reportToSentry } from '@/lib/sentry-report'
 import { runAndStoreSystemChecks } from '@/lib/system-check-run'
+import { notifySystemCheck } from '@/lib/push'
 import { problemLines } from '@/lib/system-check'
 
 // Sends nothing on a good day.
@@ -118,6 +119,11 @@ export async function GET(request: NextRequest) {
   if (!alerts.length) {
     return NextResponse.json({ ok: true, date: today, sent: 0, note: 'nothing needed saying', systemCheck: { ran: systemCheck.ran, failing: systemCheck.problems.length } })
   }
+
+  // The phone first, and independent of the email that follows: a mail service that is down must not
+  // also silence the alert on a phone. Claimed once a day inside notifySystemCheck.
+  const systemAlert = alerts.find((a) => a.kind === 'system_check')
+  if (systemAlert) await notifySystemCheck({ day: today, headline: systemAlert.headline })
 
   // Masters and the accountant. Between them they are the people who can
   // actually resolve any of these — the master buys the credit, either of them

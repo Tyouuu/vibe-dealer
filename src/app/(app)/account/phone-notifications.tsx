@@ -108,7 +108,7 @@ export function PhoneNotifications({ publicKey }: { publicKey: string }) {
     <div className="rounded-lg border border-ink-800 px-3.5 py-3">
       <p className="text-sm font-semibold text-paper">On this phone</p>
       <p className="mt-0.5 text-[12px] text-paper-dim">
-        A notification when a SIM order or a package needs shipping, even with the app closed. It follows the Deliveries switch above.
+        A notification when a SIM order or a package needs shipping, or when the daily System Check finds something wrong, even with the app closed. It follows the switches above.
       </p>
 
       <div className="mt-3 flex flex-col gap-2.5" aria-live="polite">

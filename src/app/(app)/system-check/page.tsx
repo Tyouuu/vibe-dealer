@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/server'
 import { todayInMalaysia } from '@/lib/month'
 import { PermissionDenied } from '../permission-denied'
 import { PageHeader } from '../page-header'
-import { EmptyState } from '../empty-state'
 import { verdictOf, type CheckResult, type CheckStatus } from '@/lib/system-check'
 import { cleanStreak, dailyStates, malaysiaDate, type DayState, type RunSummary } from '@/lib/system-check-history'
 import { CheckNowButton } from './check-now-button'
@@ -98,11 +97,15 @@ export default async function SystemCheckPage({ searchParams }: PageProps) {
       {error && <div className="alert alert-bad">{error}</div>}
 
       {!latest ? (
-        <EmptyState
-          variant="cleared"
-          title="No check has run yet"
-          description="The first one runs by itself tomorrow morning. Press Check now to see where the books stand today."
-        />
+        // A card, not the dashed empty state: this is the state the page is in on its first day, and a page whose
+        // only content is a dashed outline has nothing on it to anchor the eye. The button that fixes it is in
+        // the header, so the card says what it does and where it is.
+        <div className="app-card mt-8">
+          <h2 className="text-[26px] font-semibold leading-tight tracking-[-.02em] text-paper">No check has run yet</h2>
+          <p className="mt-1.5 max-w-2xl text-[13px] text-paper-dim">
+            The first one runs by itself at 9 the next morning, and every morning after. Press Check now to see where the books stand today.
+          </p>
+        </div>
       ) : (
         <Report run={latest} history={(history ?? []) as RunSummary[]} today={today} />
       )}

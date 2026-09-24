@@ -140,3 +140,16 @@ describe('problemLines', () => {
     expect(lines.join(' ')).not.toContain('Ali Store')
   })
 })
+
+// The closed-month check finds the last close by the note the close action writes (0058, check 11). If
+// that wording ever changes in the action and not in the SQL, every month would look as though it had
+// never been closed over a gap, and the check would quietly compare against the wrong standard.
+describe('the closed-month check reads the notes the reconcile action writes', () => {
+  const action = fs.readFileSync(path.join(process.cwd(), 'src', 'app', '(app)', 'reconcile', 'actions.ts'), 'utf8')
+
+  it('the SQL looks for the note the action writes when a month is closed', () => {
+    expect(sql).toContain("r.note like 'Reconciliation marked complete%'")
+    expect(action).toContain("'Reconciliation marked complete'")
+    expect(action).toContain('`Reconciliation marked complete despite')
+  })
+})

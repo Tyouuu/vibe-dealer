@@ -28,6 +28,10 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Made once when the form opens and sent with every attempt: the same key is the same purchase, however
+  // many times a weak connection makes someone press Save (0060). Without it a retry with no invoice number
+  // typed was a second purchase — credit in the ledger that was only ever bought once.
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   const suggestedPoints = Math.round((Number(moneyRm) || 0) / (1 - CREDIT_PURCHASE_RATE))
   const points = pointsOverride ? Number(pointsOverride) : suggestedPoints
@@ -69,6 +73,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set('points', String(points))
+    formData.set('idempotency_key', idempotencyKey)
     setPendingFormData(formData)
     setConfirmOpen(true)
   }

@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { reportToSentry } from '@/lib/sentry-report'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/preferences'
 import { pickRecipients } from '@/lib/push-recipients'
-import { packagePush, simOrderPush, type PushPayload } from '@/lib/push-messages'
+import { packagePush, simOrderPush, systemCheckPush, systemCheckRefId, type PushPayload } from '@/lib/push-messages'
 
 // Off unless the three VAPID variables exist. The app runs the same with or without
 // them (the demo deployment has none): nothing is sent, and Account Settings says
@@ -114,5 +114,35 @@ export async function notifyShipQueue(ev: ShipEvent): Promise<void> {
     await sendPushToUsers(recipients, payload)
   } catch (e) {
     await reportToSentry(() => Sentry.captureException(e, { extra: { kind: ev.kind, refId: ev.refId } }))
+  }
+}
+
+// The morning check found something wrong, or could not run. For master and accountant — the two roles
+// that can act on it, and the two the email already goes to — and only those who have not turned the
+// Credit & reconciliation category off. Once a day at most: the day's alert is claimed first, so a second
+// run of the cron that morning (a manual retry, a late deploy) stays quiet. Never throws: this runs on top
+// of an email that is about to be sent, and a failed phone alert must not stop it.
+export async function notifySystemCheck(input: { day: string; headline: string }): Promise<void> {
+  try {
+    if (!pushConfigured()) return
+    const db = createServiceClient()
+
+    const claim = await db.from('push_events').insert({ ref_kind: 'system_check', ref_id: systemCheckRefId(input.day) })
+    if (claim.error) {
+      if (claim.error.code === '23505') return
+      throw new Error(claim.error.message)
+    }
+
+    const roles = NOTIFICATION_CATEGORIES.find((c) => c.key === 'credit_reconciliation')?.roles ?? []
+    const [{ data: profiles }, { data: prefs }] = await Promise.all([
+      db.from('profiles').select('id, role, active, notifications_enabled').in('role', roles),
+      db.from('notification_preferences').select('user_id, category, enabled').eq('category', 'credit_reconciliation'),
+    ])
+
+    const recipients = pickRecipients(profiles ?? [], prefs ?? [], 'credit_reconciliation')
+    if (!recipients.length) return
+    await sendPushToUsers(recipients, systemCheckPush(input))
+  } catch (e) {
+    await reportToSentry(() => Sentry.captureException(e, { extra: { day: input.day } }))
   }
 }

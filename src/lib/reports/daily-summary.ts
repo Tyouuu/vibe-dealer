@@ -14,6 +14,8 @@ export type DailySummary = {
   commission: number
   mostActiveDealer: { name: string; points: number } | null
   pendingCount: number
+  /** Physical SIMs owed to dealers right now: package sales plus direct SIM card orders. */
+  deliveriesWaiting: number
 }
 
 // A range rather than a single day. The recipient now chooses daily, weekly or
@@ -26,7 +28,7 @@ export type DailySummary = {
 // the line somebody acts on; scoping it to last month would answer a question
 // nobody asked.
 export async function getReportSummary(supabase: SupabaseClient, period: ReportPeriod): Promise<DailySummary> {
-  const [{ data: tx }, { count: pendingCount }] = await Promise.all([
+  const [{ data: tx }, { count: pendingCount }, { count: saleDeliveries }, { count: orderDeliveries }] = await Promise.all([
     supabase
       .from('transactions')
       .select('dealer_id, points, commission_rm, dealers(company_name)')
@@ -34,6 +36,17 @@ export async function getReportSummary(supabase: SupabaseClient, period: ReportP
       .gte('tx_date', period.from)
       .lte('tx_date', period.to),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    // Read from the tables, not delivery_queue: that view is gated on the signed-in
+    // role and this runs from a cron with no user, so it would come back empty. The
+    // same two filters the view applies — a flagged sale is disputed, a correction
+    // row is a ledger entry and not a parcel.
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending').neq('status', 'flagged'),
+    supabase
+      .from('sim_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('delivery_status', 'pending')
+      .is('adjusts_id', null)
+      .in('sim_type', ['physical', 'physical_no_number']),
   ])
 
   const points = (tx ?? []).reduce((s, t) => s + Number(t.points), 0)
@@ -60,5 +73,6 @@ export async function getReportSummary(supabase: SupabaseClient, period: ReportP
     commission,
     mostActiveDealer,
     pendingCount: pendingCount ?? 0,
+    deliveriesWaiting: (saleDeliveries ?? 0) + (orderDeliveries ?? 0),
   }
 }

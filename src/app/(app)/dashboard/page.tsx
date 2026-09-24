@@ -1010,7 +1010,7 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
   ] = await Promise.all([
     supabase
       .from('delivery_queue')
-      .select('id, tx_date, company_name, address, package, sim_type, delivery_status', { count: 'exact' })
+      .select('id, tx_date, company_name, address, package, sim_type, delivery_status, source, quantity', { count: 'exact' })
       .eq('delivery_status', 'pending')
       .order('tx_date', { ascending: true })
       .limit(DELIVERY_TABLE_LIMIT),
@@ -1031,7 +1031,9 @@ async function CsDashboard({ supabase, userId, monthParam }: { supabase: Supabas
       company_name: row.company_name,
       address: row.address,
       package: row.package,
-      sim_type: row.sim_type as 'physical' | 'esim' | null,
+      sim_type: row.sim_type as DeliveryRow['sim_type'],
+      source: row.source as 'sale' | 'order',
+      quantity: row.quantity as number | null,
       delivery_status: row.delivery_status as 'na' | 'pending' | 'sent',
       days,
       warn: days >= DELIVERY_WARN_DAYS_THRESHOLD,

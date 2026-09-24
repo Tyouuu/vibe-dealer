@@ -21,6 +21,7 @@ import { formatDateLabel } from '@/lib/month'
 import { siteOrigin } from '@/lib/site-url'
 import { cardsOwedByDealer } from '@/lib/sim-stock'
 import { safeListPath } from '@/lib/list-context'
+import { deliverySimLabel, deliveryWhat } from '@/lib/delivery-labels'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — Vibe456',
@@ -67,7 +68,9 @@ type DeliveryRow = {
   id: string
   tx_date: string
   package: string | null
-  sim_type: 'physical' | 'esim' | null
+  sim_type: 'physical' | 'physical_no_number' | 'esim' | null
+  source?: 'sale' | 'order'
+  quantity?: number | null
   delivery_status: 'na' | 'pending' | 'sent'
 }
 
@@ -284,7 +287,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
   } else {
     const { data } = await supabase
       .from('delivery_queue')
-      .select('id, tx_date, package, sim_type, delivery_status')
+      .select('id, tx_date, package, sim_type, delivery_status, source, quantity')
       .eq('dealer_id', id)
       .order('tx_date', { ascending: false })
     deliveryRows = (data as DeliveryRow[] | null) ?? []
@@ -613,7 +616,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   <thead>
                     <tr>
                       <th className="th">Date</th>
-                      <th className="th">Package</th>
+                      <th className="th">Item</th>
                       <th className="th">SIM Type</th>
                       <th className="th">Status</th>
                       <th className="th">Action</th>
@@ -621,11 +624,11 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
                   </thead>
                   <tbody>
                     {deliveryRows.map((row) => (
-                      <tr key={row.id} className="tr-row">
+                      <tr key={row.id} className="tr-row h-[51px]">
                         <td className="td text-paper-dim">{row.tx_date}</td>
-                        <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
+                        <td className="td text-paper-dim">{deliveryWhat(row)}</td>
                         <td className="td">
-                          <span className="text-paper-dim">{row.sim_type === 'esim' ? 'eSIM' : 'Physical SIM'}</span>
+                          <span className="text-paper-dim">{deliverySimLabel(row)}</span>
                         </td>
                         <td className="td">
                           <DeliveryStatus status={row.delivery_status} />

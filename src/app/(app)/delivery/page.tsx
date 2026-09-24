@@ -18,9 +18,11 @@ type RawDeliveryRow = {
   company_name: string
   address: string | null
   tx_date: string
-  type: 'package' | 'topup'
+  type: 'package' | 'topup' | 'sim_order'
   package: string | null
-  sim_type: 'physical' | 'esim' | null
+  sim_type: 'physical' | 'physical_no_number' | 'esim' | null
+  source: 'sale' | 'order'
+  quantity: number | null
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
 }
@@ -48,7 +50,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
   // handing over a card that's already been sold.
   let query = supabase
     .from('delivery_queue')
-    .select('id, company_name, address, tx_date, type, package, sim_type, delivery_status, status')
+    .select('id, company_name, address, tx_date, type, package, sim_type, delivery_status, status, source, quantity')
     .neq('status', 'flagged')
     // A queue is worked oldest-first: the card that has waited longest is the one
     // the Waiting column exists to surface, and newest-first buried it at the
@@ -87,7 +89,7 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
           and the rows it describes. */}
       <PageHeader
         title="SIM Delivery"
-        subtitle="Physical SIMs ship to the office and then on to the dealer. eSIMs activate instantly — they only appear here under Show all, marked Instant."
+        subtitle="Physical SIMs — from a package sale or a SIM card order — ship to the office and then on to the dealer. eSIM package sales activate instantly and only appear here under Show all, marked Instant."
       />
 
       {error && <div className="alert alert-bad">{error}</div>}

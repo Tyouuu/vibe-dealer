@@ -73,8 +73,12 @@ function reportHtml(summary: Awaited<ReturnType<typeof getReportSummary>>, title
           <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${summary.mostActiveDealer?.name ? escapeHtml(summary.mostActiveDealer.name) : '—'}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0;">Pending Review</td>
-          <td style="padding: 8px 0; text-align: right; font-weight: bold;">${summary.pendingCount}</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee;">Pending Review</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${summary.pendingCount}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0;">SIM Deliveries Waiting</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: bold;">${summary.deliveriesWaiting}</td>
         </tr>
       </table>
     </div>

@@ -6,6 +6,7 @@ import { markDelivered, bulkMarkDelivered } from './actions'
 import { ConfirmSubmitButton } from '../confirm-submit-button'
 import { Modal } from '../modal'
 import { ScrollFade } from '../scroll-fade'
+import { deliverySimLabel, deliveryWhat } from '@/lib/delivery-labels'
 
 export type DeliveryRow = {
   id: string
@@ -13,7 +14,10 @@ export type DeliveryRow = {
   company_name: string
   address: string | null
   package: string | null
-  sim_type: 'physical' | 'esim' | null
+  sim_type: 'physical' | 'physical_no_number' | 'esim' | null
+  /** A package sale, or a direct SIM card order (0052). Absent means a sale. */
+  source?: 'sale' | 'order'
+  quantity?: number | null
   delivery_status: 'na' | 'pending' | 'sent'
   days: number
   warn: boolean
@@ -85,7 +89,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
               <th className="th">Date</th>
               <th className="th">Dealer</th>
               <th className="th">Ship To</th>
-              <th className="th">Package</th>
+              <th className="th">Item</th>
               <th className="th">SIM Type</th>
               <th className="th">Status</th>
               {/* The age was jammed into Status as "Pending · 58d". Those two
@@ -109,7 +113,7 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                 for one fact, which is what made two late rows read as an
                 emergency. The Waiting cell says it once. */}
             {rows.map((row) => (
-              <tr key={row.id} className="tr-row">
+              <tr key={row.id} className="tr-row h-[51px]">
                 {pendingRows.length > 0 && (
                   <td className="td">
                     {row.delivery_status === 'pending' && (
@@ -125,18 +129,18 @@ export function DeliveryTable({ rows }: { rows: DeliveryRow[] }) {
                     )}
                   </td>
                 )}
-                <td className="td text-paper-dim">{row.tx_date}</td>
-                <td className="td font-semibold text-paper">{row.company_name}</td>
+                <td className="td whitespace-nowrap text-paper-dim">{row.tx_date}</td>
+                {/* One line, cut off with the full name on hover: a long name wrapping to two
+                    lines made its row 30px taller than every other row in the queue. */}
+                <td className="td max-w-[260px] truncate font-semibold text-paper" title={row.company_name}>
+                  {row.company_name}
+                </td>
                 <td className="td max-w-[220px] truncate text-paper-dim" title={row.address ?? undefined}>
                   {row.address ?? '—'}
                 </td>
-                <td className="td text-paper-dim">{row.package ? `Package ${row.package}` : '—'}</td>
-                <td className="td">
-                  {row.sim_type === 'esim' ? (
-                    <span className="pill pill-neutral">eSIM</span>
-                  ) : (
-                    <span className="pill pill-neutral">Physical SIM</span>
-                  )}
+                <td className="td whitespace-nowrap text-paper-dim">{deliveryWhat(row)}</td>
+                <td className="td whitespace-nowrap">
+                  <span className="pill pill-neutral">{deliverySimLabel(row)}</span>
                 </td>
                 {/* Status is the state and nothing else now, so pending is
                     always brass — the same treatment it has on every other

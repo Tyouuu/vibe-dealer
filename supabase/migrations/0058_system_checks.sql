@@ -176,8 +176,8 @@ begin
     ), '[]'::jsonb);
 
   -- 7. The same bank slip or invoice recorded twice ---------------------------------------------
-  --    Two separate namespaces: a dealer's bank reference and Vibe's invoice number are different
-  --    things, and one matching the other means nothing.
+  --    Three separate namespaces: a dealer's bank reference, Vibe's invoice for credit and Vibe's invoice for
+  --    SIM cards are different things, and one matching another means nothing.
   return query
   with r as (
     select 'Slip'::text as kind, t.reference_key as ref, t.dealer_id::text as dealer_id, t.tx_date as d
@@ -187,6 +187,10 @@ begin
     select 'Invoice', p.reference_key, null, p.purchase_date
     from credit_purchases p
     where p.adjusts_id is null and length(p.reference_key) >= 8
+    union all
+    select 'SIM invoice', i.reference_key, null, i.intake_date
+    from sim_stock_intakes i
+    where i.adjusts_id is null and length(i.reference_key) >= 8
   ), g as (
     select kind, ref, count(*) as n, min(dealer_id) as dealer_id, max(d) as last_date
     from r group by kind, ref having count(*) > 1
@@ -200,7 +204,10 @@ begin
         'id', null, 'dealer_id', s.dealer_id::uuid,
         'label', s.kind || ' reference ' || s.ref || ' · ' || to_char(s.last_date, 'DD Mon YYYY'),
         'detail', format('%s entries carry the same reference — %s',
-          s.n, case when s.kind = 'Slip' then 'one payment counted more than once' else 'one purchase from Vibe counted more than once' end)))
+          s.n, case s.kind
+            when 'Slip' then 'one payment counted more than once'
+            when 'SIM invoice' then 'one delivery of SIM cards counted more than once'
+            else 'one purchase from Vibe counted more than once' end)))
       from (select * from g order by g.last_date desc limit 5) s
     ), '[]'::jsonb);
 

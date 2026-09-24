@@ -134,7 +134,7 @@ export const CHECKS = {
   duplicate_references: {
     severity: 'warn',
     title: 'No slip or invoice is counted twice',
-    why: 'A bank prints a different reference on every transfer, and Vibe a different number on every invoice. The same one on two entries is one payment or purchase recorded twice — points handed out, or credit added, that was only ever paid for once.',
+    why: 'A bank prints a different reference on every transfer, and Vibe a different number on every invoice. The same one on two entries is one payment, purchase or delivery recorded twice — points handed out, credit added or cards counted that were only ever paid for or received once.',
     ok: (c) => (c === 0 ? 'No entry carries a reference yet' : `${s(c, 'reference is', 'references are')} all different`),
     bad: (p) => `${s(p, 'reference appears', 'references appear')} on more than one entry`,
   },

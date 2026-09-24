@@ -139,7 +139,7 @@ export function compareSlip(claim: SlipClaim, slip: ExtractedSlip): SlipFinding[
 
 /** A slip whose reference is already on an entry — the same payment about to be counted twice. */
 export type DuplicateHit = {
-  kind: 'entry' | 'purchase'
+  kind: 'entry' | 'purchase' | 'intake'
   /** Who it was recorded against: a dealer's name, or "Credit purchase". */
   label: string
   date: string

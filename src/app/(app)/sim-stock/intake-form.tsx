@@ -14,10 +14,16 @@ export function IntakeForm({ today }: { today: string }) {
   const [pending, startTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  // Made once when the form opens and sent with every attempt: the same key is the same intake, however many
+  // times a weak connection makes someone press Save (0061). A second intake that was never received is cards
+  // in the stock balance that are not on the shelf.
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setPendingFormData(new FormData(e.currentTarget))
+    const fd = new FormData(e.currentTarget)
+    fd.set('idempotency_key', idempotencyKey)
+    setPendingFormData(fd)
     setConfirmOpen(true)
   }
 

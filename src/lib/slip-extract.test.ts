@@ -47,6 +47,13 @@ describe('referenceKey', () => {
     expect(sql).toContain("lower(regexp_replace(coalesce(reference, ''), '[^a-zA-Z0-9]', '', 'g'))")
     expect(sql).toContain('length(reference_key) >= ' + MIN_REFERENCE_KEY_LENGTH)
   })
+
+  // SIM stock intakes keep the same key for Vibe's invoice on a delivery of cards (0061).
+  it('is the same rule on SIM stock intakes', () => {
+    const sql = fs.readFileSync(path.join(process.cwd(), 'supabase', 'migrations', '0061_sim_intake_idempotency_and_reference.sql'), 'utf8')
+    expect(sql).toContain("lower(regexp_replace(coalesce(reference, ''), '[^a-zA-Z0-9]', '', 'g'))")
+    expect(sql).toContain('length(reference_key) >= ' + MIN_REFERENCE_KEY_LENGTH)
+  })
 })
 
 describe('slipDateUsable', () => {

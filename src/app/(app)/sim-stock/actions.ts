@@ -10,6 +10,7 @@ import { isSimStockType, isPhysicalSimType } from '@/lib/sim-stock'
 import { friendlyDbError } from '@/lib/db-error'
 import { parseBusinessDate, todayInMalaysia } from '@/lib/month'
 import { uploadReceipt } from '@/lib/receipt-upload'
+import { findRecordedReference } from '@/lib/reference-duplicate'
 
 // Two destinations, because the three actions below are reached from two
 // different pages. Both forms moved to /sim-stock/log when it became its own
@@ -37,12 +38,36 @@ export async function recordSimIntake(formData: FormData) {
   const costPerUnit = Number(formData.get('cost_per_unit_rm') ?? 0)
   const note = String(formData.get('note') ?? '').trim() || null
   const reference = String(formData.get('reference') ?? '').trim().slice(0, 80) || null
+  const rawKey = String(formData.get('idempotency_key') ?? '').trim()
+  const idempotencyKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawKey) ? rawKey : null
 
   if (!isSimStockType(simType)) failOnLog('Invalid SIM type.')
   if (!Number.isFinite(quantity) || quantity <= 0) failOnLog('Quantity must be a positive number.')
   if (!Number.isFinite(costPerUnit) || costPerUnit < 0) failOnLog('Cost per unit must be zero or more.')
 
   const supabase = await createClient()
+
+  // First of all: has THIS form already saved this intake? A retry carries the same key and it did work the
+  // first time, so it is answered as the success it is. It has to come before the invoice check below, which
+  // would otherwise find the first attempt's row and refuse the retry as a duplicate of itself, and before
+  // the receipt is uploaded, so a retry does not leave a second copy of the file behind.
+  if (idempotencyKey) {
+    const { data: already } = await supabase.from('sim_stock_intakes').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+    if (already) redirect('/sim-stock?intake_saved=1')
+  }
+
+  // The same supplier invoice keyed in twice is the retyped case a key cannot see: two forms, two keys, one
+  // delivery. Refused, not warned about — cards that were never received would sit in the stock balance.
+  if (reference) {
+    const same = await findRecordedReference(supabase, 'intake', reference)
+    if (same) {
+      failOnLog(
+        `That invoice number (${reference}) is already on ${same.label} dated ${same.date}. ` +
+          'Logging it again would count the same delivery twice. If this is a different delivery, clear the invoice number and save again.',
+      )
+    }
+  }
+
   const receipt = await uploadReceipt(supabase, formData, 'sim-intakes')
   if (receipt.error) failOnLog(receipt.error)
 
@@ -55,7 +80,11 @@ export async function recordSimIntake(formData: FormData) {
     reference,
     receipt_url: receipt.path,
     recorded_by: user.id,
+    idempotency_key: idempotencyKey,
   })
+
+  // Two presses landing together both passed the check above; the unique index (0061) let one through.
+  if (error?.code === '23505' && idempotencyKey) redirect('/sim-stock?intake_saved=1')
 
   if (error) failOnLog(friendlyDbError(error.message))
 

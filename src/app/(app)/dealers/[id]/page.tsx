@@ -20,6 +20,7 @@ import { HeroCard } from '../../hero-card'
 import { formatDateLabel } from '@/lib/month'
 import { siteOrigin } from '@/lib/site-url'
 import { cardsOwedByDealer } from '@/lib/sim-stock'
+import { safeListPath } from '@/lib/list-context'
 
 export const metadata: Metadata = {
   title: 'Dealer Details — Vibe456',
@@ -192,12 +193,12 @@ function TimelineItem({
 
 type PageProps = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string; updated?: string }>
+  searchParams: Promise<{ error?: string; updated?: string; from?: string }>
 }
 
 export default async function DealerDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params
-  const { error, updated } = await searchParams
+  const { error, updated, from } = await searchParams
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -426,7 +427,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
 
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/dealers" className="text-xs font-semibold text-paper-dim hover:text-paper">
+      <Link href={safeListPath(from)} className="text-xs font-semibold text-paper-dim hover:text-paper">
         ← Back to dealers
       </Link>
 

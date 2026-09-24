@@ -14,6 +14,7 @@ import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
 import { Pagination } from '../pagination'
+import { compareDealers, DEALER_SORT_KEYS, nextDealerSort, parseDealerSort } from '@/lib/dealer-sort'
 import { siteOrigin } from '@/lib/site-url'
 import { ColumnsMenu } from '../columns-menu'
 import { TABLE_COLUMNS, columnCookieName, parseHiddenColumns } from '@/lib/table-columns'
@@ -56,6 +57,8 @@ type PageProps = {
     assigned?: string
     refused?: string
     page?: string
+    sort?: string
+    dir?: string
   }>
 }
 
@@ -74,7 +77,11 @@ export default async function DealersPage({ searchParams }: PageProps) {
     assigned,
     refused,
     page,
+    sort: rawSort,
+    dir: rawDir,
   } = await searchParams
+  // A column the reader chose to sort by. Null means the default order below.
+  const sort = parseDealerSort(rawSort, rawDir)
   const view: View = rawView === 'region' || rawView === 'inactive' || rawView === 'nopackage' ? rawView : 'all'
   const canManage = user.role === 'cs' || user.role === 'master'
   // rate is a commission figure (PROJECT_SPEC.md section 4: "CS 看不到财务") —
@@ -228,11 +235,16 @@ export default async function DealersPage({ searchParams }: PageProps) {
   // It also has to come before pagination rather than after: 284 dealers is
   // several pages, and a pin that only reorders the page you are already on
   // would leave your dealers wherever they were.
+  //
+  // Clicking a column header replaces that order outright: a list sorted by name
+  // that still floated pinned dealers to the top would not be sorted by name.
   rows.sort(
-    (a, b) =>
-      Number(b.isPinned) - Number(a.isPinned) ||
-      b.totalPoints - a.totalPoints ||
-      a.company_name.localeCompare(b.company_name),
+    sort
+      ? (a, b) => compareDealers(a, b, sort)
+      : (a, b) =>
+          Number(b.isPinned) - Number(a.isPinned) ||
+          b.totalPoints - a.totalPoints ||
+          a.company_name.localeCompare(b.company_name),
   )
 
   // The header pill below shows `count` (the DB's pre-filter total) for
@@ -280,6 +292,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     if (q) params.set('q', q)
     if (region !== 'all') params.set('region', region)
     if (v !== 'all') params.set('view', v)
+    if (sort) { params.set('sort', sort.key); params.set('dir', sort.dir) }
     const qs = params.toString()
     return `/dealers${qs ? `?${qs}` : ''}`
   }
@@ -289,6 +302,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     if (q) params.set('q', q)
     if (region !== 'all') params.set('region', region)
     if (view !== 'all') params.set('view', view)
+    if (sort) { params.set('sort', sort.key); params.set('dir', sort.dir) }
     if (p > 1) params.set('page', String(p))
     const qs = params.toString()
     return `/dealers${qs ? `?${qs}` : ''}`
@@ -301,9 +315,24 @@ export default async function DealersPage({ searchParams }: PageProps) {
     if (q && drop !== 'q') params.set('q', q)
     if (region !== 'all' && drop !== 'region') params.set('region', region)
     if (view !== 'all') params.set('view', view)
+    if (sort) { params.set('sort', sort.key); params.set('dir', sort.dir) }
     const qs = params.toString()
     return `/dealers${qs ? `?${qs}` : ''}`
   }
+
+  // Where clicking each sortable header leads. Always back to page 1: staying on page 4
+  // of a list that has just been re-ordered would show an arbitrary slice of it.
+  const sortHrefs = Object.fromEntries(
+    DEALER_SORT_KEYS.map((key) => {
+      const next = nextDealerSort(sort, key)
+      const params = new URLSearchParams()
+      if (q) params.set('q', q)
+      if (region !== 'all') params.set('region', region)
+      if (view !== 'all') params.set('view', view)
+      if (next) { params.set('sort', next.key); params.set('dir', next.dir) }
+      return [key, `/dealers${params.toString() ? `?${params.toString()}` : ''}`]
+    }),
+  ) as Record<(typeof DEALER_SORT_KEYS)[number], string>
 
   const filterChips = [
     ...(q ? [{ label: 'Search', value: q, removeHref: withoutFilter('q') }] : []),
@@ -449,13 +478,15 @@ export default async function DealersPage({ searchParams }: PageProps) {
         <form className="index-filterbar" action="/dealers" method="GET">
           {view !== 'all' && <input type="hidden" name="view" value={view} />}
           {region !== 'all' && <input type="hidden" name="region" value={region} />}
-          <label className="mini-search w-72 max-w-full transition-colors focus-within:border-primary">
+          {sort && <input type="hidden" name="sort" value={sort.key} />}
+          {sort && <input type="hidden" name="dir" value={sort.dir} />}
+          <label className="mini-search w-96 max-w-full transition-colors focus-within:border-primary">
             <IconSearch className="h-4 w-4 shrink-0" />
             <input
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="Search name, contact, phone, reg. no. or region"
+              placeholder="Search name, contact, phone or reg. no."
               className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
             />
           </label>
@@ -477,7 +508,9 @@ export default async function DealersPage({ searchParams }: PageProps) {
             showRanking={showRanking}
             origin={await siteOrigin()}
             canAssign={canManage}
-            view={view === 'all' ? '' : view}
+            listHref={pageHref(pageNum)}
+            sort={sort}
+            sortHrefs={sortHrefs}
           />
           <Pagination
             page={pageNum}

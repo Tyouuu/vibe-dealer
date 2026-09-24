@@ -11,6 +11,7 @@ import { SIM_MARGIN_RM } from '@/lib/sim-stock'
 import { toggleDealerPin, assignPackages } from './actions'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import type { MatchNote } from '@/lib/search'
+import type { DealerSortKey, SortDir } from '@/lib/dealer-sort'
 
 // A checkbox, and the bar that appears once anything is ticked.
 //
@@ -37,7 +38,7 @@ function SelectBox({ dealer, checked, onChange }: { dealer: DealerRow; checked: 
   )
 }
 
-function AssignBar({ ids, view, onClear }: { ids: string[]; view: string; onClear: () => void }) {
+function AssignBar({ ids, listHref, onClear }: { ids: string[]; listHref: string; onClear: () => void }) {
   const [confirming, setConfirming] = useState<PackageCode | null>(null)
   if (!ids.length) return null
 
@@ -51,7 +52,7 @@ function AssignBar({ ids, view, onClear }: { ids: string[]; view: string; onClea
         <form action={assignPackages} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="ids" value={ids.join(',')} />
           <input type="hidden" name="package" value={confirming} />
-          <input type="hidden" name="view" value={view} />
+          <input type="hidden" name="back" value={listHref} />
           {/* Says what will happen to whom, in numbers, before it happens.
               Five hundred rate assignments is not something to confirm with
               the word "OK". */}
@@ -81,6 +82,23 @@ function AssignBar({ ids, view, onClear }: { ids: string[]; view: string; onClea
       )}
     </div>
   )
+}
+
+// A column heading that sorts. The arrow only shows on the column in use (and on
+// hover for the rest) so a row of headers is not a row of arrows.
+function SortLabel({ href, dir, children }: { href: string; dir: SortDir | null; children: React.ReactNode }) {
+  return (
+    <Link href={href} title="Sort by this column" className="group/sort inline-flex items-center gap-1.5 hover:text-paper">
+      {children}
+      <span aria-hidden="true" className={dir ? 'text-paper' : 'text-paper-dim opacity-0 group-hover/sort:opacity-70 group-focus-visible/sort:opacity-70'}>
+        {dir === 'desc' ? '↓' : '↑'}
+      </span>
+    </Link>
+  )
+}
+
+function ariaSort(sort: { key: DealerSortKey; dir: SortDir } | null, key: DealerSortKey): 'ascending' | 'descending' | undefined {
+  return sort?.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined
 }
 
 export type DealerRow = {
@@ -258,7 +276,9 @@ export function DealersTable({
   showRanking,
   origin,
   canAssign = false,
-  view = '',
+  listHref = '/dealers',
+  sort = null,
+  sortHrefs,
 }: {
   dealers: DealerRow[]
   groupByRegion: boolean
@@ -268,8 +288,13 @@ export function DealersTable({
   origin: string
   /** cs and master may set a package; accountant may not. */
   canAssign?: boolean
-  /** Carried back through the action so the redirect lands on the same view. */
-  view?: string
+  /** The list as it is now — search, region, view and page. Carried into a dealer's page
+      and through the bulk-assign action so both come back to the same place. */
+  listHref?: string
+  /** The column the list is sorted by, or null for the default order. */
+  sort?: { key: DealerSortKey; dir: SortDir } | null
+  /** Where clicking each sortable header leads. */
+  sortHrefs: Record<DealerSortKey, string>
 }) {
   // Selection lives here rather than in the page, because the page is a
   // server component and this table is already a client one. Lifting it out
@@ -304,7 +329,7 @@ export function DealersTable({
       {/* Above the grid, not inside it: the bar is about the selection, not
           about any one row, and a control that scrolls away with the table
           is a control you lose halfway down five hundred names. */}
-      {canAssign && <AssignBar ids={[...selected]} view={view} onClear={() => setSelected(new Set())} />}
+      {canAssign && <AssignBar ids={[...selected]} listHref={listHref} onClear={() => setSelected(new Set())} />}
       <DataGrid id="dealers" label="Dealer directory">
       {groups.map(([region, rows]) => {
         // A <details> with no <summary> is not an empty disclosure — the
@@ -340,7 +365,7 @@ export function DealersTable({
                     one. Rank used to sit to its left; it is now a badge inside
                     this cell, which is where it belonged anyway — a rank is
                     something a dealer has, not a fact of its own. */}
-                <th className="th pin-name" style={{ width: 264 }}>
+                <th className="th pin-name" style={{ width: 264 }} aria-sort={ariaSort(sort, 'name')}>
                   <span className="inline-flex items-center gap-1.5">
                     {canAssign && assignable.length > 0 && (
                       <input
@@ -354,13 +379,15 @@ export function DealersTable({
                         className="relative z-10 mr-1 h-4 w-4 cursor-pointer accent-primary"
                       />
                     )}
-                    <IconBuilding /> Company
+                    <SortLabel href={sortHrefs.name} dir={sort?.key === 'name' ? sort.dir : null}>
+                      <IconBuilding /> Company
+                    </SortLabel>
                   </span>
                 </th>
-                <th className="th" data-c="region" style={{ width: 120 }}>
-                  <span className="inline-flex items-center gap-1.5">
+                <th className="th" data-c="region" style={{ width: 120 }} aria-sort={ariaSort(sort, 'region')}>
+                  <SortLabel href={sortHrefs.region} dir={sort?.key === 'region' ? sort.dir : null}>
                     <IconMapPin /> Region
-                  </span>
+                  </SortLabel>
                 </th>
                 <th className="th" data-c="phone" style={{ width: 144 }}>
                   <span className="inline-flex items-center gap-1.5">
@@ -372,10 +399,10 @@ export function DealersTable({
                     <IconUsers className="h-3.5 w-3.5" /> Contact
                   </span>
                 </th>
-                <th className="th" data-c="package" style={{ width: 92 }}>
-                  <span className="inline-flex items-center gap-1.5">
+                <th className="th" data-c="package" style={{ width: 92 }} aria-sort={ariaSort(sort, 'package')}>
+                  <SortLabel href={sortHrefs.package} dir={sort?.key === 'package' ? sort.dir : null}>
                     <IconTag /> Package
-                  </span>
+                  </SortLabel>
                 </th>
                 {/* Sits between the tier and the money it earns, because it
                     is the term that connects them: the tier says what the
@@ -396,20 +423,20 @@ export function DealersTable({
                   </th>
                 )}
                 {showRanking && (
-                  <th className="th text-right" data-c="topup" style={{ width: 118 }}>
-                    <span className="inline-flex items-center gap-1.5">
+                  <th className="th text-right" data-c="topup" style={{ width: 118 }} aria-sort={ariaSort(sort, 'topup')}>
+                    <SortLabel href={sortHrefs.topup} dir={sort?.key === 'topup' ? sort.dir : null}>
                       <IconTrendUp className="h-3.5 w-3.5" /> Top-up
-                    </span>
+                    </SortLabel>
                   </th>
                 )}
                 {/* The owner's own money. Everything else on this row is the
                     dealer's side of the relationship — what they bought, at
                     what rate — and none of it is what the business keeps. */}
                 {showRate && (
-                  <th className="th text-right" data-c="cards" style={{ width: 132 }}>
-                    <span className="inline-flex items-center gap-1.5">
+                  <th className="th text-right" data-c="cards" style={{ width: 132 }} aria-sort={ariaSort(sort, 'cards')}>
+                    <SortLabel href={sortHrefs.cards} dir={sort?.key === 'cards' ? sort.dir : null}>
                       <IconCard className="h-3.5 w-3.5" /> Card earnings
-                    </span>
+                    </SortLabel>
                   </th>
                 )}
               </tr>
@@ -430,7 +457,7 @@ export function DealersTable({
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">
                           <Link
-                            href={`/dealers/${d.id}`}
+                            href={`/dealers/${d.id}?from=${encodeURIComponent(listHref)}`}
                             title={d.company_name}
                             className="truncate font-semibold text-paper after:absolute after:inset-0 after:content-[''] hover:text-jade-bright"
                           >

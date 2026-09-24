@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dealerMatchNote, dealerSearchFilter, sanitizeSearchTerm } from './search'
+import { dealerMatchNote, dealerOtherMatch, dealerSearchFilter, sanitizeSearchTerm } from './search'
 
 const dealer = { company_name: 'AMC TELECOMMUNICATION', contact_person: 'Tan Wei Ming', phone: '0123456789', whatsapp: null }
 
@@ -29,5 +29,18 @@ describe('dealerMatchNote', () => {
   it('stays quiet when nothing hidden matched or the search is empty', () => {
     expect(dealerMatchNote(dealer, 'zzz')).toBeNull()
     expect(dealerMatchNote(dealer, '  ')).toBeNull()
+  })
+})
+
+describe('dealerOtherMatch', () => {
+  const d = { company_no: '202203187574 (RA0089850-V)', phone: '0123456789', contact_person: 'Tan Wei Ming' }
+  it('names the field a hit came from', () => {
+    expect(dealerOtherMatch(d, 'ra0089')).toEqual({ label: 'Reg. no.', value: '202203187574 (RA0089850-V)' })
+    expect(dealerOtherMatch(d, '3456')).toEqual({ label: 'Phone', value: '0123456789' })
+    expect(dealerOtherMatch(d, 'wei')).toEqual({ label: 'Contact', value: 'Tan Wei Ming' })
+  })
+  it('is null when nothing else matches', () => {
+    expect(dealerOtherMatch(d, 'zzz')).toBeNull()
+    expect(dealerOtherMatch(d, '')).toBeNull()
   })
 })

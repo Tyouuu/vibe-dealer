@@ -710,7 +710,10 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                       {/* The search also reads the note, which nothing else on this
                           page shows — so a result found only by its note says so. */}
                       {noteMatch && (
-                        <div className="mt-0.5 truncate pl-[34px] text-[12px] text-paper-dim">
+                        // w-0 + min-w-full: a truncated line still asks the auto-layout table for
+                        // its full text width, which widened this column and pushed Status under
+                        // the pinned Action column. This way the line fits the column, never sizes it.
+                        <div className="mt-0.5 w-0 min-w-full truncate pl-[34px] text-[12px] text-paper-dim" title={tx.note ?? undefined}>
                           Note: {noteMatch.before}
                           <mark className="bg-transparent font-semibold text-paper">{noteMatch.hit}</mark>
                           {noteMatch.after}

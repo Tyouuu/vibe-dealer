@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { buildNotifications } from '@/lib/notifications/build'
-import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/preferences'
+import { NOTIFICATION_CATEGORIES, type NotificationCategory } from '@/lib/notifications/preferences'
 import { NotificationsList } from './notifications-list'
 import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   title: 'Notifications — Vibe456',
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; sort?: string }>
+}) {
+  const { category, sort } = await searchParams
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -81,7 +86,11 @@ export default async function NotificationsPage() {
         ]}
       />
 
-      <NotificationsList notifications={notifications} />
+      <NotificationsList
+        notifications={notifications}
+        initialFilter={NOTIFICATION_CATEGORIES.some((c) => c.key === category) ? (category as NotificationCategory) : 'all'}
+        initialSort={sort === 'newest' ? 'newest' : 'oldest'}
+      />
     </div>
   )
 }

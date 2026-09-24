@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { normalizeRegion } from '@/lib/regions'
 import { sanitizeSearchTerm } from '@/lib/search'
+import { safeListPath } from '@/lib/list-context'
 import { friendlyDbError } from '@/lib/db-error'
 
 // The import reads the whole file into memory and parses it in one pass, so it
@@ -65,8 +66,7 @@ export async function assignPackages(formData: FormData) {
   // The refusals are counted, not hidden. "Already has a package" is the
   // expected one — someone else set it between the page rendering and the
   // button being pressed — and it is not a failure worth stopping for.
-  const view = String(formData.get('view') ?? '')
-  const back = view ? `/dealers?view=${encodeURIComponent(view)}` : '/dealers'
+  const back = safeListPath(String(formData.get('back') ?? ''))
   redirect(`${back}${back.includes('?') ? '&' : '?'}assigned=${done}${refused.length ? `&refused=${refused.length}` : ''}`)
 }
 

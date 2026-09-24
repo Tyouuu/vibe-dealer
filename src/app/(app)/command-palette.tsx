@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { dealerOtherMatch } from '@/lib/search'
 
 // Jump to a dealer or a page without going through /dealers first.
 //
@@ -15,7 +16,16 @@ import { useRouter } from 'next/navigation'
 export const OPEN_SEARCH_EVENT = 'vibe:open-search'
 
 export type PaletteNavItem = { href: string; label: string; group: string }
-type Dealer = { id: string; company_name: string; region: string | null; package: string | null; status: string | null }
+type Dealer = {
+  id: string
+  company_name: string
+  company_no: string | null
+  contact_person: string | null
+  phone: string | null
+  region: string | null
+  package: string | null
+  status: string | null
+}
 
 type Hit =
   | { kind: 'dealer'; id: string; href: string; label: string; meta: string; warn: boolean }
@@ -121,18 +131,32 @@ export function CommandPalette({ navItems }: { navItems: PaletteNavItem[] }) {
     if (!needle) return pages
 
     const found = (dealers ?? [])
-      .map((d) => ({ d, s: Math.max(score(d.company_name, needle), score(d.region ?? '', needle) === 0 ? 1 : -1) }))
+      .map((d) => {
+        const other = dealerOtherMatch(d, needle)
+        const byName = score(d.company_name, needle)
+        const byRegion = score(d.region ?? '', needle) === 0 ? 1 : -1
+        // A name hit ranks as it always did; a registration number, phone or contact
+        // hit only counts when the name and region did not match, and ranks last.
+        return { d, other, s: byName >= 0 ? Math.max(byName, byRegion) : Math.max(byRegion, other ? 2 : -1) }
+      })
       .filter((x) => x.s >= 0)
       .sort((a, b) => a.s - b.s || a.d.company_name.localeCompare(b.d.company_name))
       .slice(0, MAX_DEALERS)
-      .map(({ d }): Hit => ({
+      .map(({ d, other }): Hit => ({
         kind: 'dealer',
         id: d.id,
         href: `/dealers/${d.id}`,
         label: d.company_name,
         // The one thing worth knowing before you click, given 500 of them
         // cannot trade: whether this shop is set up at all.
-        meta: [d.region || 'No region', d.package ? `Package ${d.package}` : 'No package'].join(' · '),
+        meta: [
+          // Only when the name did not already explain the hit.
+          other && score(d.company_name, needle) < 0 ? `${other.label}: ${other.value}` : null,
+          d.region || 'No region',
+          d.package ? `Package ${d.package}` : 'No package',
+        ]
+          .filter(Boolean)
+          .join(' · '),
         warn: !d.package,
       }))
 

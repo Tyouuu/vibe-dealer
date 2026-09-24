@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ error?: string; rejected?: string }>
+  searchParams: Promise<{ error?: string; rejected?: string; handled?: string }>
 }
 
 type RequestRow = {
@@ -94,7 +94,10 @@ function whenInMalaysia(iso: string): string {
 
 export default async function RequestsPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { error, rejected } = await searchParams
+  const { error, rejected, handled } = await searchParams
+  // How many handled requests to show. It was a fixed 10 with no way to see the ones
+  // before them, so anything older than the last ten was unreachable from here.
+  const handledLimit = Math.min(200, Math.max(10, Math.trunc(Number(handled)) || 10))
 
   // Accepting one records money, so this is the same pair who may use /entry.
   // cs sees no amounts anywhere else and sees none here.
@@ -114,13 +117,16 @@ export default async function RequestsPage({ searchParams }: PageProps) {
       .select('id, dealer_id, type, money_rm, package, note, slip_url, status, reject_reason, transaction_id, decided_at, created_at, transfer_date, paid_from, sim_type, slip_amount_rm, slip_paid_on, slip_bank, slip_reference, slip_read_at, slip_read_error, dealers(company_name, rate)')
       .neq('status', 'pending')
       .order('decided_at', { ascending: false })
-      .limit(10),
+      // One more than shown, only to know whether there is a next batch.
+      .limit(handledLimit + 1),
   ])
 
   // Oldest first above: a queue is read by what has waited longest, and that
   // is also the one a dealer is sitting there wondering about.
   const pending = (pendingRows ?? []) as unknown as RequestRow[]
-  const decided = (decidedRows ?? []) as unknown as RequestRow[]
+  const decidedAll = (decidedRows ?? []) as unknown as RequestRow[]
+  const decided = decidedAll.slice(0, handledLimit)
+  const moreHandled = decidedAll.length > handledLimit
   const oldestDays = pending.length ? daysSince(pending[0].created_at.slice(0, 10)) : 0
 
   // Which of these is probably the same payment sent twice.
@@ -453,7 +459,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
       </div>
 
       {decided.length > 0 && (
-        <div className="app-card mt-6 p-5">
+        <div id="handled" className="app-card mt-6 p-5">
           <h2 className="text-[14px] font-semibold text-paper">Recently handled</h2>
           <ul className="mt-3 flex flex-col divide-y divide-ink-800">
             {decided.map((r) => (
@@ -466,7 +472,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                   {r.reject_reason && <p className="text-[12px] text-paper-dim">{r.reject_reason}</p>}
                 </div>
                 {r.status === 'accepted' && r.transaction_id ? (
-                  <Link href="/records" className="shrink-0 text-[13px] font-semibold text-jade hover:underline">
+                  <Link href={`/records?dealer=${r.dealer_id}`} className="shrink-0 text-[13px] font-semibold text-jade hover:underline">
                     Recorded
                   </Link>
                 ) : (
@@ -477,6 +483,13 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               </li>
             ))}
           </ul>
+          {moreHandled && (
+            <div className="mt-3 border-t border-ink-800 pt-3">
+              <Link href={`/requests?handled=${handledLimit + 20}#handled`} className="btn-ghost py-1.5 text-xs">
+                Show 20 more
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </>

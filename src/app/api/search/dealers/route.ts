@@ -21,7 +21,7 @@ export async function GET() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('dealers_directory')
-    .select('id, company_name, region, package, status')
+    .select('id, company_name, company_no, contact_person, phone, region, package, status')
     .order('company_name', { ascending: true })
 
   if (error) {

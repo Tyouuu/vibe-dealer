@@ -28,9 +28,36 @@ const CATEGORY_ICON: Record<NotificationCategory, (props: { className?: string }
 
 type Sort = 'oldest' | 'newest'
 
-export function NotificationsList({ notifications }: { notifications: BuiltNotification[] }) {
-  const [filter, setFilter] = useState<NotificationCategory | 'all'>('all')
-  const [sort, setSort] = useState<Sort>('oldest')
+export function NotificationsList({
+  notifications,
+  initialFilter = 'all',
+  initialSort = 'oldest',
+}: {
+  notifications: BuiltNotification[]
+  initialFilter?: NotificationCategory | 'all'
+  initialSort?: Sort
+}) {
+  const [filter, setFilterState] = useState<NotificationCategory | 'all'>(initialFilter)
+  const [sort, setSortState] = useState<Sort>(initialSort)
+
+  // The choice lives in the address as well as in state, so a reload, a bookmark or
+  // a link to a colleague lands on the same view. replaceState, not a navigation:
+  // nothing has to be fetched again, and Back should not step through every click.
+  function remember(key: 'category' | 'sort', value: string, isDefault: boolean) {
+    const params = new URLSearchParams(window.location.search)
+    if (isDefault) params.delete(key)
+    else params.set(key, value)
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
+  }
+  const setFilter = (v: NotificationCategory | 'all') => {
+    setFilterState(v)
+    remember('category', v, v === 'all')
+  }
+  const setSort = (v: Sort) => {
+    setSortState(v)
+    remember('sort', v, v === 'oldest')
+  }
 
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.category === filter)
   const sorted = useMemo(

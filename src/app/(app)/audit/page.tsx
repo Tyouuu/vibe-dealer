@@ -90,6 +90,12 @@ export default async function AuditPage({ searchParams }: PageProps) {
   if (nextCursor) loadOlderParams.set('before', nextCursor)
   const loadOlderHref = `/audit?${loadOlderParams.toString()}`
 
+  // Loading older events replaces the list, so once you are a step back there has to
+  // be a way to the newest again — the same filters, without the cursor.
+  const latestParams = new URLSearchParams(loadOlderParams)
+  latestParams.delete('before')
+  const latestHref = `/audit${latestParams.toString() ? `?${latestParams.toString()}` : ''}`
+
   const exportParams = new URLSearchParams()
   if (q) exportParams.set('q', q)
   if (actor !== 'all') exportParams.set('actor', actor)
@@ -251,12 +257,21 @@ export default async function AuditPage({ searchParams }: PageProps) {
       )}
 
       <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-        <span className="text-[12px] text-paper-dim">{filtered.length} events</span>
-        {hasMore && (
-          <Link href={loadOlderHref} className="btn-ghost text-xs">
-            Load older events ↓
-          </Link>
-        )}
+        <span className="text-[12px] text-paper-dim">
+          {filtered.length} events{before ? ' · older history' : ''}
+        </span>
+        <div className="flex items-center gap-2">
+          {before && (
+            <Link href={latestHref} className="btn-ghost py-1.5 text-xs">
+              ↑ Back to latest
+            </Link>
+          )}
+          {hasMore && (
+            <Link href={loadOlderHref} className="btn-ghost py-1.5 text-xs">
+              Load older events ↓
+            </Link>
+          )}
+        </div>
       </div>
       </div>
     </>

@@ -52,3 +52,23 @@ export function dealerMatchNote(
   }
   return null
 }
+
+// The quick-search palette matches a shop by more than its name: the number
+// printed on its registration, the phone you were given, the person you spoke
+// to. When one of those is why a shop is in the list, say which, so a hit for
+// "0123" does not look like a shop that has nothing to do with "0123".
+export function dealerOtherMatch(
+  d: { company_no: string | null; phone: string | null; contact_person: string | null },
+  needle: string,
+): { label: string; value: string } | null {
+  const q = needle.trim().toLowerCase()
+  if (!q) return null
+  for (const [label, value] of [
+    ['Reg. no.', d.company_no],
+    ['Phone', d.phone],
+    ['Contact', d.contact_person],
+  ] as const) {
+    if (value && value.toLowerCase().includes(q)) return { label, value }
+  }
+  return null
+}

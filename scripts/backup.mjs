@@ -60,26 +60,59 @@ if (actualRef !== PRODUCTION_REF) {
 
 // Every base table in `public`, in dependency order: a restore has to insert
 // profiles before anything referencing recorded_by, and dealers before any
-// transaction pointing at one. Verified against pg_class rather than guessed
-// from the migrations, so a table added later shows up as a gap in the count
-// printed at the end instead of being silently missed.
+// transaction pointing at one. Kept in step with the live schema by the drift
+// check below — a table missing from this list fails the run instead of being
+// silently skipped (five tables were missing from it for weeks, and the old
+// "shows up as a gap in the count" comment above this list was never true: the
+// count printed at the end is just this array's length).
 const TABLES = [
   'profiles',
   'dealers',
+  'dealer_pins',
   'dealer_rate_history',
   'credit_purchases',
   'transactions',
+  'topup_requests',
   'sim_stock_intakes',
   'sim_orders',
   'company_statements',
   'company_statement_revisions',
+  'statement_variances',
   'notification_preferences',
   'login_events',
-  // rate_limit_hits is deliberately last and is throwaway state — a login
-  // counter, not a record of anything. Included only so the snapshot is a
-  // complete picture of the schema's contents.
+  // Derived or throwaway state — a cache, a dedupe log, a login counter.
+  // Included so the snapshot is a complete picture of the schema's contents.
+  'alert_log',
+  'report_summaries',
   'rate_limit_hits',
 ]
+
+// Views hold no data of their own, so they are not backed up — but they are
+// listed so that a NEW view is a deliberate decision rather than noise.
+const VIEWS = [
+  'dealer_last_verified_activity',
+  'dealers_directory',
+  'delivery_queue',
+  'sim_orders_directory',
+  'sim_stock_balance',
+  'staff_directory',
+]
+
+// PostgREST's own schema document lists every table and view the service role
+// can see. Anything in it that is in neither list above is data this backup
+// would not contain.
+let unlisted = []
+{
+  const res = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+  })
+  if (!res.ok) {
+    console.error(`Could not read the live schema (HTTP ${res.status}) — cannot prove this backup is complete.`)
+    process.exit(1)
+  }
+  const live = Object.keys((await res.json()).definitions ?? {})
+  unlisted = live.filter((name) => !TABLES.includes(name) && !VIEWS.includes(name))
+}
 
 const PAGE = 1000
 
@@ -200,6 +233,13 @@ for (const bucket of buckets) {
 fs.writeFileSync(path.join(root, '_manifest.json'), JSON.stringify(manifest, null, 2))
 
 console.log(`\n${grandTotal.toLocaleString()} rows across ${TABLES.length} tables.`)
+if (unlisted.length) {
+  console.error(
+    `NOT BACKED UP: ${unlisted.join(', ')} exist in the live database but are in neither TABLES nor VIEWS in scripts/backup.mjs. ` +
+      `Add each one to the right list — this snapshot is missing their data.`
+  )
+  process.exit(1)
+}
 if (failed) {
   console.error(`${failed} table(s) FAILED — this snapshot is incomplete. Do not rely on it.`)
   process.exit(1)

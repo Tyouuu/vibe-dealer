@@ -11,14 +11,36 @@
 # point-in-time restore are the answer; this exists until the maintenance fee
 # pays for that.
 #
-# What a restore gets you: every row of every table, the auth accounts (minus
-# password hashes, which the admin API does not expose — everyone sets a new
-# password), and the receipt and invoice files themselves.
+# Two independent jobs, so one failing never costs the other:
+#
+#   snapshot — row-by-row export over the REST API: readable JSON/CSV of every
+#              table, the auth accounts (no password hashes) and the receipt and
+#              invoice FILES, which a database dump cannot contain.
+#   pgdump   — a real Postgres dump (schema, data, RLS policies, functions,
+#              triggers, grants, and auth.users WITH password hashes), taken as a
+#              read-only role, then restored into a scratch Postgres and
+#              row-counted. Every night proves the dump restores; a backup that
+#              has never been restored is a hope.
+#
+# Recovering into a fresh Supabase project from the pgdump artifact:
+#   1. gpg --decrypt the archive with BACKUP_PASSPHRASE and untar it.
+#   2. Re-run the storage bucket/policy statements from migrations 0002, 0019
+#      and 0024 (the storage schema is not in the dump), then upload the files
+#      from the snapshot artifact's storage/ folder.
+#   3. pg_restore --no-owner --exit-on-error -d <new session-pooler url> public.dump
+#      A full restore loads data before it creates triggers, so the ledger's
+#      guard triggers do not fire on the way in.
+#   4. pg_restore --data-only --no-owner -d <same url> auth.dump  (logins, with
+#      their passwords).
 #
 # Secrets this needs, in Settings > Secrets and variables > Actions:
 #   NEXT_PUBLIC_SUPABASE_URL
 #   SUPABASE_SERVICE_ROLE_KEY   — full read access, treat like the database password
-#   BACKUP_PASSPHRASE           — symmetric key for the archive
+#   SUPABASE_DB_URL             — session-pooler URL for the read-only backup_reader
+#                                 role (port 5432, not 6543: pg_dump needs session mode).
+#                                 The direct connection is IPv6-only on the free plan
+#                                 and GitHub's runners are IPv4-only.
+#   BACKUP_PASSPHRASE           — symmetric key for the archives
 #
 # LOSING BACKUP_PASSPHRASE MEANS LOSING EVERY BACKUP TAKEN WITH IT. Keep a copy
 # somewhere that is not GitHub and not this machine.
@@ -112,3 +134,112 @@ jobs:
           path: snapshot-*.tar.gz.gpg
           retention-days: 90
           if-no-files-found: error
+
+  pgdump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      drill:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGSSLMODE: require
+      DRILL_URL: postgresql://postgres:drill@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner ships an older client and pg_dump refuses a server newer than
+      # itself. Production is Postgres 17.
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Dump production
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is not set"; exit 1; }
+          mkdir -p out
+          psql "$SUPABASE_DB_URL" -At -f scripts/table-counts.sql > out/before.csv
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --schema=public --file=out/public.dump
+          # Logins live in auth. Only the two tables that hold accounts — sessions
+          # and refresh tokens are throwaway — and no grants, which belong to
+          # Supabase's own roles.
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges \
+            --table=auth.users --table=auth.identities --file=out/auth.dump
+          psql "$SUPABASE_DB_URL" -At -f scripts/table-counts.sql > out/after.csv
+          ls -lh out
+          cat out/after.csv
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "${BACKUP_PASSPHRASE:-}" || { echo "BACKUP_PASSPHRASE is not set"; exit 1; }
+          stamp=$(date -u +%Y-%m-%d_%H%M)
+          tar -czf pgdump.tar.gz -C out public.dump auth.dump before.csv after.csv
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "pgdump-$stamp.tar.gz.gpg" pgdump.tar.gz
+          rm -f pgdump.tar.gz
+          ls -lh pgdump-*.tar.gz.gpg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ledger-pgdump-${{ github.run_id }}
+          path: pgdump-*.tar.gz.gpg
+          retention-days: 90
+          if-no-files-found: error
+
+      # From here on a failure turns the run red but the encrypted dump above is
+      # already saved — an unverified backup is still better than none.
+      - name: Restore drill — stand up an empty Postgres shaped like Supabase
+        env:
+          PGSSLMODE: disable
+        run: |
+          set -euo pipefail
+          psql "$DRILL_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create schema extensions;
+          create extension pgcrypto schema extensions;
+          create extension "uuid-ossp" schema extensions;
+          create extension pg_trgm schema public;
+          create schema auth;
+          create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          create function auth.role() returns text language sql stable as $$ select nullif(current_setting('request.jwt.claim.role', true), '') $$;
+          create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+          SQL
+
+      - name: Restore drill — restore the dump into it
+        env:
+          PGSSLMODE: disable
+        run: |
+          set -euo pipefail
+          pg_restore --no-owner --exit-on-error --dbname "$DRILL_URL" out/auth.dump
+          pg_restore --no-owner --exit-on-error --dbname "$DRILL_URL" out/public.dump
+
+      - name: Restore drill — same rows back?
+        env:
+          PGSSLMODE: disable
+        run: |
+          set -euo pipefail
+          psql "$DRILL_URL" -At -f scripts/table-counts.sql > out/restored.csv
+          node scripts/restore-drill-compare.mjs out/before.csv out/after.csv out/restored.csv

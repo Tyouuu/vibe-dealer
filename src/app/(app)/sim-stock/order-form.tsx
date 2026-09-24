@@ -132,7 +132,7 @@ export function OrderForm({
         </div>
         <div className="sm:col-span-6 lg:col-span-6">
           <label className="field-label">Order Date</label>
-          <DatePicker name="order_date" max={today} todayIso={today} required />
+          <DatePicker name="order_date" defaultValue={today} max={today} todayIso={today} required />
         </div>
         <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="so-qty" className="field-label">

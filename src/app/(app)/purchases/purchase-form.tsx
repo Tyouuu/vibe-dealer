@@ -68,7 +68,7 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
           </div>
           <div className="sm:col-span-6 lg:col-span-6">
             <label className="field-label">Date<span className="req"> *</span></label>
-            <DatePicker name="purchase_date" max={today} todayIso={today} required />
+            <DatePicker name="purchase_date" defaultValue={today} max={today} todayIso={today} required />
           </div>
           <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-points" className="field-label">

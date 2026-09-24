@@ -76,7 +76,7 @@ export function IntakeForm({ today }: { today: string }) {
               always the answer, because you book a box in as it arrives. It
               also let a future date be chosen and left the server to refuse
               it afterwards. */}
-          <DatePicker name="intake_date" max={today} todayIso={today} required />
+          <DatePicker name="intake_date" defaultValue={today} max={today} todayIso={today} required />
         </div>
         <div className="sm:col-span-6 lg:col-span-6">
           <label htmlFor="si-cost" className="field-label">

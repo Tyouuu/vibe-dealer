@@ -50,7 +50,10 @@ export default async function DeliveryPage({ searchParams }: PageProps) {
     .from('delivery_queue')
     .select('id, company_name, address, tx_date, type, package, sim_type, delivery_status, status')
     .neq('status', 'flagged')
-    .order('tx_date', { ascending: false })
+    // A queue is worked oldest-first: the card that has waited longest is the one
+    // the Waiting column exists to surface, and newest-first buried it at the
+    // bottom. The all-transactions tab is history, so it stays newest-first.
+    .order('tx_date', { ascending: showAll ? false : true })
 
   if (!showAll) {
     query = query.eq('delivery_status', 'pending')

@@ -10,6 +10,7 @@ import { formatMYR } from '@/lib/money'
 import { SIM_MARGIN_RM } from '@/lib/sim-stock'
 import { toggleDealerPin, assignPackages } from './actions'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
+import type { MatchNote } from '@/lib/search'
 
 // A checkbox, and the bar that appears once anything is ticked.
 //
@@ -108,6 +109,9 @@ export type DealerRow = {
   cardsOwed: number
   totalPoints: number
   rank: number | null
+  /** Why this row is in the search results when the reason is a hidden field
+      (the contact's name, a phone number). Null otherwise. */
+  matchNote?: MatchNote | null
   isInactive: boolean
   isSeverelyInactive: boolean
   daysSinceLastActivity: number | null
@@ -441,7 +445,17 @@ export function DealersTable({
                             </span>
                           )}
                         </div>
-                        {d.company_no && <div className="truncate text-[12px] text-paper-dim">{d.company_no}</div>}
+                        {/* Replaces the registration number rather than adding a third
+                            line, so a row keeps the height every other row has. */}
+                        {d.matchNote ? (
+                          <div className="truncate text-[12px] text-paper-dim">
+                            {d.matchNote.label}: {d.matchNote.before}
+                            <mark className="bg-transparent font-semibold text-paper">{d.matchNote.hit}</mark>
+                            {d.matchNote.after}
+                          </div>
+                        ) : (
+                          d.company_no && <div className="truncate text-[12px] text-paper-dim">{d.company_no}</div>
+                        )}
                       </div>
                       {/* Right edge of the frozen column, so it lands in the
                           same place on every row and stays reachable however

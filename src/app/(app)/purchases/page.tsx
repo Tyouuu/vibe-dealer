@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-balance'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { Pagination } from '../pagination'
 import { formatMYR } from '@/lib/money'
 import { formatTimeOfDay } from '@/lib/month'
 import { EmptyState } from '../empty-state'
@@ -354,40 +355,12 @@ export default async function PurchasesPage({ searchParams }: PageProps) {
                   movements" and sent you to Transactions — a different page,
                   with a different shape and no running balance, to read the
                   rest of this one. */}
-              {totalPages > 1 && (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-ink-800 pt-3">
-                  <span className="text-[12px] text-paper-dim">
-                    {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of {withBalance.length.toLocaleString()} movements
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {pageNum > 1 ? (
-                      <Link href={`/purchases?page=${pageNum - 1}`} className="btn-ghost">
-                        Previous
-                      </Link>
-                    ) : (
-                      // A genuinely disabled control, not a dimmed span. axe
-                      // exempts disabled form controls from the contrast rule
-                      // and does not exempt faded text — the 390px audit
-                      // failed on exactly that. Same shape /records uses.
-                      <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
-                        Previous
-                      </button>
-                    )}
-                    <span className="text-[12px] text-paper-dim">
-                      Page {pageNum} of {totalPages}
-                    </span>
-                    {pageNum < totalPages ? (
-                      <Link href={`/purchases?page=${pageNum + 1}`} className="btn-ghost">
-                        Next
-                      </Link>
-                    ) : (
-                      <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
-                        Next
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <Pagination
+                page={pageNum}
+                totalPages={totalPages}
+                hrefFor={(p) => `/purchases?page=${p}`}
+                summary={`${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} of ${withBalance.length.toLocaleString()} movements`}
+              />
             </>
           ) : (
             /* The consequence, then the way out. This was one grey line that

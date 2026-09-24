@@ -5,7 +5,8 @@ import { requireUser } from '@/lib/auth/dal'
 import { PermissionDenied } from '../permission-denied'
 import { createClient } from '@/lib/supabase/server'
 import { monthRange, todayInMalaysia, formatMonthLabel, formatDateLabel, formatTimeOfDay } from '@/lib/month'
-import { sanitizeSearchTerm } from '@/lib/search'
+import { redirect } from 'next/navigation'
+import { sanitizeSearchTerm, splitMatch } from '@/lib/search'
 import { daysSince, DELIVERY_WARN_DAYS_THRESHOLD, PENDING_REVIEW_STALE_DAYS } from '@/lib/dealer-activity'
 import { COUPON_DENOMINATION_RM } from '@/lib/packages'
 import { RowActions } from './row-actions'
@@ -24,6 +25,7 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
+import { Pagination } from '../pagination'
 import { formatMYR } from '@/lib/money'
 
 export const metadata: Metadata = {
@@ -58,6 +60,7 @@ type TxRow = {
   delivery_status: 'na' | 'pending' | 'sent'
   status: 'pending' | 'verified' | 'flagged'
   flag_reason: string | null
+  note: string | null
   receipt_url: string | null
   recorded_by: string | null
   dealers: { company_name: string } | { company_name: string }[] | null
@@ -185,7 +188,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   let query = supabase
     .from('transactions')
     .select(
-      'id, dealer_id, tx_date, created_at, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, receipt_url, recorded_by, dealers(company_name)',
+      'id, dealer_id, tx_date, created_at, type, package, quantity, points, money_rm, rate, commission_rm, coupon_rm, sim_type, delivery_status, status, flag_reason, note, receipt_url, recorded_by, dealers(company_name)',
       { count: 'exact' }
     )
   // Dispatched explicitly rather than as query[op](col, val): Supabase types
@@ -331,6 +334,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
   }
 
   const buildHref = (overrides: { sort?: string; page?: number }) => hrefWith(overrides)
+
+  // A page number past the end (an old bookmark, a typo, a list that shrank
+  // after a correction) used to come back as an empty screen saying there were
+  // no transactions at all. Count what the filters leave from the three status
+  // counts, which are already in hand, and land on the last page that exists.
+  const shownTotal =
+    status === 'pending' ? pendingCount : status === 'verified' ? verifiedCount : status === 'flagged' ? flaggedCount : (pendingCount ?? 0) + (verifiedCount ?? 0) + (flaggedCount ?? 0)
+  const lastPage = Math.max(1, Math.ceil((shownTotal ?? 0) / PAGE_SIZE))
+  if (pageNum > lastPage) redirect(buildHref({ page: lastPage }))
   const exportHref = hrefWith({ base: '/api/records/export' })
   // Dealer is not counted: arriving from a dealer's page is context, not a
   // filter the operator set, and "clear filters" should not throw it away.
@@ -636,6 +648,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
               {pageRows.map((tx) => {
                 const dealerRel = Array.isArray(tx.dealers) ? tx.dealers[0] : tx.dealers
                 const dealerName = dealerRel?.company_name
+                const noteMatch = safeQ && !dealerName?.toLowerCase().includes(safeQ.toLowerCase()) ? splitMatch(tx.note, safeQ) : null
                 const statusColor =
                   tx.status === 'verified' ? 'jade-bright' : tx.status === 'flagged' ? 'clay-bright' : 'brass-bright'
                 const pendingDays = tx.status === 'pending' ? daysSince(tx.tx_date) : 0
@@ -694,6 +707,15 @@ export default async function RecordsPage({ searchParams }: PageProps) {
                           {dealerName ?? '—'}
                         </a>
                       </div>
+                      {/* The search also reads the note, which nothing else on this
+                          page shows — so a result found only by its note says so. */}
+                      {noteMatch && (
+                        <div className="mt-0.5 truncate pl-[34px] text-[12px] text-paper-dim">
+                          Note: {noteMatch.before}
+                          <mark className="bg-transparent font-semibold text-paper">{noteMatch.hit}</mark>
+                          {noteMatch.after}
+                        </div>
+                      )}
                     </td>
                     <td className="td whitespace-nowrap text-paper-dim" data-c="date">
                       {timeOfDay ? (
@@ -839,33 +861,7 @@ export default async function RecordsPage({ searchParams }: PageProps) {
         />
       )}
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-          <span className="text-[12px] text-paper-dim">
-            Page {pageNum} of {totalPages}
-          </span>
-          <div className="flex items-center gap-2">
-            {pageNum > 1 ? (
-              <Link href={buildHref({ page: pageNum - 1 })} className="btn-ghost py-1.5 text-xs">
-                Previous
-              </Link>
-            ) : (
-              <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Previous
-                  </button>
-            )}
-            {pageNum < totalPages ? (
-              <Link href={buildHref({ page: pageNum + 1 })} className="btn-ghost py-1.5 text-xs">
-                Next
-              </Link>
-            ) : (
-              <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Next
-                  </button>
-            )}
-          </div>
-        </div>
-      )}
+      <Pagination page={pageNum} totalPages={totalPages} hrefFor={(p) => buildHref({ page: p })} />
       </div>
     </>
   )

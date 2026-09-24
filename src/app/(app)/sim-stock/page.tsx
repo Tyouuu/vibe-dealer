@@ -15,6 +15,7 @@ import {
 import { DealerOrdersTable } from './dealer-orders-table'
 import { StockIntakeTable } from './stock-intake-table'
 import { PageHeader } from '../page-header'
+import { Pagination } from '../pagination'
 import { ScrollFade } from '../scroll-fade'
 import { BandHeading } from './elements'
 import { formatMYR } from '@/lib/money'
@@ -180,12 +181,16 @@ export default async function SimStockPage({ searchParams }: PageProps) {
   const intakesPage = Math.min(intakePageNum, intakesTotalPages)
   const pagedIntakes = intakes.slice((intakesPage - 1) * PAGE_SIZE, intakesPage * PAGE_SIZE)
 
-  function ordersPageHref(p: number) {
-    return `/sim-stock${p > 1 ? `?orders_page=${p}` : ''}#dealer-orders`
+  // Each pager keeps the other list's page, so turning one never resets the other.
+  function listHref(orders: number, intake: number, hash: string) {
+    const params = new URLSearchParams()
+    if (orders > 1) params.set('orders_page', String(orders))
+    if (intake > 1) params.set('intake_page', String(intake))
+    const qs = params.toString()
+    return `/sim-stock${qs ? `?${qs}` : ''}#${hash}`
   }
-  function intakePageHref(p: number) {
-    return `/sim-stock${p > 1 ? `?intake_page=${p}` : ''}#stock-intake-history`
-  }
+  const ordersPageHref = (p: number) => listHref(p, intakesPage, 'dealer-orders')
+  const intakePageHref = (p: number) => listHref(ordersPage, p, 'stock-intake-history')
 
   // Two jobs were wearing one page. Buying stock from Vibe (money out, stock
   // up) and selling it to dealers (money in, stock down) are opposite
@@ -410,33 +415,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
               ) : (
                 <p className="text-sm text-paper-dim">No stock intake recorded yet.</p>
               )}
-              {intakesTotalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-                  <span className="text-[12px] text-paper-dim">
-                    Page {intakesPage} of {intakesTotalPages}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {intakesPage > 1 ? (
-                      <Link href={intakePageHref(intakesPage - 1)} className="btn-ghost py-1.5 text-xs">
-                        Previous
-                      </Link>
-                    ) : (
-                      <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                        Previous
-                      </button>
-                    )}
-                    {intakesPage < intakesTotalPages ? (
-                      <Link href={intakePageHref(intakesPage + 1)} className="btn-ghost py-1.5 text-xs">
-                        Next
-                      </Link>
-                    ) : (
-                      <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                        Next
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <Pagination page={intakesPage} totalPages={intakesTotalPages} hrefFor={intakePageHref} param="intake_page" />
           </div>
         </section>
       )}
@@ -493,33 +472,7 @@ export default async function SimStockPage({ searchParams }: PageProps) {
             ) : (
               <p className="text-sm text-paper-dim">No orders recorded yet.</p>
             )}
-            {ordersTotalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-                <span className="text-[12px] text-paper-dim">
-                  Page {ordersPage} of {ordersTotalPages}
-                </span>
-                <div className="flex items-center gap-2">
-                  {ordersPage > 1 ? (
-                    <Link href={ordersPageHref(ordersPage - 1)} className="btn-ghost py-1.5 text-xs">
-                      Previous
-                    </Link>
-                  ) : (
-                    <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                      Previous
-                    </button>
-                  )}
-                  {ordersPage < ordersTotalPages ? (
-                    <Link href={ordersPageHref(ordersPage + 1)} className="btn-ghost py-1.5 text-xs">
-                      Next
-                    </Link>
-                  ) : (
-                    <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                      Next
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <Pagination page={ordersPage} totalPages={ordersTotalPages} hrefFor={ordersPageHref} param="orders_page" />
         </div>
       </section>
     </div>

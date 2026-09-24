@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { getDealerActivityMap } from '@/lib/dealer-activity'
 import { getDealerRankingMap, type DealerRanking } from '@/lib/dealer-ranking'
-import { sanitizeSearchTerm } from '@/lib/search'
+import { dealerMatchNote, dealerSearchFilter, sanitizeSearchTerm } from '@/lib/search'
 import { IconSearch } from '../icons'
 import { DealersTable, type DealerRow } from './dealers-table'
 import { ImportDealersButton } from './import-dealers-button'
@@ -13,6 +13,7 @@ import { PageHeader } from '../page-header'
 import { HeroCard } from '../hero-card'
 import { EmptyState } from '../empty-state'
 import { FilterChips } from '../filter-chips'
+import { Pagination } from '../pagination'
 import { siteOrigin } from '@/lib/site-url'
 import { ColumnsMenu } from '../columns-menu'
 import { TABLE_COLUMNS, columnCookieName, parseHiddenColumns } from '@/lib/table-columns'
@@ -122,7 +123,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
     // so a search term can't break out of the intended filter structure.
     const safeQ = sanitizeSearchTerm(q)
     if (safeQ) {
-      query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
+      query = query.or(dealerSearchFilter(safeQ))
     }
   }
   // The forty-item "All Regions" dropdown is gone: the search box above
@@ -194,6 +195,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
       isSeverelyInactive: activity?.isSeverelyInactive ?? false,
       daysSinceLastActivity: activity?.daysSinceLastActivity ?? null,
       isPinned: pinnedIds.has(d.id),
+      matchNote: q ? dealerMatchNote(d, sanitizeSearchTerm(q)) : null,
     }
   })
 
@@ -446,13 +448,14 @@ export default async function DealersPage({ searchParams }: PageProps) {
 
         <form className="index-filterbar" action="/dealers" method="GET">
           {view !== 'all' && <input type="hidden" name="view" value={view} />}
+          {region !== 'all' && <input type="hidden" name="region" value={region} />}
           <label className="mini-search w-72 max-w-full transition-colors focus-within:border-primary">
             <IconSearch className="h-4 w-4 shrink-0" />
             <input
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="Search company, region or contact"
+              placeholder="Search name, contact, phone, reg. no. or region"
               className="w-full bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim/70"
             />
           </label>
@@ -461,7 +464,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
               btn-primary this was the heaviest control on the page and outranked
               the one with a real consequence. */}
           <button type="submit" className="btn-ghost">
-            Filter
+            Search
           </button>
         </form>
 
@@ -476,33 +479,12 @@ export default async function DealersPage({ searchParams }: PageProps) {
             canAssign={canManage}
             view={view === 'all' ? '' : view}
           />
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-ink-800 pt-3">
-              <span className="text-[12px] text-paper-dim">
-                Page {pageNum} of {totalPages}
-              </span>
-              <div className="flex items-center gap-2">
-                {pageNum > 1 ? (
-                  <Link href={pageHref(pageNum - 1)} className="btn-ghost py-1.5 text-xs">
-                    Previous
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Previous
-                  </button>
-                )}
-                {pageNum < totalPages ? (
-                  <Link href={pageHref(pageNum + 1)} className="btn-ghost py-1.5 text-xs">
-                    Next
-                  </Link>
-                ) : (
-                  <button type="button" disabled className="btn-ghost py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                    Next
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={pageNum}
+            totalPages={totalPages}
+            hrefFor={pageHref}
+            summary={`${((pageNum - 1) * PAGE_SIZE + 1).toLocaleString()}–${Math.min(pageNum * PAGE_SIZE, rows.length).toLocaleString()} of ${rows.length.toLocaleString()} dealers`}
+          />
         </>
       ) : (
         hasFilter ? (

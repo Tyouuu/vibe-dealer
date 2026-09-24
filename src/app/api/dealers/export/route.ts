@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
 import { csvCell } from '@/lib/csv'
-import { sanitizeSearchTerm } from '@/lib/search'
+import { dealerSearchFilter, sanitizeSearchTerm } from '@/lib/search'
 
 const ALL_COLUMNS = ['company_name', 'company_no', 'contact_person', 'phone', 'whatsapp', 'email', 'region', 'address', 'notes', 'package', 'rate'] as const
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   if (q) {
     const safeQ = sanitizeSearchTerm(q)
-    if (safeQ) query = query.or(`company_name.ilike.%${safeQ}%,region.ilike.%${safeQ}%,contact_person.ilike.%${safeQ}%`)
+    if (safeQ) query = query.or(dealerSearchFilter(safeQ))
   }
   if (region !== 'all') query = query.eq('region', region)
 

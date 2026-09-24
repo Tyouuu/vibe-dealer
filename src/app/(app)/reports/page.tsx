@@ -7,6 +7,7 @@ import { monthRange, previousMonth, currentMonth, todayInMalaysia, formatMonthLa
 import { MonthPicker } from '../month-picker'
 import { ScrollFade } from '../scroll-fade'
 import { PageHeader } from '../page-header'
+import { Pagination } from '../pagination'
 import { pctChange } from '../hero-card'
 import { resolveReportMonth } from '@/lib/reporting-month'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
@@ -651,36 +652,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             action={{ href: '/entry', label: 'New transaction' }}
           />
         )}
-        {breakdownPages > 1 && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-ink-800 pt-3">
-            <span className="text-[12px] text-paper-dim">
-              {breakdownStart}–{breakdownEnd} of {breakdown.length.toLocaleString()} dealers
-            </span>
-            <div className="flex items-center gap-2">
-              {breakdownPage > 1 ? (
-                <Link href={breakdownHref(breakdownPage - 1)} className="btn-ghost">
-                  Previous
-                </Link>
-              ) : (
-                <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
-                  Previous
-                </button>
-              )}
-              <span className="text-[12px] text-paper-dim">
-                Page {breakdownPage} of {breakdownPages}
-              </span>
-              {breakdownPage < breakdownPages ? (
-                <Link href={breakdownHref(breakdownPage + 1)} className="btn-ghost">
-                  Next
-                </Link>
-              ) : (
-                <button type="button" disabled className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40">
-                  Next
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={breakdownPage}
+          totalPages={breakdownPages}
+          hrefFor={breakdownHref}
+          summary={`${breakdownStart}–${breakdownEnd} of ${breakdown.length.toLocaleString()} dealers`}
+        />
       </div>
 
       {/* The second revenue line, broken down the way the first one is. It

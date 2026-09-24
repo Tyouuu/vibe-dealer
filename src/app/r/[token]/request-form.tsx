@@ -1,18 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { PACKAGE_SIM_CARDS } from '@/lib/sim-stock'
 import { ACCEPT_ATTR } from '@/lib/vision-extract'
 import { submitRequest } from './actions'
 import { IconUpload } from '../../(app)/icons'
 import { isUnusuallyHigh } from '@/lib/amount-plausibility'
+import { compareSlipForDealer, joinWords, slipDateUsable, type DealerSlipReading } from '@/lib/slip-extract'
 
 // Written for a phone, held one-handed, by someone who has used this once
 // before. Every control is full-width and thumb-sized, and there is one
 // decision per row.
 //
-// Two things changed after the owner used it:
+// Three things have changed it since it was first written:
 //
 //   * Topping up is what dealers do. Buying a package happens once, when they
 //     join. So a top-up is the first choice and the default, and a dealer with
@@ -24,11 +25,21 @@ import { isUnusuallyHigh } from '@/lib/amount-plausibility'
 //     belonged to and messaging the dealer to ask which bank it came from. The
 //     date, the bank line and the SIM type are all things the dealer already
 //     knows and staff had to chase.
+//
+//   * The slip comes first, and it fills the rest. Every figure on this form
+//     used to be typed, so a wrong one was a typo nobody could see until staff
+//     compared it with a bank statement a day later. The transfer slip already
+//     says the amount, the date and the bank — so attaching it now reads those
+//     off and puts them in, and if what the dealer then types disagrees with
+//     the slip, they are told on the spot, while they can still fix it. A
+//     dealer with no slip fills it in by hand exactly as before; nothing here
+//     is ever required.
 export function RequestForm({
   token,
   rate,
   today,
   typicalAmountRm,
+  usualAmountsRm,
 }: {
   token: string
   /** null when no package is on file — see below. */
@@ -40,14 +51,34 @@ export function RequestForm({
       minimum sample. Powers the "a lot more than usual" nudge below — see
       lib/amount-plausibility.ts. */
   typicalAmountRm: number | null
+  /** The few amounts this dealer has actually had verified before, most
+      often sent first — one tap each, so the commonest top-ups are never typed. */
+  usualAmountsRm: number[]
 }) {
   const [type, setType] = useState<'topup' | 'package'>('topup')
   const [money, setMoney] = useState('')
   const [pkg, setPkg] = useState<PackageCode>('A')
   const [simType, setSimType] = useState<'physical' | 'esim'>('physical')
   const [transferDate, setTransferDate] = useState(today)
+  const [paidFrom, setPaidFrom] = useState('')
   const [slipName, setSlipName] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Made once when the form opens and sent with every attempt: the same key is the same request, however many
+  // times a shaky connection makes the dealer press Send (0059).
+  const [clientKey] = useState(() => crypto.randomUUID())
+
+  // A slip may only fill what the dealer has not chosen themselves — once they type, it stops arguing and only
+  // compares.
+  const [moneyTouched, setMoneyTouched] = useState(false)
+  const [dateTouched, setDateTouched] = useState(false)
+  const [paidFromTouched, setPaidFromTouched] = useState(false)
+  const [reading, setReading] = useState<
+    | { status: 'idle' }
+    | { status: 'reading' }
+    | { status: 'done'; reading: DealerSlipReading; filled: string[] }
+    | { status: 'failed'; message: string }
+  >({ status: 'idle' })
+  const latestRead = useRef(0)
 
   const amount = Number(money)
   const points = rate != null && Number.isFinite(amount) && amount > 0 ? Math.round(amount / (1 - rate / 100)) : null
@@ -56,6 +87,52 @@ export function RequestForm({
   // rather than "your usual", so it reads as a fact they can check against
   // their own memory of what they just transferred.
   const looksHigh = type === 'topup' && isUnusuallyHigh(amount, typicalAmountRm)
+
+  // What the slip says against what the dealer has entered right now, recomputed as they type — so fixing the
+  // amount clears the warning and a wrong one raises it.
+  const claimedAmount = type === 'package' ? PACKAGES[pkg].price : amount > 0 ? amount : null
+  const warnings =
+    reading.status === 'done' ? compareSlipForDealer({ amountRm: claimedAmount, date: transferDate }, reading.reading.slip, today) : []
+
+  async function onSlipChosen(file: File | null) {
+    setSlipName(file?.name ?? null)
+    const mine = ++latestRead.current
+    if (!file) {
+      setReading({ status: 'idle' })
+      return
+    }
+    setReading({ status: 'reading' })
+    try {
+      const body = new FormData()
+      body.set('file', file)
+      const res = await fetch(`/r/${encodeURIComponent(token)}/read`, { method: 'POST', body })
+      const json = (await res.json().catch(() => ({}))) as Partial<DealerSlipReading> & { error?: string }
+      if (mine !== latestRead.current) return
+      if (!res.ok || !json.slip) {
+        // Not a dead end: the form works without the reading, and says so.
+        setReading({ status: 'failed', message: json.error ?? "We couldn't read that picture — please type the amount." })
+        return
+      }
+      const { slip } = json as DealerSlipReading
+      const filled: string[] = []
+      // A package's price is fixed, so for a package the amount is compared, never filled.
+      if (type === 'topup' && slip.amount_rm != null && slip.amount_rm > 0 && !moneyTouched) {
+        setMoney(String(slip.amount_rm))
+        filled.push('the amount')
+      }
+      if (!dateTouched && slipDateUsable(slip.paid_on, today) && slip.paid_on !== transferDate) {
+        setTransferDate(slip.paid_on)
+        filled.push('the date')
+      }
+      if (!paidFromTouched && !paidFrom.trim() && (slip.bank || slip.reference)) {
+        setPaidFrom([slip.bank, slip.reference ? `ref ${slip.reference}` : null].filter(Boolean).join(', ').slice(0, 120))
+        filled.push('the bank')
+      }
+      setReading({ status: 'done', reading: { slip, alreadySent: Boolean(json.alreadySent) }, filled })
+    } catch {
+      if (mine === latestRead.current) setReading({ status: 'failed', message: "We couldn't read that picture — please type the amount." })
+    }
+  }
 
   return (
     <form
@@ -71,12 +148,74 @@ export function RequestForm({
     >
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="type" value={type} />
+      <input type="hidden" name="client_key" value={clientKey} />
 
       <div>
         <h2 className="text-[14px] font-semibold text-paper">What would you like?</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Choice active={type === 'topup'} onClick={() => setType('topup')} label="Top up credit" />
           <Choice active={type === 'package'} onClick={() => setType('package')} label="Buy a package" />
+        </div>
+      </div>
+
+      {/* First, because everything below can be filled from it. Optional: a
+          dealer without a slip skips straight past. */}
+      <div>
+        <span className="field-label">
+          Your transfer slip <span className="font-normal text-paper-dim">(recommended)</span>
+        </span>
+        <label className="upload-box">
+          <IconUpload />
+          <span className={slipName ? 'truncate' : 'min-w-0 text-left'}>{slipName ?? 'Attach a photo of the transfer'}</span>
+          <input
+            type="file"
+            name="slip"
+            accept={ACCEPT_ATTR}
+            className="hidden"
+            onChange={(e) => void onSlipChosen(e.target.files?.[0] ?? null)}
+          />
+        </label>
+
+        <div aria-live="polite">
+          {reading.status === 'idle' && (
+            <p className="mt-2 text-[12px] text-paper-dim">
+              We read the amount and date off it for you, so there&apos;s less to type. We check the bank either way.
+            </p>
+          )}
+          {reading.status === 'reading' && <p className="mt-2 text-[12px] text-paper-dim">Reading your slip…</p>}
+          {reading.status === 'failed' && <p className="mt-2 text-[12px] text-paper-dim">{reading.message}</p>}
+          {reading.status === 'done' && (
+            <div className="mt-2 rounded-xl border border-ink-800 bg-ink-850 px-3.5 py-3 text-[13px]">
+              <p className="font-semibold text-paper">
+                {reading.reading.slip.amount_rm != null || reading.reading.slip.paid_on || reading.reading.slip.bank
+                  ? [
+                      reading.reading.slip.amount_rm != null ? `RM ${reading.reading.slip.amount_rm.toLocaleString('en-MY', { minimumFractionDigits: 2 })}` : null,
+                      reading.reading.slip.paid_on
+                        ? new Date(`${reading.reading.slip.paid_on}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })
+                        : null,
+                      reading.reading.slip.bank,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : "We couldn't make out the details"}
+              </p>
+              <p className="mt-1 text-[12px] text-paper-dim">
+                {reading.filled.length > 0
+                  ? `Filled in ${joinWords(reading.filled)} below — please check ${reading.filled.length === 1 ? 'it is' : 'they are'} right.`
+                  : "We couldn't read the amount, so please type it below."}
+              </p>
+              {warnings.map((w) => (
+                <p key={w} className="mt-2 text-[12px] font-semibold text-clay-bright">
+                  {w}
+                </p>
+              ))}
+              {reading.reading.alreadySent && (
+                <p className="mt-2 text-[12px] font-semibold text-brass-bright">
+                  This looks like a slip you&apos;ve already sent. Check &ldquo;Your recent requests&rdquo; below before sending it again.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -98,11 +237,37 @@ export function RequestForm({
               step="0.01"
               required
               value={money}
-              onChange={(e) => setMoney(e.target.value)}
+              onChange={(e) => {
+                setMoney(e.target.value)
+                setMoneyTouched(true)
+              }}
               placeholder="500.00"
               className="field-input pl-11 text-[16px]"
             />
           </div>
+          {/* The commonest top-ups this dealer has actually made, one tap each. A generic list of round numbers
+              would suggest amounts they have never sent; these are theirs. */}
+          {usualAmountsRm.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-[12px] text-paper-dim">Your usual:</span>
+              {usualAmountsRm.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => {
+                    setMoney(String(a))
+                    setMoneyTouched(true)
+                  }}
+                  aria-pressed={amount === a}
+                  className={`rounded-full border px-3 py-1.5 text-[13px] font-semibold tabular-nums transition-colors ${
+                    amount === a ? 'border-paper bg-ink-850 text-paper' : 'border-ink-800 text-paper hover:border-paper'
+                  }`}
+                >
+                  RM {a.toLocaleString('en-MY')}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Three states, and the third is the one that matters. A dealer with
               no package on file used to be refused outright here: no rate, no
               way to price the points, so the top-up option was hidden and the
@@ -185,14 +350,18 @@ export function RequestForm({
           required
           max={today}
           value={transferDate}
-          onChange={(e) => setTransferDate(e.target.value)}
+          onChange={(e) => {
+            setTransferDate(e.target.value)
+            setDateTouched(true)
+          }}
           className="field-input text-[16px]"
         />
       </div>
 
       {/* One free-text line rather than a bank dropdown and a reference field.
           A dealer copies whatever their banking app showed them, and two boxes
-          with strict shapes is two boxes left empty. */}
+          with strict shapes is two boxes left empty. Filled from the slip when
+          there is one. */}
       <div>
         <label className="field-label" htmlFor="paid_from">
           Which bank, and any reference? <span className="font-normal text-paper-dim">(optional)</span>
@@ -202,30 +371,15 @@ export function RequestForm({
           name="paid_from"
           type="text"
           maxLength={120}
+          value={paidFrom}
+          onChange={(e) => {
+            setPaidFrom(e.target.value)
+            setPaidFromTouched(true)
+          }}
           placeholder="e.g. Maybank 3:15pm, ref 5512"
           className="field-input text-[16px]"
         />
         <p className="mt-2 text-[12px] text-paper-dim">This is what lets us find your payment in the statement quickly.</p>
-      </div>
-
-      <div>
-        <span className="field-label">
-          Payment slip <span className="font-normal text-paper-dim">(optional)</span>
-        </span>
-        <label className="upload-box">
-          <IconUpload />
-          <span className={slipName ? 'truncate' : 'min-w-0 text-left'}>{slipName ?? 'Attach a photo of the transfer'}</span>
-          <input
-            type="file"
-            name="slip"
-            accept={ACCEPT_ATTR}
-            className="hidden"
-            onChange={(e) => setSlipName(e.target.files?.[0]?.name ?? null)}
-          />
-        </label>
-        {/* Said plainly, because a dealer who thinks the slip is what gets
-            them credited will wait for the wrong thing. */}
-        <p className="mt-2 text-[12px] text-paper-dim">We check the bank either way — this just helps us find it faster.</p>
       </div>
 
       {/* Last, and still optional. Everything worth having a box of its own now

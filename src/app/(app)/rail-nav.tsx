@@ -20,6 +20,7 @@ import {
   IconShoppingBag,
   IconShoppingBagPlus,
   IconShield,
+  IconShieldCheck,
   IconSettings,
   IconLayers,
   IconLayersPlus,
@@ -44,6 +45,7 @@ const ICONS: Record<string, (props: { className?: string }) => React.JSX.Element
   '/purchases': IconShoppingBag,
   '/purchases/new': IconShoppingBagPlus,
   '/audit': IconShield,
+  '/system-check': IconShieldCheck,
   '/staff': IconBadge,
   '/requests': IconInbox,
 }

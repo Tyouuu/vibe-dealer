@@ -14,6 +14,9 @@ import { Listbox } from '../listbox'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
+import { compareSlipToEntry, slipDateUsable } from '@/lib/slip-extract'
+import { SlipReadout } from '../slip-readout'
+import { usePasteImage, useSlipReader } from '../use-slip-reader'
 
 // Mirrors /api/reconcile/extract's limits — this upload previously had none
 // at all, client-side or bucket-level, unlike the OCR route which validates
@@ -70,6 +73,8 @@ export function EntryForm({
     paidFrom: string | null
     simType: 'physical' | 'esim' | null
     slipUrl: string | null
+    /** The reference read off the dealer's slip, if a reviewer has had it read (0046). */
+    slipReference: string | null
   }
 }) {
   const formRef = useRef<HTMLFormElement>(null)
@@ -90,6 +95,14 @@ export function EntryForm({
   // date the sale belongs to, and it beats today — which is only ever a guess
   // at it.
   const [txDate, setTxDate] = useState(fromRequest?.transferDate ?? today)
+  // A slip may only fill a field the person has not chosen a value for. The amount is pre-filled with the
+  // dealer's last sale when a dealer is picked, and the date starts at today; neither is "typed", so a slip
+  // can replace them — but the moment someone types, the slip stops arguing and only compares.
+  const [moneyTouched, setMoneyTouched] = useState(fromRequest?.money_rm != null)
+  const [dateTouched, setDateTouched] = useState(fromRequest?.transferDate != null)
+  const [reference, setReference] = useState(fromRequest?.slipReference ?? '')
+  const [filledFromSlip, setFilledFromSlip] = useState<string[]>([])
+  const slipReader = useSlipReader('entry')
   const [type, setType] = useState<'topup' | 'package'>(fromRequest?.type ?? 'topup')
   const [pkg, setPkg] = useState<PackageCode>(fromRequest?.package ?? 'A')
   // How many of that package. A dealer bought forty of Package C at the
@@ -175,6 +188,52 @@ export function EntryForm({
   // until the form rejected the whole submission.
   const couponAmount = Number(couponRm) || 0
   const couponExceedsMoney = type === 'topup' && couponAmount > 0 && couponAmount > (Number(moneyCollected) || 0)
+
+  // One door for a receipt, whether it was chosen in the picker or pasted. It reads the slip, fills what
+  // the person has not already decided, and says what it filled.
+  async function attachReceipt(file: File | null): Promise<boolean> {
+    if (file && !RECEIPT_ALLOWED_TYPES.has(file.type)) {
+      setError('Please upload a JPEG, PNG, WEBP, or GIF image.')
+      return false
+    }
+    if (file && file.size > RECEIPT_MAX_BYTES) {
+      setError('Image is too large (max 10MB).')
+      return false
+    }
+    setError(null)
+    setReceiptFile(file)
+    setFilledFromSlip([])
+    if (!file) {
+      slipReader.reset()
+      return true
+    }
+    const result = await slipReader.read(file)
+    if (!result) return true
+    const { slip } = result
+    const filled: string[] = []
+    // A package's price is fixed, so the amount is only ever compared for one, never filled.
+    if (type === 'topup' && slip.amount_rm != null && !moneyTouched) {
+      setMoneyCollected(String(slip.amount_rm))
+      filled.push('the amount')
+    }
+    if (!dateTouched && slipDateUsable(slip.paid_on, today) && slip.paid_on !== txDate) {
+      setTxDate(slip.paid_on)
+      filled.push('the date')
+    }
+    if (slip.reference && !reference.trim()) {
+      setReference(slip.reference.slice(0, 80))
+      filled.push('the reference')
+    }
+    setFilledFromSlip(filled)
+    return true
+  }
+  usePasteImage((file) => void attachReceipt(file))
+
+  // What the slip says against what is on the form right now — recomputed as the person types, so
+  // correcting the amount clears the warning and a wrong one raises it.
+  const entryMoney = type === 'package' ? Math.round(PACKAGES[pkg].price * qty * 100) / 100 : Number(moneyCollected) > 0 ? Number(moneyCollected) : null
+  const slipFindings = slipReader.state.status === 'done' ? compareSlipToEntry({ amountRm: entryMoney, date: txDate }, slipReader.state.slip, today) : []
+  const amountFinding = slipFindings.find((f) => f.kind === 'amount')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -388,7 +447,17 @@ export function EntryForm({
           )}
             <div>
               <label className="field-label">Date</label>
-              <DatePicker name="tx_date" value={txDate} onChange={setTxDate} max={today} todayIso={today} required />
+              <DatePicker
+                name="tx_date"
+                value={txDate}
+                onChange={(v) => {
+                  setTxDate(v)
+                  setDateTouched(true)
+                }}
+                max={today}
+                todayIso={today}
+                required
+              />
               <span className="hint">When the sale actually happened, not when you&apos;re entering it.</span>
             </div>
           </div>
@@ -491,11 +560,19 @@ export function EntryForm({
                   step="0.01"
                   min="0.01"
                   value={moneyCollected}
-                  onChange={(e) => setMoneyCollected(e.target.value)}
+                  onChange={(e) => {
+                    setMoneyCollected(e.target.value)
+                    setMoneyTouched(true)
+                  }}
                   placeholder="e.g. 799"
                   required
                   className="field-input"
                 />
+                {amountFinding ? (
+                  <span className="hint font-semibold text-clay-bright">{amountFinding.text}</span>
+                ) : filledFromSlip.includes('the amount') ? (
+                  <span className="hint">Read from the slip — change it if it is wrong.</span>
+                ) : null}
               </div>
               <div>
                 <label className="field-label">Top-up value (points)</label>
@@ -668,27 +745,38 @@ export function EntryForm({
               <label className="field-label">Receipt (optional)</label>
               <label className="upload-box">
                 <IconUpload />
-                <span className="truncate">{receiptFile ? receiptFile.name : 'Click to upload receipt image'}</span>
+                <span className="truncate">{receiptFile ? receiptFile.name : 'Click to upload, or paste a screenshot'}</span>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null
-                    if (file && !RECEIPT_ALLOWED_TYPES.has(file.type)) {
-                      setError('Please upload a JPEG, PNG, WEBP, or GIF image.')
-                      e.target.value = ''
-                      return
-                    }
-                    if (file && file.size > RECEIPT_MAX_BYTES) {
-                      setError('Image is too large (max 10MB).')
-                      e.target.value = ''
-                      return
-                    }
-                    setReceiptFile(file)
+                  onChange={async (e) => {
+                    const input = e.target
+                    const ok = await attachReceipt(input.files?.[0] ?? null)
+                    if (!ok) input.value = ''
                   }}
                   className="hidden"
                 />
               </label>
+              {/* Says the slip is read, because a form that changes its own fields with no word about
+                  why is one nobody trusts. Paste works anywhere on the page. */}
+              <span className="hint">The amount, date and reference are read off the slip for you. Ctrl+V pastes a screenshot from WhatsApp.</span>
+              <SlipReadout state={slipReader.state} findings={slipFindings} filled={filledFromSlip} />
+              <div className="mt-3.5">
+                <label className="field-label" htmlFor="tx-reference">
+                  Transfer reference <span className="font-normal text-paper-dim">(optional)</span>
+                </label>
+                <input
+                  id="tx-reference"
+                  name="reference"
+                  type="text"
+                  maxLength={80}
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Printed on the slip"
+                  className="field-input"
+                />
+                <span className="hint">The same reference on two entries is one payment recorded twice, so it is refused.</span>
+              </div>
             </div>
           </div>
           {/* The submit lived in the right-hand card, above the live totals.
@@ -748,6 +836,13 @@ export function EntryForm({
             {recentMatch.points.toLocaleString()} pts). Record this one as well only if it is a separate sale.
           </div>
         )}
+        {/* The slip disagreeing with the form is the one thing a second look can still catch. It does not
+            block — a partial payment is real — but it is said at the last moment it can be acted on. */}
+        {slipFindings.filter((f) => f.tone === 'bad').map((f) => (
+          <div key={f.text} className="alert alert-bad mt-3 text-[13px]">
+            {f.text}. Check the amount before you confirm.
+          </div>
+        ))}
         <p className="mt-3 text-[12px] text-paper-dim">Goes in as pending — an accountant still needs to verify it.</p>
         <div className="mt-4 flex items-center gap-2">
           <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">

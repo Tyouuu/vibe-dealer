@@ -7,9 +7,20 @@ import { CREDIT_PURCHASE_RATE } from '@/lib/packages'
 import { DatePicker } from '../date-picker'
 import { Modal } from '../modal'
 import { formatMYR } from '@/lib/money'
+import { compareSlipToEntry, slipDateUsable } from '@/lib/slip-extract'
+import { SlipReadout } from '../slip-readout'
+import { useSlipReader } from '../use-slip-reader'
 
 export function PurchaseForm({ today, balance }: { today: string; balance: number }) {
   const [moneyRm, setMoneyRm] = useState('')
+  // The date and reference are controlled so a slip can fill them. A slip only ever fills a field the person
+  // has not touched: once someone types, it stops arguing and only compares.
+  const [purchaseDate, setPurchaseDate] = useState(today)
+  const [reference, setReference] = useState('')
+  const [moneyTouched, setMoneyTouched] = useState(false)
+  const [dateTouched, setDateTouched] = useState(false)
+  const [filledFromSlip, setFilledFromSlip] = useState<string[]>([])
+  const slipReader = useSlipReader('purchase')
   // Suggested from the money paid, at the one rate this has ever used (see
   // packages.ts) — still editable for the rare case Vibe actually charged
   // something else for this particular batch.
@@ -20,6 +31,39 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
 
   const suggestedPoints = Math.round((Number(moneyRm) || 0) / (1 - CREDIT_PURCHASE_RATE))
   const points = pointsOverride ? Number(pointsOverride) : suggestedPoints
+
+  // A photo or screenshot is read as it is attached; a PDF is only attached, since the reader takes images.
+  async function pickReceipt(file: File | null) {
+    setFilledFromSlip([])
+    if (!file || !file.type.startsWith('image/')) {
+      slipReader.reset()
+      return
+    }
+    const result = await slipReader.read(file)
+    if (!result) return
+    const { slip } = result
+    const filled: string[] = []
+    if (slip.amount_rm != null && !moneyTouched) {
+      setMoneyRm(String(slip.amount_rm))
+      filled.push('the amount')
+    }
+    if (!dateTouched && slipDateUsable(slip.paid_on, today) && slip.paid_on !== purchaseDate) {
+      setPurchaseDate(slip.paid_on)
+      filled.push('the date')
+    }
+    if (slip.reference && !reference.trim()) {
+      setReference(slip.reference.slice(0, 80))
+      filled.push('the reference')
+    }
+    setFilledFromSlip(filled)
+  }
+
+  const slipFindings =
+    slipReader.state.status === 'done'
+      ? compareSlipToEntry({ amountRm: Number(moneyRm) > 0 ? Number(moneyRm) : null, date: purchaseDate }, slipReader.state.slip, today)
+      : []
+
+  const amountFinding = slipFindings.find((f) => f.kind === 'amount')
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -62,13 +106,31 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               min="0"
               required
               value={moneyRm}
-              onChange={(e) => setMoneyRm(e.target.value)}
+              onChange={(e) => {
+                setMoneyRm(e.target.value)
+                setMoneyTouched(true)
+              }}
               className="field-input"
             />
+            {amountFinding ? (
+              <p className="mt-1.5 text-[12px] font-semibold text-clay-bright">{amountFinding.text}</p>
+            ) : filledFromSlip.includes('the amount') ? (
+              <p className="mt-1.5 text-[12px] text-paper-dim">Read from the slip — change it if it is wrong.</p>
+            ) : null}
           </div>
           <div className="sm:col-span-6 lg:col-span-6">
             <label className="field-label">Date<span className="req"> *</span></label>
-            <DatePicker name="purchase_date" defaultValue={today} max={today} todayIso={today} required />
+            <DatePicker
+              name="purchase_date"
+              value={purchaseDate}
+              onChange={(v) => {
+                setPurchaseDate(v)
+                setDateTouched(true)
+              }}
+              max={today}
+              todayIso={today}
+              required
+            />
           </div>
           <div className="sm:col-span-6 lg:col-span-6">
             <label htmlFor="cp-points" className="field-label">
@@ -100,7 +162,16 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             <label htmlFor="cp-ref" className="field-label">
               Invoice / transfer ref <span className="font-normal text-paper-dim">(optional)</span>
             </label>
-            <input id="cp-ref" name="reference" type="text" maxLength={80} placeholder="e.g. VM-2026-114" className="field-input" />
+            <input
+              id="cp-ref"
+              name="reference"
+              type="text"
+              maxLength={80}
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="e.g. VM-2026-114"
+              className="field-input"
+            />
           </div>
           {/* Six, not three. Row one is four fields of three; row two was a
               three and a six, which left a quarter of the row empty on the
@@ -117,7 +188,11 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
               outside at full bleed, so the two money-in forms in this app had
               upload boxes of different widths again. */}
           <div className="sm:col-span-6 lg:col-span-6">
-            <ReceiptField hint="Vibe Mobile's invoice, or the bank transfer slip. Image or PDF." />
+            <ReceiptField
+              hint="Vibe Mobile's invoice, or the bank transfer slip. A photo or screenshot is read for you (amount, date, reference); a PDF is only attached."
+              onPick={pickReceipt}
+            />
+            <SlipReadout state={slipReader.state} findings={slipFindings} filled={filledFromSlip} />
           </div>
         </div>
 
@@ -187,6 +262,13 @@ export function PurchaseForm({ today, balance }: { today: string; balance: numbe
             <b className="figure-points text-paper">{points.toLocaleString()}</b>
           </div>
         </div>
+        {/* The slip disagreeing with the form is the one thing a second look can still catch. It does not
+            block — a partial payment is real — but it is said at the last moment it can be acted on. */}
+        {slipFindings.filter((f) => f.tone === 'bad').map((f) => (
+          <div key={f.text} className="alert alert-bad mt-3 text-[13px]">
+            {f.text}. Check the amount before you confirm.
+          </div>
+        ))}
         <div className="mt-4 flex items-center gap-2">
           <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1">
             Back

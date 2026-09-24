@@ -2,12 +2,14 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PACKAGES, type PackageCode } from '@/lib/packages'
 import { ALLOWED_TYPES, MAX_BYTES } from '@/lib/vision-extract'
 import { todayInMalaysia } from '@/lib/month'
 import { reportToSentry } from '@/lib/sentry-report'
+import { readSlipForRequest } from '@/lib/read-request-slip'
 
 // The one write path a dealer has, and the only place in this app where an
 // unauthenticated caller causes a row to exist.
@@ -65,6 +67,16 @@ export async function submitRequest(formData: FormData) {
   // anyone with a list of guesses learn which ones are real.
   if (!dealer || dealer.status !== 'active') {
     fail(token, 'This link is no longer active. Please contact us.')
+  }
+
+  // Sent once when the form opened and again with every attempt: the same key is the same request pressed
+  // twice. Answered as a success, not an error — the dealer's first press DID work, and telling them their
+  // second one failed would send them off to send a third.
+  const rawKey = String(formData.get('client_key') ?? '')
+  const clientKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawKey) ? rawKey : null
+  if (clientKey) {
+    const { data: already } = await supabase.from('topup_requests').select('id').eq('client_key', clientKey).maybeSingle()
+    if (already) back(token, 'sent=1')
   }
 
   const type = String(formData.get('type') ?? '')
@@ -133,17 +145,25 @@ export async function submitRequest(formData: FormData) {
     slipUrl = path
   }
 
-  const { error } = await supabase.from('topup_requests').insert({
-    dealer_id: dealer.id,
-    type,
-    money_rm: moneyRm,
-    package: pkg,
-    sim_type: simType,
-    transfer_date: transferDate,
-    paid_from: paidFrom,
-    note,
-    slip_url: slipUrl,
-  })
+  const { data: created, error } = await supabase
+    .from('topup_requests')
+    .insert({
+      dealer_id: dealer.id,
+      type,
+      money_rm: moneyRm,
+      package: pkg,
+      sim_type: simType,
+      transfer_date: transferDate,
+      paid_from: paidFrom,
+      note,
+      slip_url: slipUrl,
+      client_key: clientKey,
+    })
+    .select('id')
+    .single()
+
+  // Two presses landing together both passed the check above; the unique index (0059) let one through.
+  if (error?.code === '23505' && clientKey) back(token, 'sent=1')
 
   if (error) {
     if (error.message.includes('too_many_pending_requests')) {
@@ -153,6 +173,14 @@ export async function submitRequest(formData: FormData) {
       Sentry.captureException(new Error(`[r/submit] insert failed: ${error.message}`), { extra: { dealerId: dealer.id } })
     )
     fail(token, "That didn't send. Please try again, or WhatsApp us.")
+  }
+
+  // Read the slip now, so whoever opens /requests finds it already checked. After the response: a slow or
+  // failing model must never delay or break a dealer's Send.
+  if (slipUrl && created?.id) {
+    const requestId = created.id as string
+    const path = slipUrl
+    after(() => readSlipForRequest(requestId, path))
   }
 
   revalidatePath(`/r/${token}`)

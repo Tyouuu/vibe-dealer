@@ -6,6 +6,8 @@ import { getAvailablePointsBalance, LOW_BALANCE_THRESHOLD } from '@/lib/credit-b
 import { todayInMalaysia, previousMonth } from '@/lib/month'
 import { decideAlerts, type AlertKind } from '@/lib/alerts'
 import { reportToSentry } from '@/lib/sentry-report'
+import { runAndStoreSystemChecks } from '@/lib/system-check-run'
+import { problemLines } from '@/lib/system-check'
 
 // Sends nothing on a good day.
 //
@@ -35,7 +37,7 @@ function emailHtml(alerts: { headline: string; detail: string }[], today: string
           (a) => `
         <div style="border-left: 3px solid #c8901a; padding: 2px 0 2px 14px; margin: 0 0 20px;">
           <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">${a.headline}</div>
-          <div style="font-size: 14px; line-height: 1.55; color: #3d4c5e;">${a.detail}</div>
+          <div style="font-size: 14px; line-height: 1.55; color: #3d4c5e;">${a.detail.replace(/\n/g, '<br>')}</div>
         </div>`,
         )
         .join('')}
@@ -75,6 +77,19 @@ export async function GET(request: NextRequest) {
       .lt('tx_date', `${today.slice(0, 7)}-01`),
   ])
 
+  // The books checked against their own rules (0058). Run here, once a day, because this is the
+  // one pass that already exists to say something only when something is wrong — and it is
+  // stored either way, so the System Check page can show that it ran clean and not merely that
+  // it did not complain. If the check cannot run, that is itself said: a check that quietly
+  // stopped looks exactly like a month with nothing wrong.
+  let systemCheck: { ran: boolean; problems: string[] } = { ran: false, problems: [] }
+  try {
+    const run = await runAndStoreSystemChecks(supabase, { source: 'nightly', runBy: null })
+    systemCheck = { ran: true, problems: problemLines(run) }
+  } catch (err) {
+    await reportToSentry(() => Sentry.captureException(err))
+  }
+
   const oldest = oldestRows?.[0]?.tx_date as string | undefined
   const oldestPendingDays = oldest
     ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${oldest}T00:00:00Z`)) / 86_400_000)
@@ -94,13 +109,14 @@ export async function GET(request: NextRequest) {
       dayOfMonth: Number(today.slice(8, 10)),
       oldestPendingDays,
       pendingCount: pendingTotal ?? 0,
+      systemCheck,
     },
     lastSentOn,
     today,
   )
 
   if (!alerts.length) {
-    return NextResponse.json({ ok: true, date: today, sent: 0, note: 'nothing needed saying' })
+    return NextResponse.json({ ok: true, date: today, sent: 0, note: 'nothing needed saying', systemCheck: { ran: systemCheck.ran, failing: systemCheck.problems.length } })
   }
 
   // Masters and the accountant. Between them they are the people who can
@@ -154,5 +170,5 @@ export async function GET(request: NextRequest) {
       onConflict: 'kind',
     })
 
-  return NextResponse.json({ ok: true, date: today, sent: alerts.length, kinds: alerts.map((a) => a.kind), recipients })
+  return NextResponse.json({ ok: true, date: today, sent: alerts.length, kinds: alerts.map((a) => a.kind), recipients, systemCheck: { ran: systemCheck.ran, failing: systemCheck.problems.length } })
 }

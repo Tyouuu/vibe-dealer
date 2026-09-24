@@ -39,6 +39,9 @@ const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[]
   { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'cs', 'master'], group: 'Transactions' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
+  // Beside Reconciliation because it asks the same question of a different thing: Reconciliation
+  // asks whether the books agree with Vibe, this asks whether they agree with themselves.
+  { href: '/system-check', label: 'System Check', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },
   // Under the page it feeds, the way Onboard Dealer sits under Dealers and
   // Log SIM Stock under SIM Card Stock.
@@ -58,7 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // No dealer count here any more — the /dealers badge that consumed it is
   // gone (see the badge note below), and this was a COUNT over 249 rows on
   // every single page load in the app, for a number nothing rendered.
-  const [{ count: pendingCount }, { count: pendingDeliveryCount }, { count: pendingRequestCount }, creditBalance, builtNotifications] = await Promise.all([
+  const [{ count: pendingCount }, { count: pendingDeliveryCount }, { count: pendingRequestCount }, creditBalance, builtNotifications, { data: lastCheck }] = await Promise.all([
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('delivery_queue').select('id', { count: 'exact', head: true }).eq('delivery_status', 'pending'),
     // Same definition the page itself uses: status = 'pending'. A dealer
@@ -72,6 +75,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       : Promise.resolve({ count: null }),
     getAvailablePointsBalance(supabase),
     getNotifications(user.id, user.role),
+    // The most recent system check, for the badge: lit only when a rule the books must always keep
+    // has been broken. A warning is not a badge — it is a thing to look at, not a thing that needs
+    // you — and a clean run shows nothing, the way an empty inbox does.
+    isFinance
+      ? supabase.from('system_check_runs').select('fail_count').order('ran_at', { ascending: false }).limit(1).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
@@ -90,7 +99,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ? (pendingDeliveryCount ?? undefined)
           : item.href === '/requests'
             ? (pendingRequestCount ?? undefined)
-            : undefined,
+            : item.href === '/system-check'
+              ? (lastCheck?.fail_count || undefined)
+              : undefined,
   }))
 
   // The bell dropdown is a short preview (capped at 4) of the same list the

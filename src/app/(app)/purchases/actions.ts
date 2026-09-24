@@ -8,6 +8,8 @@ import { friendlyDbError } from '@/lib/db-error'
 import { parseBusinessDate, todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
 import { uploadReceipt } from '@/lib/receipt-upload'
+import { findRecordedReference } from '@/lib/reference-duplicate'
+import { formatMYR } from '@/lib/money'
 
 // Errors go back to the page the form is actually on. The form moved to
 // /purchases/new when Log Purchase became its own sidebar entry, and this kept
@@ -45,6 +47,19 @@ export async function recordCreditPurchase(formData: FormData) {
   if (!Number.isFinite(points) || points <= 0) fail('Please enter a valid points amount.')
 
   const supabase = await createClient()
+
+  // The same invoice logged twice puts credit in the ledger that was only ever bought once — credit that
+  // does not exist, which is the one error that lets the business sell what it does not have. So a
+  // reference already on a purchase is refused, not warned about.
+  if (reference) {
+    const same = await findRecordedReference(supabase, 'purchase', reference)
+    if (same) {
+      fail(
+        `That invoice or transfer reference (${reference}) is already on a purchase of ${formatMYR(same.moneyRm)} dated ${same.date}. ` +
+          'Logging it again would add the same credit twice. If this is a different purchase, clear the reference and save again.',
+      )
+    }
+  }
 
   // A purchase carries the month's opening and closing points balance on the
   // Monthly Report, so backdating one into a reconciled month moves a ledger

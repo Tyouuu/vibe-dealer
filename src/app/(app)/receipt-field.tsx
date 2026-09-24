@@ -16,6 +16,7 @@ export function ReceiptField({
   name = 'receipt',
   onSelect,
   selectedName,
+  onPick,
 }: {
   label?: string
   /** Says which document this is, in the words of whoever will be attaching it. */
@@ -31,6 +32,11 @@ export function ReceiptField({
    */
   onSelect?: (file: File | null) => void
   selectedName?: string | null
+  /**
+   * Told which file was picked, WITHOUT taking the upload over — the file still posts with the form and
+   * the box still shows its own filename. For a form that wants to read the picture as it arrives.
+   */
+  onPick?: (file: File | null) => void
 }) {
   const [ownName, setOwnName] = useState<string | null>(null)
   const shownName = onSelect ? (selectedName ?? null) : ownName
@@ -52,6 +58,7 @@ export function ReceiptField({
             const file = e.target.files?.[0] ?? null
             if (onSelect) onSelect(file)
             else setOwnName(file?.name ?? null)
+            onPick?.(file)
           }}
         />
       </label>

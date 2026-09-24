@@ -51,7 +51,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
     ? (
         await supabase
           .from('topup_requests')
-          .select('id, dealer_id, type, money_rm, package, note, created_at, transfer_date, paid_from, sim_type, slip_url, dealers(company_name)')
+          .select('id, dealer_id, type, money_rm, package, note, created_at, transfer_date, paid_from, sim_type, slip_url, slip_reference, dealers(company_name)')
           .eq('id', request)
           .eq('status', 'pending')
           .maybeSingle()
@@ -76,6 +76,7 @@ export default async function EntryPage({ searchParams }: PageProps) {
         paidFrom: (pendingRequest.paid_from as string | null) ?? null,
         simType: (pendingRequest.sim_type as 'physical' | 'esim' | null) ?? null,
         slipUrl: (pendingRequest.slip_url as string | null) ?? null,
+        slipReference: (pendingRequest.slip_reference as string | null) ?? null,
         submittedAt: new Date(pendingRequest.created_at as string).toLocaleString('en-GB', {
           timeZone: 'Asia/Kuala_Lumpur',
           day: 'numeric',

@@ -5,6 +5,7 @@ import { todayInMalaysia } from '@/lib/month'
 import { LogoMark } from '../../(app)/icons'
 import { RequestForm } from './request-form'
 import { typicalAmount } from '@/lib/amount-plausibility'
+import { usualAmounts } from '@/lib/usual-amounts'
 
 // The only page in this app a person outside the company ever sees.
 //
@@ -79,6 +80,8 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
     .order('tx_date', { ascending: false })
     .limit(20)
   const typicalTopupRm = typicalAmount((pastTopups ?? []).map((t) => Number(t.money_rm)))
+  // The same settled history, as the few amounts this dealer really sends — offered as one-tap choices.
+  const usualTopupsRm = usualAmounts((pastTopups ?? []).map((t) => Number(t.money_rm)))
 
   // <header> and <main>, like every signed-in page gets from the app shell.
   //
@@ -118,7 +121,7 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
         {/* today from the server, not the phone. The date field decides which
             month a sale lands in, and a handset with the wrong clock would put
             it in the wrong one silently. */}
-        <RequestForm token={token} rate={dealer.rate == null ? null : Number(dealer.rate)} today={todayInMalaysia()} typicalAmountRm={typicalTopupRm} />
+        <RequestForm token={token} rate={dealer.rate == null ? null : Number(dealer.rate)} today={todayInMalaysia()} typicalAmountRm={typicalTopupRm} usualAmountsRm={usualTopupsRm} />
 
         {recent && recent.length > 0 && (
           <div className="app-card mt-4 p-6">

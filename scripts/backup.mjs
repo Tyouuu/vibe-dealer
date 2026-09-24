@@ -86,6 +86,7 @@ const TABLES = [
   'alert_log',
   'report_summaries',
   'push_events',
+  'system_check_runs',
   'rate_limit_hits',
 ]
 

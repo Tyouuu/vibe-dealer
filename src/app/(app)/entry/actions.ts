@@ -12,6 +12,9 @@ import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
 import { isPeriodLocked, isPeriodLockError, periodLockedMessage } from '@/lib/period-lock'
 import { friendlyDbError } from '@/lib/db-error'
+import { findRecordedReference } from '@/lib/reference-duplicate'
+import { isComparableReference } from '@/lib/slip-extract'
+import { formatMYR } from '@/lib/money'
 import * as Sentry from '@sentry/nextjs'
 import { reportToSentry } from '@/lib/sentry-report'
 
@@ -30,6 +33,7 @@ export async function createTransaction(formData: FormData) {
   const simTypeRaw = String(formData.get('sim_type') ?? '') as 'physical' | 'esim' | ''
   const note = String(formData.get('note') ?? '').trim() || null
   const receiptUrl = String(formData.get('receipt_url') ?? '').trim() || null
+  const reference = String(formData.get('reference') ?? '').trim().slice(0, 80) || null
 
   if (!dealerId) fail('Please select a dealer.')
   if (type !== 'package' && type !== 'topup') fail('Please select a transaction type.')
@@ -123,6 +127,27 @@ export async function createTransaction(formData: FormData) {
   const simType = type === 'package' ? simTypeRaw || null : null
   const idempotencyKey = String(formData.get('idempotency_key') ?? '').trim() || null
 
+  // The same bank reference twice is one payment counted twice: points handed out twice for money
+  // received once, invisible in every total because each entry looks ordinary by itself. The form warns
+  // when the slip is attached; this is the rule. Skipped for a retry of an entry that already went in —
+  // that one carries its own reference, and finding it here would turn a harmless resubmit into an error.
+  if (reference && isComparableReference(reference)) {
+    let alreadySaved = false
+    if (idempotencyKey) {
+      const { data: earlier } = await supabase.from('transactions').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+      alreadySaved = Boolean(earlier)
+    }
+    if (!alreadySaved) {
+      const same = await findRecordedReference(supabase, 'entry', reference)
+      if (same) {
+        fail(
+          `That bank reference (${reference}) is already on ${same.label}'s entry of ${formatMYR(same.moneyRm)} dated ${same.date}. ` +
+            'Recording it again would count one payment twice. If this is a different payment, clear the reference and submit again.',
+        )
+      }
+    }
+  }
+
   const { data: inserted, error: txError } = await supabase.from('transactions').insert({
     dealer_id: dealerId,
     type,
@@ -134,6 +159,7 @@ export async function createTransaction(formData: FormData) {
     sim_type: simType,
     delivery_status: simType === 'physical' ? 'pending' : 'na',
     receipt_url: receiptUrl,
+    reference,
     note,
     recorded_by: user.id,
     idempotency_key: idempotencyKey,

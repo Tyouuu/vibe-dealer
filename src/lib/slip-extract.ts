@@ -127,3 +127,135 @@ export function compareSlip(claim: SlipClaim, slip: ExtractedSlip): SlipFinding[
 
   return out
 }
+
+// ---------------------------------------------------------------------------------------------
+// The same slip, read for a person typing an entry rather than a dealer sending a request.
+//
+// compareSlip above answers "does this slip back what the DEALER claimed?". Staff entering a payment
+// are in a different position: nobody has claimed anything, the slip is the source, and the question
+// is whether what was typed — or filled in from it — agrees with it. The wording differs for that
+// reason ("this entry is RM 940", not "the dealer said"), and so does one rule: an entry is allowed to
+// be dated a day or two after the transfer, because someone records it once they have caught up.
+
+/** A slip whose reference is already on an entry — the same payment about to be counted twice. */
+export type DuplicateHit = {
+  kind: 'entry' | 'purchase'
+  /** Who it was recorded against: a dealer's name, or "Credit purchase". */
+  label: string
+  date: string
+  moneyRm: number
+  status: string | null
+}
+
+/** What /api/receipts/read answers with. */
+export type ReadResponse = { slip: ExtractedSlip; duplicate: DuplicateHit | null }
+
+/**
+ * What a dealer's own link is told about the slip they attached. Four fields and a yes-or-no: never the
+ * recipient's account, never anything about another dealer.
+ */
+export type DealerSlipReading = {
+  slip: Pick<ExtractedSlip, 'amount_rm' | 'paid_on' | 'bank' | 'reference'>
+  /** This slip's reference is already on one of THIS dealer's requests or entries. */
+  alreadySent: boolean
+}
+
+/** What was typed on the form. Null when there is nothing to compare yet. */
+export type EntryClaim = {
+  /** The RM figure on the form: the amount collected, or a package's price times how many. */
+  amountRm: number | null
+  /** The date on the form, YYYY-MM-DD. */
+  date: string | null
+}
+
+/** Below this many characters a "reference" is a shorthand, not something two entries can share. */
+export const MIN_REFERENCE_KEY_LENGTH = 8
+
+/**
+ * A reference as it is compared: letters and digits only, lower-cased. "FT26091412345678" and
+ * "ft 2609-1412345678" are one payment. The database keeps the same thing in reference_key (0057),
+ * and slip-extract.test.ts fails if the two ever stop agreeing.
+ */
+export function referenceKey(ref: string | null | undefined): string {
+  return (ref ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/** True when a reference is long enough to tell one payment from another. */
+export function isComparableReference(ref: string | null | undefined): boolean {
+  return referenceKey(ref).length >= MIN_REFERENCE_KEY_LENGTH
+}
+
+const daysBetween = (fromIso: string, toIso: string) =>
+  Math.round((new Date(`${toIso}T00:00:00Z`).getTime() - new Date(`${fromIso}T00:00:00Z`).getTime()) / 86_400_000)
+
+/**
+ * Whether the date on a slip is safe to put on an entry without being asked: a real day, not in the
+ * future, and recent enough to be this payment. A date that fails this is still SHOWN — it is only not
+ * used to overwrite the date on the form.
+ */
+export function slipDateUsable(paidOn: string | null, today: string): paidOn is string {
+  if (!paidOn || !/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) return false
+  const age = daysBetween(paidOn, today)
+  return Number.isFinite(age) && age >= 0 && age <= SLIP_STALE_DAYS
+}
+
+/**
+ * Everything the slip disagrees with about an entry. Empty means the slip backs the form.
+ *
+ * Only what the slip actually said is compared: a field it did not show (null) is not a finding,
+ * because "the AI could not read a date" is not "the date is wrong".
+ */
+export function compareSlipToEntry(entry: EntryClaim, slip: ExtractedSlip, today: string): SlipFinding[] {
+  const out: SlipFinding[] = []
+
+  if (slip.amount_rm != null && entry.amountRm != null && Math.abs(slip.amount_rm - entry.amountRm) > 0.005) {
+    out.push({
+      kind: 'amount',
+      tone: 'bad',
+      text: `The slip says ${money(slip.amount_rm)} — this entry is ${money(entry.amountRm)}`,
+    })
+  }
+
+  if (slip.paid_on) {
+    const fromSlipToToday = daysBetween(slip.paid_on, today)
+    if (fromSlipToToday < 0) {
+      // A transfer that has not happened yet is not a payment. A day of slack for the phone's clock.
+      if (fromSlipToToday < -1) out.push({ kind: 'date', tone: 'bad', text: `The slip is dated ${slip.paid_on}, which is in the future` })
+    } else if (fromSlipToToday > SLIP_STALE_DAYS) {
+      out.push({ kind: 'date', tone: 'warn', text: `The slip is dated ${slip.paid_on} — ${fromSlipToToday} days ago. Is it the right one?` })
+    } else if (entry.date && entry.date !== slip.paid_on) {
+      const gap = Math.abs(daysBetween(slip.paid_on, entry.date))
+      out.push({
+        kind: 'date',
+        tone: 'warn',
+        text: `The slip is dated ${slip.paid_on}; this entry is dated ${entry.date} (${gap} ${gap === 1 ? 'day' : 'days'} apart)`,
+      })
+    }
+  }
+
+  return out
+}
+
+/**
+ * The same comparison, worded for the dealer holding the phone. Two things only, because those are the
+ * two a dealer can fix on the spot: the amount they typed against the slip, and a slip that does not
+ * look like this payment. Everything else (a bank they did not mention, a reference) is for staff.
+ */
+export function compareSlipForDealer(entry: EntryClaim, slip: Pick<ExtractedSlip, 'amount_rm' | 'paid_on'>, today: string): string[] {
+  const out: string[] = []
+  if (slip.amount_rm != null && entry.amountRm != null && Math.abs(slip.amount_rm - entry.amountRm) > 0.005) {
+    out.push(`Your slip says ${money(slip.amount_rm)}, but you entered ${money(entry.amountRm)}. Please check before sending.`)
+  }
+  if (slip.paid_on) {
+    const age = daysBetween(slip.paid_on, today)
+    if (age < -1) out.push(`Your slip is dated ${slip.paid_on}, which has not happened yet. Is it the right picture?`)
+    else if (age > SLIP_STALE_DAYS) out.push(`Your slip is from ${age} days ago. Is it the right picture?`)
+  }
+  return out
+}
+
+/** "the amount", "the amount and the date", "the amount, the date and the bank" — a list as a person says it. */
+export function joinWords(items: string[]): string {
+  if (items.length <= 1) return items.join('')
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}

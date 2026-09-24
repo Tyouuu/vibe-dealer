@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { decideAlerts, REPEAT_AFTER_DAYS, RECONCILE_CHASE_FROM_DAY, PENDING_STALE_DAYS, type AlertFacts } from './alerts'
+import {
+  decideAlerts,
+  REPEAT_AFTER_DAYS,
+  RECONCILE_CHASE_FROM_DAY,
+  PENDING_STALE_DAYS,
+  SYSTEM_CHECK_REPEAT_AFTER_DAYS,
+  type AlertFacts,
+} from './alerts'
 
 const quiet: AlertFacts = {
   availablePoints: 500_000,
@@ -11,6 +18,7 @@ const quiet: AlertFacts = {
   dayOfMonth: 10,
   oldestPendingDays: null,
   pendingCount: 0,
+  systemCheck: { ran: true, problems: [] },
 }
 
 describe('not_started', () => {
@@ -144,5 +152,52 @@ describe('decideAlerts', () => {
     const facts = { ...quiet, availablePoints: 1_000 }
     expect(decideAlerts(facts, { credit_low: '2026-07-31' }, '2026-08-01')).toEqual([])
     expect(decideAlerts(facts, { credit_low: '2026-07-29' }, '2026-08-01')).toHaveLength(1)
+  })
+})
+
+describe('system_check', () => {
+  const failing = { ...quiet, systemCheck: { ran: true, problems: ['The credit balance adds up the same way every time — The credit balance changes depending on how it is counted'] } }
+
+  it('says nothing when every check passed', () => {
+    expect(decideAlerts(quiet, {}, '2026-08-10')).toEqual([])
+  })
+
+  it('names what failed, one line each', () => {
+    const [a] = decideAlerts(
+      { ...quiet, systemCheck: { ran: true, problems: ['first rule — broken', 'second rule — broken'] } },
+      {},
+      '2026-08-10',
+    )
+    expect(a.kind).toBe('system_check')
+    expect(a.headline).toBe('2 things in the books do not add up')
+    expect(a.detail).toContain('first rule — broken\nsecond rule — broken')
+  })
+
+  it('uses the singular for one', () => {
+    expect(decideAlerts(failing, {}, '2026-08-10')[0].headline).toBe('1 thing in the books does not add up')
+  })
+
+  it('is reported when the check itself could not run', () => {
+    // A check that quietly stopped running looks exactly like a month with nothing wrong.
+    const [a] = decideAlerts({ ...quiet, systemCheck: { ran: false, problems: [] } }, {}, '2026-08-10')
+    expect(a.kind).toBe('system_check')
+    expect(a.headline).toMatch(/could not run/)
+  })
+
+  it('comes first, because the email subject carries the first headline', () => {
+    const kinds = decideAlerts({ ...failing, availablePoints: 1_000 }, {}, '2026-08-10').map((a) => a.kind)
+    expect(kinds).toEqual(['system_check', 'credit_low'])
+  })
+
+  it('is raised again the next morning, not after three days', () => {
+    expect(SYSTEM_CHECK_REPEAT_AFTER_DAYS).toBeLessThan(REPEAT_AFTER_DAYS)
+    expect(decideAlerts(failing, { system_check: '2026-08-10' }, '2026-08-10')).toEqual([])
+    expect(decideAlerts(failing, { system_check: '2026-08-09' }, '2026-08-10')).toHaveLength(1)
+  })
+
+  it('still gets through on a system nobody has started', () => {
+    // The books can fail their own rules before the first purchase — an import, a hand-edit.
+    const kinds = decideAlerts({ ...failing, hasEverPurchased: false, availablePoints: 0 }, {}, '2026-08-10').map((a) => a.kind)
+    expect(kinds).toEqual(['system_check', 'not_started'])
   })
 })

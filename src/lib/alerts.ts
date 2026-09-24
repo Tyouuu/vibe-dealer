@@ -16,12 +16,17 @@
 // firing, and a cron that has silently stopped firing looks exactly like a
 // month with no problems.
 
-export type AlertKind = 'not_started' | 'credit_low' | 'month_unreconciled' | 'pending_too_long'
+export type AlertKind = 'not_started' | 'credit_low' | 'month_unreconciled' | 'pending_too_long' | 'system_check'
 
 // How long before the same unresolved problem is raised again. Daily would
 // train everyone to delete it unread, which is the failure mode that matters:
 // an alert nobody reads is worse than no alert, because it feels like cover.
 export const REPEAT_AFTER_DAYS = 3
+
+// The exception is the system check. The other alerts are about work that has not been done yet; this
+// one is about the books failing a rule they are supposed to keep at all times, and a broken ledger
+// is the one thing worth hearing about every morning until it is fixed.
+export const SYSTEM_CHECK_REPEAT_AFTER_DAYS = 1
 
 // The month is only worth chasing once there has been time to do it. Vibe's
 // own statement does not arrive on the 1st, and a reminder that fires before
@@ -49,6 +54,13 @@ export type AlertFacts = {
   /** Age in days of the oldest pending transaction, or null if none are waiting. */
   oldestPendingDays: number | null
   pendingCount: number
+  /**
+   * What today's system check found (src/lib/system-check.ts). `ran: false` means the check itself
+   * could not run — which is reported too, because a check that quietly stopped running looks exactly
+   * like a month with nothing wrong. `problems` has one line per failing check, and is empty when
+   * everything passed; warnings are for the System Check page and are not emailed.
+   */
+  systemCheck: { ran: boolean; problems: string[] }
 }
 
 export type Alert = {
@@ -56,6 +68,27 @@ export type Alert = {
   /** One line, because most of these are read on a phone's lock screen. */
   headline: string
   detail: string
+}
+
+function systemCheckAlert(check: AlertFacts['systemCheck']): Alert | null {
+  if (!check.ran) {
+    return {
+      kind: 'system_check',
+      headline: 'Today’s system check could not run',
+      detail:
+        'Nothing was checked today, so the books have not been tested against their own rules. Open System Check and run it by hand — ' +
+        'if it fails there too, the database needs looking at.',
+    }
+  }
+  if (!check.problems.length) return null
+  const count = check.problems.length
+  return {
+    kind: 'system_check',
+    headline: count === 1 ? '1 thing in the books does not add up' : `${count} things in the books do not add up`,
+    detail:
+      check.problems.join('\n') +
+      '\n\nThese are rules the ledger is supposed to keep at all times. Open System Check to see the entries involved.',
+  }
 }
 
 function daysBetween(fromIso: string, toIso: string): number {
@@ -77,6 +110,13 @@ export function decideAlerts(
 ): Alert[] {
   const raised: Alert[] = []
 
+  const isDue = (a: Alert): boolean => {
+    const last = lastSentOn[a.kind]
+    if (!last) return true
+    return daysBetween(last, today) >= (a.kind === 'system_check' ? SYSTEM_CHECK_REPEAT_AFTER_DAYS : REPEAT_AFTER_DAYS)
+  }
+  const systemAlert = systemCheckAlert(facts.systemCheck)
+
   // Before anything else, and only once.
   //
   // credit_low deliberately stays quiet until the first purchase — see its
@@ -96,8 +136,13 @@ export function decideAlerts(
     })
     // Nothing below this is worth saying yet. An unreconciled month and a
     // stale pending row are both about work in progress, and there is none.
-    return raised
+    // The system check is the exception: it is about the books, not the work.
+    return systemAlert && isDue(systemAlert) ? [systemAlert, ...raised] : raised
   }
+
+  // First, because it is the most serious thing this can say and the subject line of the
+  // email carries the first headline.
+  if (systemAlert) raised.unshift(systemAlert)
 
   // Below the threshold, not at zero. At zero the ledger already refuses the
   // sale and the dealer is standing there — the point of saying anything is to
@@ -144,9 +189,5 @@ export function decideAlerts(
     })
   }
 
-  return raised.filter((a) => {
-    const last = lastSentOn[a.kind]
-    if (!last) return true
-    return daysBetween(last, today) >= REPEAT_AFTER_DAYS
-  })
+  return raised.filter(isDue)
 }

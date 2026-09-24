@@ -145,6 +145,17 @@ export function IconShield({ className = 'h-[18px] w-[18px]' }: IconProps) {
   )
 }
 
+// System Check. A shield with a tick in it: the books, verified against their own rules. Not
+// the Audit Log's plain shield, which is the record of who did what.
+export function IconShieldCheck({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z" />
+      <path d="m9 12 2.2 2.2L15.5 10" />
+    </svg>
+  )
+}
+
 // Staff. Two of the fourteen rail items had no icon at all, and the rail
 // renders `{Icon && <Icon />}` — so their labels sat flush against the edge
 // while the other twelve were indented past an 18px glyph. A gap in a column

@@ -157,7 +157,8 @@ export function CommandPalette({ navItems }: { navItems: PaletteNavItem[] }) {
         ]
           .filter(Boolean)
           .join(' · '),
-        warn: !d.package,
+        // Not a warning: a dealer with no package on file trades at the standard rate like any other.
+        warn: false,
       }))
 
     return [...found, ...pages]

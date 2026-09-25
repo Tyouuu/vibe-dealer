@@ -11,6 +11,21 @@ export const PACKAGES: Record<PackageCode, { name: string; price: number; reload
 
 export const COMMISSION_RATE = 0.02
 
+// The rate a dealer gets when no package is on file for them. It is the same 6% as every package (the three
+// above are flat), so "no package yet" changes nothing about what a top-up is worth — it only means nobody has
+// recorded which package the dealer bought, which Vibe has not yet given us for most of the roster. A dealer
+// must never be turned away, or a top-up left unpriced, over a gap in OUR records: the points are the same
+// either way, and a package assigned later does not reprice an entry already made (each entry stores the rate
+// it was made at).
+export const FLAT_DEALER_RATE = PACKAGES.A.rate
+
+/** The dealer's own rate when one is on file, otherwise the flat rate every dealer gets. */
+export function rateOrFlat(rate: number | string | null | undefined): number {
+  if (rate == null || rate === '') return FLAT_DEALER_RATE
+  const n = Number(rate)
+  return Number.isFinite(n) && n > 0 ? n : FLAT_DEALER_RATE
+}
+
 // The most packages that can go on one row. Mirrors the check constraint in
 // migration 0048, which is the real backstop — this copy is here so the form
 // can say so before the database has to.

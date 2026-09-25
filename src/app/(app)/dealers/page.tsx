@@ -480,7 +480,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
             <Link
               href={viewHref('nopackage')}
               className={`segmented-btn ${view === 'nopackage' ? 'active' : ''}`}
-              title="Dealers with no package, so no rate — a top-up would be refused"
+              title="Dealers with no package on file — they top up at the standard 6%"
             >
               No Package
             </Link>

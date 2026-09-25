@@ -4,7 +4,7 @@ import { Field } from '../field'
 
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COMMISSION_RATE, COUPON_DENOMINATION_RM, FLAT_DEALER_RATE, MAX_PACKAGE_QUANTITY, rateOrFlat, type PackageCode } from '@/lib/packages'
 import { packageCardEconomics } from '@/lib/sim-stock'
 import { createTransaction, findRecentDuplicate, type RecentMatch } from './actions'
 import { IconCoin, IconUpload, IconChevronDown, IconUsers, IconPaperclip } from '../icons'
@@ -168,7 +168,8 @@ export function EntryForm({
         commission: Math.round(points * COMMISSION_RATE * 100) / 100,
       }
     }
-    const rate = dealer?.rate ?? null
+    // A dealer with no package on file is priced at the flat rate, the same 6% as every package.
+    const rate = dealer ? rateOrFlat(dealer.rate) : null
     const collected = Number(moneyCollected) || 0
     if (rate == null) return null
     const suggestedPoints = Math.round(collected / (1 - rate / 100))
@@ -249,10 +250,6 @@ export function EntryForm({
     }
     if (txDate > today) {
       setError('Date cannot be in the future.')
-      return
-    }
-    if (type === 'topup' && dealer?.rate == null) {
-      setError('This dealer has no package/rate yet — buy them a package first.')
       return
     }
     if (insufficientBalance) {
@@ -414,7 +411,7 @@ export function EntryForm({
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-semibold text-paper">{dealer.company_name}</span>
                   <span className="block text-[12px] text-paper-dim">
-                    {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : 'No package or rate yet'}
+                    {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : `No package yet · ${FLAT_DEALER_RATE}% standard rate`}
                   </span>
                 </span>
               </span>
@@ -648,6 +645,11 @@ export function EntryForm({
                   ? `Only ${availableBalance.toLocaleString()} pts of credit left — this is ${(preview.points - availableBalance).toLocaleString()} pts over. Log a credit purchase first.`
                   : `${formatMYR(preview.money)} in at ${preview.rate}% — you earn ${formatMYR(preview.commission)}. ${(availableBalance - preview.points).toLocaleString()} pts of credit left after this.`}
               </p>
+              {type === 'topup' && dealer && dealer.rate == null && (
+                <p className="mt-1 text-[12px] text-paper-dim">
+                  No package on file for this dealer, so the standard {FLAT_DEALER_RATE}% is used — the same as every package.
+                </p>
+              )}
 
               {/* The other half of a package sale, and the half that had never
                   appeared on this screen. The points are what the dealer is
@@ -692,10 +694,6 @@ export function EntryForm({
                 </div>
               </details>
             </div>
-          ) : dealer && !dealer.rate ? (
-            <p className="mt-3 text-[13px] text-brass-bright">
-              This dealer has no package or rate yet — buy them a package first.
-            </p>
           ) : null}
           {/* Unfolded, on instruction: "都是要放receipt的". It was folded on the
               evidence that no transaction on record carries a receipt and only

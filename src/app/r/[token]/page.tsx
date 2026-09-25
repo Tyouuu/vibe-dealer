@@ -6,6 +6,7 @@ import { LogoMark } from '../../(app)/icons'
 import { RequestForm } from './request-form'
 import { typicalAmount } from '@/lib/amount-plausibility'
 import { usualAmounts } from '@/lib/usual-amounts'
+import { rateOrFlat } from '@/lib/packages'
 
 // The only page in this app a person outside the company ever sees.
 //
@@ -121,7 +122,7 @@ export default async function DealerRequestPage({ params, searchParams }: PagePr
         {/* today from the server, not the phone. The date field decides which
             month a sale lands in, and a handset with the wrong clock would put
             it in the wrong one silently. */}
-        <RequestForm token={token} rate={dealer.rate == null ? null : Number(dealer.rate)} today={todayInMalaysia()} typicalAmountRm={typicalTopupRm} usualAmountsRm={usualTopupsRm} />
+        <RequestForm token={token} rate={rateOrFlat(dealer.rate)} today={todayInMalaysia()} typicalAmountRm={typicalTopupRm} usualAmountsRm={usualTopupsRm} />
 
         {recent && recent.length > 0 && (
           <div className="app-card mt-4 p-6">

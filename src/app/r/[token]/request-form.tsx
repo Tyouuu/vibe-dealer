@@ -42,8 +42,8 @@ export function RequestForm({
   usualAmountsRm,
 }: {
   token: string
-  /** null when no package is on file — see below. */
-  rate: number | null
+  /** The dealer's own rate, or the flat rate every dealer gets when no package is on file. */
+  rate: number
   /** Today in Malaysia, from the server. Not the phone's clock, which can be
       anything, and this field decides which month a sale lands in. */
   today: string
@@ -268,20 +268,14 @@ export function RequestForm({
               ))}
             </div>
           )}
-          {/* Three states, and the third is the one that matters. A dealer with
-              no package on file used to be refused outright here: no rate, no
-              way to price the points, so the top-up option was hidden and the
-              form said to buy a package instead. But 233 dealers are in that
-              state because nobody has recorded what they bought, not because
-              they have bought nothing — the gap is in our records, and turning
-              a paying dealer away over it is the wrong side to fail on. The
-              request is only a claim; whoever accepts it sets the rate then. */}
+          {/* Every dealer is on the same flat 6% whether or not a package is on file, so the estimate is always
+              shown. A dealer used to be told "we'll confirm your rate" — true of nothing, and a reason to
+              wonder whether they would be credited at all. The request is still only a claim; staff check the
+              bank before anything is recorded. */}
           <p className="mt-2 text-[12px] text-paper-dim">
             {points
               ? `That works out to about ${points.toLocaleString()} points at your rate.`
-              : rate == null
-                ? "We'll confirm your rate and work out the points before we credit you."
-                : "We'll work out the points from your rate once you enter the amount."}
+              : "We'll work out the points from your rate once you enter the amount."}
           </p>
           {looksHigh && (
             <p className="mt-2 text-[12px] font-medium text-brass-bright">

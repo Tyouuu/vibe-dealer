@@ -389,21 +389,6 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                   </div>
                 )}
 
-                {/* The one thing that stops this being a two-click accept. A
-                    top-up cannot be priced without a rate, and 233 dealers
-                    have none on file — so the link takes the request anyway
-                    (see r/[token]/actions.ts) and the work lands here, named,
-                    with the page that fixes it one tap away. */}
-                {r.type === 'topup' && r.dealers?.rate == null && (
-                  <div className="alert alert-warn mt-3 text-[13px]">
-                    This dealer has no package or rate on file, so their points cannot be worked out yet.{' '}
-                    <Link href={`/dealers/${r.dealer_id}`} className="font-semibold underline">
-                      Set their package first
-                    </Link>
-                    , then come back and accept this.
-                  </div>
-                )}
-
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-ink-800 pt-4">
                   {/* A link, not a button. Accepting means recording a
                       transaction, and the only place that happens is /entry —

@@ -6,7 +6,7 @@ import { after } from 'next/server'
 import { notifyShipQueue } from '@/lib/push'
 import { requireUser } from '@/lib/auth/dal'
 import { createClient } from '@/lib/supabase/server'
-import { PACKAGES, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, type PackageCode } from '@/lib/packages'
+import { PACKAGES, COUPON_DENOMINATION_RM, MAX_PACKAGE_QUANTITY, rateOrFlat, type PackageCode } from '@/lib/packages'
 import { recomputeDealerRate } from '@/lib/dealer-rate'
 import { getAvailablePointsBalance } from '@/lib/credit-balance'
 import { todayInMalaysia } from '@/lib/month'
@@ -91,8 +91,9 @@ export async function createTransaction(formData: FormData) {
     moneyRm = Math.round(def.price * quantity * 100) / 100
     rate = def.rate
   } else {
-    if (dealer.rate == null) fail('This dealer has no package/rate yet — buy them a package first.')
-    rate = dealer.rate
+    // No package on file is not "no rate": every dealer is on the same flat 6%, and the entry stores the rate
+    // it was made at, so a package assigned later never reprices it.
+    rate = rateOrFlat(dealer.rate)
     // RM collected is the primary figure — that's the real money CS has in
     // hand — points is derived from it unless explicitly overridden, mirror
     // of the client-side calculation in entry-form.tsx.

@@ -690,8 +690,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div className="page-band">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div>
-              <h3 className="text-sm font-semibold text-paper">Can&rsquo;t trade yet</h3>
-              <p className="text-[12px] text-paper-dim">No package, so no rate — a top-up would be refused.</p>
+              <h3 className="text-sm font-semibold text-paper">No package on file</h3>
+              <p className="text-[12px] text-paper-dim">They top up at the standard 6% — a package only records what they bought.</p>
             </div>
             <Link href="/dealers?view=nopackage" className="text-[12px] font-semibold text-primary hover:underline">
               Set packages →

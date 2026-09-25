@@ -21,10 +21,12 @@ const IMPORT_MAX_ROWS = 5000
 /**
  * Give a package to dealers that have none, in one pass.
  *
- * 500 of 551 dealers cannot trade because they have no package, so no rate,
- * so the credit guard on /entry refuses every top-up they place. One at a
- * time was not a slow route to fixing that — it was no route at all, because
- * there is no package field on a dealer's page. See 0047 for why the two
+ * Most of the roster has bought a package but Vibe has not yet said which, so
+ * dealers.package is empty for them. (Top-ups no longer wait on it — a dealer
+ * with no package recorded is priced at the flat 6%, the same as every package
+ * — but the package still decides how many SIM cards they are owed.) One at a
+ * time was not a slow route to filling that in — it was no route at all,
+ * because there is no package field on a dealer's page. See 0047 for why the two
  * existing audited paths could not be reused: one records a sale that never
  * happened, the other only works on a row being inserted.
  *

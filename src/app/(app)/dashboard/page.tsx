@@ -690,11 +690,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div className="page-band">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div>
-              <h3 className="text-sm font-semibold text-paper">No package on file</h3>
-              <p className="text-[12px] text-paper-dim">They top up at the standard 6% — a package only records what they bought.</p>
+              <h3 className="text-sm font-semibold text-paper">Package not recorded</h3>
+              <p className="text-[12px] text-paper-dim">
+                They have bought one — Vibe has not said which. Top-ups are 6% either way; it decides how many SIM cards they are owed.
+              </p>
             </div>
             <Link href="/dealers?view=nopackage" className="text-[12px] font-semibold text-primary hover:underline">
-              Set packages →
+              Record packages →
             </Link>
           </div>
 

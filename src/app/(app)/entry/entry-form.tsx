@@ -168,7 +168,7 @@ export function EntryForm({
         commission: Math.round(points * COMMISSION_RATE * 100) / 100,
       }
     }
-    // A dealer with no package on file is priced at the flat rate, the same 6% as every package.
+    // A dealer whose package is not recorded is priced at the flat rate, the same 6% as every package.
     const rate = dealer ? rateOrFlat(dealer.rate) : null
     const collected = Number(moneyCollected) || 0
     if (rate == null) return null
@@ -411,7 +411,7 @@ export function EntryForm({
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-semibold text-paper">{dealer.company_name}</span>
                   <span className="block text-[12px] text-paper-dim">
-                    {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : `No package yet · ${FLAT_DEALER_RATE}% standard rate`}
+                    {dealer.package ? `Package ${dealer.package} · ${dealer.rate}% rate` : `Package not recorded · ${FLAT_DEALER_RATE}% standard rate`}
                   </span>
                 </span>
               </span>
@@ -436,7 +436,7 @@ export function EntryForm({
               options={dealers.map((d) => ({
                 value: d.id,
                 label: d.company_name,
-                sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'No package',
+                sublabel: d.package ? `Package ${d.package} · ${d.rate}%` : 'Package not recorded',
                 avatarName: d.company_name,
               }))}
             />
@@ -647,7 +647,7 @@ export function EntryForm({
               </p>
               {type === 'topup' && dealer && dealer.rate == null && (
                 <p className="mt-1 text-[12px] text-paper-dim">
-                  No package on file for this dealer, so the standard {FLAT_DEALER_RATE}% is used — the same as every package.
+                  This dealer&apos;s package is not recorded yet, so the standard {FLAT_DEALER_RATE}% is used — every package is {FLAT_DEALER_RATE}%.
                 </p>
               )}
 

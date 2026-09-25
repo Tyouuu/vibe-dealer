@@ -433,7 +433,7 @@ export default async function DealerDetailPage({ params, searchParams }: PagePro
             <AttrChip
               icon={<IconTag className="h-3 w-3" />}
               label="Package"
-              value={typedDealer.package ? (isFinance ? `${typedDealer.package} · ${typedDealer.rate}%` : typedDealer.package) : '—'}
+              value={typedDealer.package ? (isFinance ? `${typedDealer.package} · ${typedDealer.rate}%` : typedDealer.package) : 'Not recorded yet'}
             />
             <AttrChip icon={<IconUsers className="h-3 w-3" />} label="Contact" value={typedDealer.contact_person ?? '—'} />
           </div>

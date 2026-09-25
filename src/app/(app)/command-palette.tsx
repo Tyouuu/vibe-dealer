@@ -153,11 +153,11 @@ export function CommandPalette({ navItems }: { navItems: PaletteNavItem[] }) {
           // Only when the name did not already explain the hit.
           other && score(d.company_name, needle) < 0 ? `${other.label}: ${other.value}` : null,
           d.region || 'No region',
-          d.package ? `Package ${d.package}` : 'No package',
+          d.package ? `Package ${d.package}` : 'Package not recorded',
         ]
           .filter(Boolean)
           .join(' · '),
-        // Not a warning: a dealer with no package on file trades at the standard rate like any other.
+        // Not a warning: a dealer whose package is not recorded trades at the standard rate like any other.
         warn: false,
       }))
 

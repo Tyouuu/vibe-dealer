@@ -374,8 +374,8 @@ export function DealersTable({
                         onChange={(e) =>
                           setSelected(e.target.checked ? new Set(assignable.map((d) => d.id)) : new Set())
                         }
-                        aria-label={`Select all ${assignable.length} dealers on this page that have no package`}
-                        title={`Select the ${assignable.length} on this page with no package`}
+                        aria-label={`Select all ${assignable.length} dealers on this page whose package is not recorded`}
+                        title={`Select the ${assignable.length} on this page whose package is not recorded`}
                         className="relative z-10 mr-1 h-4 w-4 cursor-pointer accent-primary"
                       />
                     )}

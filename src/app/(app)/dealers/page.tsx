@@ -385,7 +385,7 @@ export default async function DealersPage({ searchParams }: PageProps) {
           view === 'inactive'
             ? 'Dealers needing follow-up'
             : view === 'nopackage'
-              ? 'Dealers with no package'
+              ? 'Dealers with package not recorded'
               : q || region !== 'all'
                 ? 'Dealers matching this filter'
                 : 'Dealers'
@@ -480,9 +480,9 @@ export default async function DealersPage({ searchParams }: PageProps) {
             <Link
               href={viewHref('nopackage')}
               className={`segmented-btn ${view === 'nopackage' ? 'active' : ''}`}
-              title="Dealers with no package on file — they top up at the standard 6%"
+              title="They have bought a package, but Vibe has not said which — they top up at 6% either way"
             >
-              No Package
+              Package Unknown
             </Link>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -563,8 +563,8 @@ export default async function DealersPage({ searchParams }: PageProps) {
           <EmptyState
             variant="cleared"
             icon={<IconSearch className="h-5 w-5" />}
-            title="Every dealer can trade"
-            description="All of them have a package, so all of them have a rate."
+            title="Every dealer's package is recorded"
+            description="Nothing left to fill in."
           />
         ) : (
           <EmptyState

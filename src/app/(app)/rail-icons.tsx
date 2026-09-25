@@ -145,6 +145,17 @@ export function IconShield({ className = 'h-[18px] w-[18px]' }: IconProps) {
   )
 }
 
+// Earnings. A line climbing to a point: what was made, not the ledger it was made from (that is the bar chart
+// Monthly Report has). It was the one rail item with no icon at all, which is why it sat flush left of the rest.
+export function IconTrend({ className = 'h-[18px] w-[18px]' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m3 17 6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  )
+}
+
 // System Check. A shield with a tick in it: the books, verified against their own rules. Not
 // the Audit Log's plain shield, which is the record of who did what.
 export function IconShieldCheck({ className = 'h-[18px] w-[18px]' }: IconProps) {

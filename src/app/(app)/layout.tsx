@@ -14,43 +14,46 @@ import { LogoMark } from './icons'
 import { RestoreScroll } from './restore-scroll'
 import { Keepalive } from './keepalive'
 
-const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string }[] = [
+// `create` marks an item that is a way of MAKING something rather than somewhere to go: New Transaction, Log
+// Purchase, Log SIM Stock, Onboard Dealer. Each already sits as a button on the list it feeds, and each was also a
+// rail item of its own — four of seventeen for a master, on a rail that does not fit a laptop. They now live in the
+// one "+ New" menu at the top of the rail (still one click away), and stay in the search palette and the phone
+// menu, which take the full list. The value is the menu's label.
+const NAV_ITEMS: { href: string; label: string; roles: Role[]; group: string; create?: string }[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
   // Directly under Dashboard because it answers the shorter version of the
   // same question, and because it is the one page here built to be read on a
   // phone -- which is where the owner actually looks.
   { href: '/earnings', label: 'Earnings', roles: ['master', 'accountant'], group: 'Overview' },
-  { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Dealers' },
-  { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Dealers' },
-  // Above New Transaction, because it is where a transaction now often
+  { href: '/dealers', label: 'Dealers', roles: ['master', 'accountant', 'cs'], group: 'Overview' },
+  { href: '/onboard', label: 'Onboard Dealer', roles: ['cs', 'master'], group: 'Overview', create: 'Onboard dealer' },
+  // Above Transactions, because it is where a transaction now often
   // starts: the dealer has already said what they want, and the entry form is
   // the second step rather than the first.
-  { href: '/requests', label: 'Dealer Requests', roles: ['accountant', 'master'], group: 'Transactions' },
-  { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Transactions' },
-  { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Transactions' },
-  { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Transactions' },
-  { href: '/sim-stock', label: 'SIM Card Stock', roles: ['cs', 'accountant', 'master'], group: 'Transactions' },
-  // Sits under the page it feeds, the way Onboard Dealer sits under Dealers.
-  // One entry, not two: intake and orders are the same job seen from two
-  // directions and share one page.
+  { href: '/requests', label: 'Dealer Requests', roles: ['accountant', 'master'], group: 'Work' },
+  { href: '/entry', label: 'New Transaction', roles: ['accountant', 'master'], group: 'Work', create: 'New transaction' },
+  { href: '/records', label: 'Transactions', roles: ['master', 'accountant'], group: 'Work' },
+  { href: '/delivery', label: 'SIM Delivery', roles: ['cs', 'master'], group: 'Work' },
+  { href: '/sim-stock', label: 'SIM Card Stock', roles: ['cs', 'accountant', 'master'], group: 'Work' },
   // All three roles, because the page holds one movement for finance (stock
   // in) and one for ops (stock out) — see log/page.tsx. Narrowing this to the
   // finance pair is what had cut cs off from placing SIM orders entirely.
-  { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'cs', 'master'], group: 'Transactions' },
+  { href: '/sim-stock/log', label: 'Log SIM Stock', roles: ['accountant', 'cs', 'master'], group: 'Work', create: 'Log SIM stock' },
   { href: '/reports', label: 'Monthly Report', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/reconcile', label: 'Reconciliation', roles: ['master', 'accountant'], group: 'Finance' },
   // Beside Reconciliation because it asks the same question of a different thing: Reconciliation
   // asks whether the books agree with Vibe, this asks whether they agree with themselves.
   { href: '/system-check', label: 'System Check', roles: ['master', 'accountant'], group: 'Finance' },
   { href: '/purchases', label: 'Credit Purchases', roles: ['master', 'accountant'], group: 'Finance' },
-  // Under the page it feeds, the way Onboard Dealer sits under Dealers and
-  // Log SIM Stock under SIM Card Stock.
-  { href: '/purchases/new', label: 'Log Purchase', roles: ['master', 'accountant'], group: 'Finance' },
-  { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Finance' },
-  // Master only, and in its own group rather than under Finance: this is the
-  // one screen that decides who gets to touch any of the others.
+  { href: '/purchases/new', label: 'Log Purchase', roles: ['master', 'accountant'], group: 'Finance', create: 'Log purchase' },
+  // With Staff: both are for the master only, both about people and what they did, and neither is something
+  // to visit in the course of a day's work.
+  { href: '/audit', label: 'Audit Log', roles: ['master'], group: 'Admin' },
   { href: '/staff', label: 'Staff', roles: ['master'], group: 'Admin' },
 ]
+
+// The order the "+ New" menu offers them in: what happens most, first.
+const CREATE_ORDER = ['/entry', '/purchases/new', '/sim-stock/log', '/onboard']
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
@@ -84,7 +87,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ])
 
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
-  const railItems: RailItem[] = navItems.map((item) => ({
+  // The rail lists places to go; making something is the "+ New" menu above it.
+  const createItems = navItems
+    .filter((item) => item.create)
+    .sort((x, y) => CREATE_ORDER.indexOf(x.href) - CREATE_ORDER.indexOf(y.href))
+    .map((item) => ({ href: item.href, label: item.create as string }))
+  const railItems: RailItem[] = navItems.filter((item) => !item.create).map((item) => ({
     href: item.href,
     label: item.label,
     group: item.group,
@@ -145,6 +153,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="hidden lg:block">
           <RailNav
             items={railItems}
+            createItems={createItems}
             notifications={notifications}
             userName={user.name ?? user.email ?? 'User'}
             roleLabel={ROLE_LABEL[user.role]}

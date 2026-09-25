@@ -965,10 +965,12 @@ body {
     @apply mb-1 flex w-full items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 px-2.5 py-2 text-[12px] text-paper-dim transition-colors hover:border-ink-700 hover:bg-ink-850 hover:text-paper;
   }
   .rail-group-label {
-    @apply px-2.5 pb-1.5 pt-3.5 text-[12px] font-semibold text-paper-dim first:pt-1;
+    @apply px-2.5 pb-1 pt-2.5 text-[12px] font-semibold text-paper-dim first:pt-1;
   }
+  /* 36px a row, not 40: with the folded groups the rail holds the seven places a day is spent in, and it has to
+     fit a laptop screen without scrolling. Still a full-width target, well above the 24px minimum. */
   .rail-item {
-    @apply mb-0.5 flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
+    @apply mb-0.5 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-paper-dim transition-colors hover:bg-ink-850 hover:text-paper;
   }
   .rail-item.active {
     @apply bg-paper text-white hover:bg-paper hover:text-white;
@@ -979,8 +981,14 @@ body {
   .rail-item .lbl {
     @apply overflow-hidden whitespace-nowrap;
   }
-  .rail-item .badge {
+  .rail-item .badge,
+  .rail-group-label .badge {
     @apply ml-auto shrink-0 rounded-full bg-ink-800 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-paper;
+  }
+  /* The one control that makes something. Filled, like every primary action in the app, so it is the first thing
+     the eye finds in a column of quiet links — and only one of them, so that stays true. */
+  .rail-new {
+    @apply flex w-full items-center gap-2 rounded-lg bg-paper px-2.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90;
   }
   .rail-item.active .badge {
     @apply bg-white/15 text-white;
@@ -1005,6 +1013,10 @@ body {
      of a tall sidebar, so they never run off the bottom of the screen. */
   .dropdown-panel-rail {
     @apply absolute bottom-0 left-full z-50 ml-2 min-w-[220px] rounded-xl border border-ink-800 bg-ink-900 p-1.5 shadow-2xl;
+  }
+  /* The same popover opening downward inside the rail, for a control near the top of it. */
+  .dropdown-panel-under {
+    @apply absolute inset-x-0 top-[calc(100%+6px)] z-50 rounded-xl border border-ink-800 bg-ink-900 p-1.5 shadow-2xl;
   }
   .dropdown-item {
     @apply block w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-paper transition-colors hover:bg-ink-850;
